@@ -178,7 +178,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📬 Contact
 
-**Project Creator**: Elia Cinti 
+**Project Creator**: [Elia Cinti]
 **University**: Tor Vergata - Roma  
 **Course**: ISPW (Ingegneria del Software e Progettazione Web)  
 **Academic Year**: 2025/2026
