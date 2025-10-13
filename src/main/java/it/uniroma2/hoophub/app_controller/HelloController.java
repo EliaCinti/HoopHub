@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub;
+package it.uniroma2.hoophub.app_controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;

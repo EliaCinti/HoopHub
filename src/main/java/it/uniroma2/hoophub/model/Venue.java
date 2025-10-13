@@ -1,0 +1,303 @@
+package it.uniroma2.hoophub.model;
+
+import it.uniroma2.hoophub.utilities.BookingStatus;
+import it.uniroma2.hoophub.utilities.VenueType;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * Represents a venue with business logic for capacity management and bookings.
+ */
+public class Venue {
+    private int id;
+    private String name;
+    private VenueType type;
+    private String address;
+    private String city;
+    private int maxCapacity;
+    private String venueManagerUsername;
+    private Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
+
+    private Venue(Builder builder) {
+        this.id = builder.id;
+        this.name = builder.name;
+        this.type = builder.type;
+        this.address = builder.address;
+        this.city = builder.city;
+        this.maxCapacity = builder.maxCapacity;
+        this.venueManagerUsername = builder.venueManagerUsername;
+    }
+
+    public static class Builder {
+        private int id;
+        private String name;
+        private VenueType type;
+        private String address;
+        private String city;
+        private int maxCapacity;
+        private String venueManagerUsername;
+
+        public Builder id(int id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder type(VenueType type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder address(String address) {
+            this.address = address;
+            return this;
+        }
+
+        public Builder city(String city) {
+            this.city = city;
+            return this;
+        }
+
+        public Builder maxCapacity(int maxCapacity) {
+            this.maxCapacity = maxCapacity;
+            return this;
+        }
+
+        public Builder venueManagerUsername(String venueManagerUsername) {
+            this.venueManagerUsername = venueManagerUsername;
+            return this;
+        }
+
+        public Venue build() {
+            validate();
+            return new Venue(this);
+        }
+
+        private void validate() {
+            if (name == null || name.trim().isEmpty()) {
+                throw new IllegalArgumentException("Venue name cannot be null or empty");
+            }
+            if (type == null) {
+                throw new IllegalArgumentException("Venue type cannot be null");
+            }
+            if (address == null || address.trim().isEmpty()) {
+                throw new IllegalArgumentException("Address cannot be null or empty");
+            }
+            if (city == null || city.trim().isEmpty()) {
+                throw new IllegalArgumentException("City cannot be null or empty");
+            }
+            if (maxCapacity <= 0) {
+                throw new IllegalArgumentException("Max capacity must be greater than 0");
+            }
+            if (maxCapacity > 10000) {
+                throw new IllegalArgumentException("Max capacity cannot exceed 10000");
+            }
+            if (venueManagerUsername == null || venueManagerUsername.trim().isEmpty()) {
+                throw new IllegalArgumentException("Venue manager username cannot be null or empty");
+            }
+        }
+    }
+
+    // ========== PUBLIC API - Core Operations ==========
+
+    /**
+     * Adds a booking to this venue.
+     * Called by: VenueManager.confirmBooking()
+     */
+    public void addBooking(Booking booking) {
+        LocalDate gameDate = booking.getGameDate();
+        bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
+    }
+
+    // ========== PUBLIC API - Capacity Management (Critical) ==========
+
+    /**
+     * Checks if there's available capacity for a booking.
+     * Called by: VenueManager.confirmBooking() - CRITICAL validation
+     */
+    public boolean hasAvailableCapacity(LocalDate gameDate, int seatsRequested) {
+        int bookedSeats = calculateBookedSeats(gameDate);
+        return (bookedSeats + seatsRequested) <= maxCapacity;
+    }
+
+    /**
+     * Gets remaining capacity for a specific date.
+     * Called by: VenueCapacityExceededException, UI for "X seats available"
+     */
+    public int getRemainingCapacity(LocalDate gameDate) {
+        int bookedSeats = calculateBookedSeats(gameDate);
+        return maxCapacity - bookedSeats;
+    }
+
+    // ========== PUBLIC API - Queries (Used by Controllers/VenueManager) ==========
+
+    /**
+     * Gets all bookings for a specific date.
+     * Called by: VenueController for daily schedule view
+     */
+    public List<Booking> getBookingsByDate(LocalDate date) {
+        return new ArrayList<>(bookingsByDate.getOrDefault(date, new ArrayList<>()));
+    }
+
+    /**
+     * Gets all bookings for this venue (all dates).
+     * Called by: VenueManager.getAllPendingBookings()
+     */
+    public List<Booking> getAllBookings() {
+        return bookingsByDate.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets total number of bookings (all statuses, all dates).
+     * Called by: VenueManager.getMostPopularVenue() for comparison
+     */
+    public int getTotalBookingsCount() {
+        return countAllBookings();
+    }
+
+    // ========== PUBLIC API - Formatting/Display ==========
+
+    /**
+     * Gets venue's full address as formatted string.
+     * Called by: UI for display purposes
+     */
+    public String getFullAddress() {
+        return formatAddress(address, city);
+    }
+
+    // ========== PRIVATE - Implementation Details (Information Hiding) ==========
+
+    /**
+     * Calculates total confirmed booked seats for a date.
+     * PRIVATE - used by hasAvailableCapacity, getRemainingCapacity, getOccupancyRate
+     */
+    private int calculateBookedSeats(LocalDate gameDate) {
+        return getBookingsByDate(gameDate).stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+                .mapToInt(Booking::getSeatsRequested)
+                .sum();
+    }
+
+    /**
+     * Gets count of confirmed bookings only.
+     * PRIVATE - aggregation that Controller can calculate if needed
+     */
+    private int getConfirmedBookingsCount() {
+        return (int) getAllBookings().stream()
+                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
+                .count();
+    }
+
+    /**
+     * Counts total bookings across all dates.
+     * PRIVATE - helper for getTotalBookingsCount()
+     */
+    private int countAllBookings() {
+        return bookingsByDate.values().stream()
+                .mapToInt(List::size)
+                .sum();
+    }
+
+    /**
+     * Formats address as a single string.
+     * PRIVATE - helper for getFullAddress()
+     */
+    private String formatAddress(String streetAddress, String cityName) {
+        return streetAddress + ", " + cityName;
+    }
+
+    // ========== GETTERS/SETTERS ==========
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public VenueType getType() {
+        return type;
+    }
+
+    public void setType(VenueType type) {
+        this.type = type;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+
+    public void setMaxCapacity(int maxCapacity) {
+        this.maxCapacity = maxCapacity;
+    }
+
+    public String getVenueManagerUsername() {
+        return venueManagerUsername;
+    }
+
+    public void setVenueManagerUsername(String username) {
+        this.venueManagerUsername = username;
+    }
+
+    // ========== UTILITY METHODS ==========
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Venue venue = (Venue) o;
+        return id == venue.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Venue{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", type=" + type +
+                ", city='" + city + '\'' +
+                ", maxCapacity=" + maxCapacity +
+                '}';
+    }
+}
