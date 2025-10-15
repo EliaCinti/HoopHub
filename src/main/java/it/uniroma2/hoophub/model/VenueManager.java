@@ -3,6 +3,7 @@ package it.uniroma2.hoophub.model;
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 import it.uniroma2.hoophub.exception.VenueCapacityExceededException;
 import it.uniroma2.hoophub.utilities.BookingStatus;
+import it.uniroma2.hoophub.utilities.UserType;
 import it.uniroma2.hoophub.utilities.VenueType;
 
 import java.time.LocalDate;
@@ -201,6 +202,11 @@ public class VenueManager extends User {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    @Override
+    public UserType getUserType() {
+        return UserType.VENUE_MANAGER;
     }
 
     /**

@@ -4,6 +4,7 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
+import it.uniroma2.hoophub.utilities.FontLoader;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import javafx.application.Application;
 import javafx.stage.Stage;
@@ -41,6 +42,8 @@ public class Main extends Application {
      */
     @Override
     public void start(Stage primaryStage) throws IOException {
+        // Load custom fonts before loading FXML
+        FontLoader.loadFonts();
         NavigatorSingleton navigator = NavigatorSingleton.getInstance(primaryStage);
         navigator.gotoPage("/it/uniroma2/mindharbor/fxml/Login.fxml");
     }

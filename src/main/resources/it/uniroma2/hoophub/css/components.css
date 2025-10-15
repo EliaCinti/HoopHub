@@ -1,0 +1,322 @@
+/* ========================================================================
+   HoopHub - Reusable Components
+   Componenti riutilizzabili con effetti glassmorphism avanzati
+   ======================================================================== */
+
+/* ========= Layout Components ========= */
+
+.card {
+    /* Glassmorphism effect */
+    -fx-background-color: rgba(22, 26, 34, 0.20);
+    -fx-background-radius: 32;
+    -fx-border-color: rgba(255, 255, 255, 0.18);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 32;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.6), 40, 0.4, 0, 16);
+}
+
+/* ========= Typography ========= */
+
+.title {
+    -fx-text-fill: -fx-text;
+    -fx-font-family: -fx-font-display;  /* Prompt font */
+    -fx-font-size: -fx-font-size-3xl;
+    -fx-font-weight: 700;
+    -fx-alignment: center;
+    -fx-letter-spacing: 3px;  /* Spaziatura lettere */
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.4), 8, 0.3, 0, 2);
+}
+
+.subtitle {
+    -fx-text-fill: -fx-text;
+    -fx-font-family: -fx-font-display;
+    -fx-font-size: -fx-font-size-xl;
+    -fx-font-weight: 600;
+}
+
+.field-label {
+    -fx-text-fill: -fx-text;
+    -fx-font-family: -fx-font-sans;  /* Inter font */
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+}
+
+.muted {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: -fx-font-size-sm;
+    -fx-font-weight: 500;
+}
+
+.small-text {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: -fx-font-size-xs;
+    -fx-font-weight: 500;
+}
+
+/* ========= Form Controls ========= */
+
+.text-field, .password-field, .text-area {
+    /* Glassmorphism inputs */
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 24;  /* Super arrotondato */
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 24;
+    -fx-border-width: 1;
+    -fx-text-fill: -fx-text;
+    -fx-prompt-text-fill: rgba(233, 237, 243, 0.35);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: -fx-font-size-base;
+    -fx-padding: 14 20;
+    -fx-cursor: text;
+}
+
+.text-field:hover, .password-field:hover, .text-area:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-border-color: rgba(255, 255, 255, 0.22);
+}
+
+.text-field:focused, .password-field:focused, .text-area:focused {
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2;
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+    /* Glow effect arancione */
+    -fx-effect: dropshadow(one-pass-box, rgba(247, 127, 0, 0.5), 16, 0.5, 0, 0);
+}
+
+/* ComboBox */
+.combo-box {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 12;
+    -fx-border-width: 1;
+}
+
+.combo-box:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+    -fx-border-color: rgba(255, 255, 255, 0.22);
+}
+
+.combo-box:focused {
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text;
+    -fx-font-family: -fx-font-sans;
+}
+
+/* ========= Buttons ========= */
+
+/* Primary Button con gradient e glow */
+.btn-primary {
+    -fx-background-color: linear-gradient(to bottom, #FF8C1A 0%, #F77F00 50%, #DE7200 100%);
+    -fx-background-radius: 24;  /* Super arrotondato */
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-font-family: -fx-font-display;  /* Prompt font per bottoni */
+    -fx-font-size: 16px;
+    -fx-padding: 14 28;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(247, 127, 0, 0.6), 20, 0.5, 0, 6);
+}
+
+.btn-primary:hover {
+    -fx-background-color: linear-gradient(to bottom, #FFA033 0%, #FF8C1A 50%, #F77F00 100%);
+    -fx-effect: dropshadow(one-pass-box, rgba(247, 127, 0, 0.8), 28, 0.6, 0, 8);
+    -fx-scale-y: 1.02;
+    -fx-scale-x: 1.02;
+}
+
+.btn-primary:pressed {
+    -fx-background-color: linear-gradient(to bottom, #F77F00 0%, #DE7200 50%, #CC6800 100%);
+    -fx-effect: dropshadow(one-pass-box, rgba(247, 127, 0, 0.4), 12, 0.4, 0, 3);
+    -fx-scale-y: 0.98;
+    -fx-scale-x: 0.98;
+}
+
+.btn-primary:disabled {
+    -fx-opacity: 0.5;
+    -fx-cursor: default;
+}
+
+/* Secondary Button */
+.btn-secondary {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 16;
+    -fx-text-fill: -fx-text;
+    -fx-font-weight: 600;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 15px;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-width: 1;
+    -fx-border-radius: 16;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.14);
+    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-scale-y: 1.02;
+    -fx-scale-x: 1.02;
+}
+
+.btn-secondary:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-scale-y: 0.98;
+    -fx-scale-x: 0.98;
+}
+
+/* Social Login Button (Google) con effetto hover */
+.btn-social {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 24;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 24;
+    -fx-cursor: hand;
+    -fx-padding: 12 24;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.2), 8, 0.2, 0, 2);
+}
+
+.btn-social:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+    -fx-border-color: rgba(255, 255, 255, 0.28);
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.3), 12, 0.3, 0, 4);
+    -fx-scale-y: 1.03;
+    -fx-scale-x: 1.03;
+}
+
+.btn-social:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-scale-y: 0.97;
+    -fx-scale-x: 0.97;
+}
+
+.btn-social .social-label {
+    -fx-text-fill: -fx-text;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 15px;
+    -fx-font-weight: 600;
+}
+
+/* Danger Button */
+.btn-danger {
+    -fx-background-color: -fx-error;
+    -fx-background-radius: 16;
+    -fx-text-fill: white;
+    -fx-font-weight: 700;
+    -fx-font-family: -fx-font-display;
+    -fx-font-size: 15px;
+    -fx-padding: 12 24;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(230, 57, 70, 0.4), 12, 0.4, 0, 4);
+}
+
+.btn-danger:hover {
+    -fx-background-color: derive(-fx-error, 15%);
+    -fx-effect: dropshadow(one-pass-box, rgba(230, 57, 70, 0.6), 16, 0.5, 0, 6);
+}
+
+.btn-danger:pressed {
+    -fx-background-color: derive(-fx-error, -10%);
+}
+
+/* ========= Links ========= */
+
+.hyperlink.link {
+    -fx-text-fill: -fx-primary;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-weight: 600;
+    -fx-font-size: -fx-font-size-sm;
+    -fx-underline: false;  /* Rimuovo underline di default */
+    -fx-cursor: hand;
+    -fx-border-width: 0;
+    -fx-padding: 0;
+}
+
+.hyperlink.link:hover {
+    -fx-text-fill: -fx-primary-hover;
+    -fx-underline: true;
+}
+
+.hyperlink.link:pressed {
+    -fx-text-fill: -fx-primary-pressed;
+}
+
+.hyperlink:visited {
+    -fx-text-fill: -fx-primary;
+}
+
+/* ========= Message Labels ========= */
+
+.message-label {
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: -fx-font-size-sm;
+    -fx-font-weight: 600;
+    -fx-padding: 12 16;
+    -fx-background-radius: 12;
+    -fx-alignment: center;
+}
+
+.message-label.info {
+    -fx-background-color: rgba(33, 150, 243, 0.15);
+    -fx-text-fill: #64B5F6;
+    -fx-border-color: rgba(33, 150, 243, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+.message-label.error {
+    -fx-background-color: rgba(230, 57, 70, 0.15);
+    -fx-text-fill: -fx-error;
+    -fx-border-color: rgba(230, 57, 70, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+.message-label.success {
+    -fx-background-color: rgba(76, 175, 80, 0.15);
+    -fx-text-fill: -fx-success;
+    -fx-border-color: rgba(76, 175, 80, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+.message-label.warning {
+    -fx-background-color: rgba(255, 193, 7, 0.15);
+    -fx-text-fill: -fx-warning;
+    -fx-border-color: rgba(255, 193, 7, 0.3);
+    -fx-border-width: 1;
+    -fx-border-radius: 12;
+}
+
+/* ========= Separators ========= */
+
+.separator {
+    -fx-background-color: transparent;
+}
+
+.separator .line {
+    -fx-border-color: rgba(255, 255, 255, 0.10);
+    -fx-border-width: 0.5 0 0 0;
+}
+
+/* ========= Utilities ========= */
+
+/* Remove default focus indicators */
+.text-field:focused,
+.password-field:focused,
+.button:focused,
+.combo-box:focused,
+.hyperlink:focused {
+    -fx-background-insets: 0;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}

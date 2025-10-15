@@ -1,12 +1,14 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.utilities.UserType;
+
 import java.util.Objects;
 
 /**
  * Base class for users with common validation logic.
  * This is an abstract domain entity representing any user in the system.
  */
-public class User {
+public abstract class User {
     private String username;
     private String fullName;
     private String gender;
@@ -19,6 +21,14 @@ public class User {
         this.fullName = builder.fullName;
         this.gender = builder.gender;
     }
+
+    // ========== METODI ASTRATTI (da implementare nelle sottoclassi) ==========
+
+    /**
+     * Returns the user type (FAN or VENUE_MANAGER).
+     * Used for: role-based UI navigation, access control.
+     */
+    public abstract UserType getUserType();
 
     /**
      * Builder for creating User instances with validation.
@@ -46,11 +56,6 @@ public class User {
         @SuppressWarnings("unchecked")
         protected T self() {
             return (T) this;
-        }
-
-        public User build() {
-            validate();
-            return new User(this);
         }
 
         /**

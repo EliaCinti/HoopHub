@@ -17,6 +17,8 @@ import it.uniroma2.hoophub.utilities.UserType;
  * LoginController manages the authentication process for users trying to log in to the MindHarbor application.
  * This class interacts with various data access objects (DAOs)
  * to validate user credentials and retrieve user information.
+ *
+ * Uses polymorphism to handle different user types (Fan, VenueManager) uniformly.
  */
 public class LoginController extends AbstractController {
 
@@ -36,21 +38,39 @@ public class LoginController extends AbstractController {
         UserDao userDao = daoFactoryFacade.getUserDao();
         userDao.validateUser(credentials);
 
-        if (credentials.getType() != null) {
-            if (credentials.getType().equalsIgnoreCase(String.valueOf(UserType.FAN))) {
-                // Handle login for a fan
-                FanDao fanDao = daoFactoryFacade.getFanDao();
-                Fan fan = fanDao.retrieveFan(credentials.getUsername());
-                storeUserSession(fan);
-                return fan;
-            } else {
-                // Handle login for a venueManager
-                VenueManagerDao venueManagerDao = daoFactoryFacade.getVenueManagerDao();
-                VenueManager venueManager = venueManagerDao.retrieveVenueManager(credentials.getUsername());
-                storeUserSession(venueManager);
-                return venueManager;
-            }
+        User user = retrieveUserByType(credentials, daoFactoryFacade);
+
+        if (user == null) {
+            // inconsistenza in persistenza
+            throw new DAOException("CRITICAL: User validated but not found in specific table. Inconsistency!");
         }
+        storeUserSession(user);
+        return user;
+    }
+
+    /**
+     * Factory method that retrieves the appropriate user type based on credentials.
+     * Encapsulates the type-checking logic.
+     *
+     * @param credentials The user credentials containing the user type
+     * @param factory The DAO factory for data access
+     * @return The concrete User instance (Fan or VenueManager), or null
+     * @throws DAOException If there is an error retrieving user data
+     */
+    private User retrieveUserByType(CredentialsBean credentials, DaoFactoryFacade factory)
+            throws DAOException {
+
+        String type = credentials.getType();
+        if (type == null) {
+            return null;
+        }
+
+        if (type.equalsIgnoreCase(String.valueOf(UserType.FAN))) {
+            return factory.getFanDao().retrieveFan(credentials.getUsername());
+        } else if (type.equalsIgnoreCase(String.valueOf(UserType.VENUE_MANAGER))) {
+            return factory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
+        }
+
         return null;
     }
 

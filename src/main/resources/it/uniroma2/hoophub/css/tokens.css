@@ -1,0 +1,91 @@
+/* ========================================================================
+   HoopHub - Design Tokens
+   Variabili globali utilizzate in tutto il progetto
+   ======================================================================== */
+
+.root {
+    /* ========= Colors ========= */
+    -fx-bg: #0E1116;
+    -fx-surface: rgba(22, 26, 34, 0.35);  /* Più traslucido per glassmorphism */
+    -fx-surface-hover: rgba(22, 26, 34, 0.45);
+    -fx-text: #E9EDF3;
+    -fx-text-secondary: rgba(233, 237, 243, 0.60);
+
+    /* Primary Brand Colors */
+    -fx-primary: #F77F00;
+    -fx-primary-hover: #FF8C1A;
+    -fx-primary-pressed: #DE7200;
+    -fx-primary-glow: rgba(247, 127, 0, 0.6);
+
+    /* Semantic Colors */
+    -fx-error: #E63946;
+    -fx-success: #4CAF50;
+    -fx-warning: #FFC107;
+    -fx-info: #2196F3;
+
+    /* ========= Borders ========= */
+    -fx-border-subtle: rgba(255, 255, 255, 0.15);
+    -fx-border-medium: rgba(255, 255, 255, 0.20);
+    -fx-border-focus: -fx-primary;
+
+    /* ========= Backgrounds ========= */
+    -fx-input-bg: rgba(255, 255, 255, 0.08);
+    -fx-input-bg-hover: rgba(255, 255, 255, 0.12);
+    -fx-input-bg-focus: rgba(255, 255, 255, 0.15);
+
+    /* ========= Glass Effect ========= */
+    -fx-glass-light: rgba(255, 255, 255, 0.10);
+    -fx-glass-medium: rgba(255, 255, 255, 0.15);
+    -fx-glass-border: rgba(255, 255, 255, 0.18);
+
+    /* ========= Typography ========= */
+    /* Font Prompt per titoli e bottoni principali */
+    -fx-font-display: "Prompt", "SF Pro Display", "Segoe UI", sans-serif;
+    /* Font Inter per body text e labels */
+    -fx-font-sans: "Inter", "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    -fx-font-mono: "SF Mono", "Consolas", "Monaco", monospace;
+
+    /* Font Sizes */
+    -fx-font-size-xs: 11px;
+    -fx-font-size-sm: 13px;
+    -fx-font-size-base: 15px;
+    -fx-font-size-lg: 16px;
+    -fx-font-size-xl: 20px;
+    -fx-font-size-2xl: 24px;
+    -fx-font-size-3xl: 32px;
+    -fx-font-size-4xl: 36px;
+
+    /* ========= Spacing ========= */
+    -fx-spacing-xs: 6px;
+    -fx-spacing-sm: 12px;
+    -fx-spacing-md: 16px;
+    -fx-spacing-lg: 24px;
+    -fx-spacing-xl: 40px;
+    -fx-spacing-2xl: 48px;
+
+    /* ========= Border Radius ========= */
+    -fx-radius-sm: 8px;
+    -fx-radius-md: 12px;
+    -fx-radius-lg: 20px;
+    -fx-radius-xl: 24px;
+    -fx-radius-2xl: 28px;
+    -fx-radius-full: 9999px;
+
+    /* ========= Shadows ========= */
+    -fx-shadow-sm: dropshadow(one-pass-box, rgba(0, 0, 0, 0.15), 4, 0.2, 0, 1);
+    -fx-shadow-md: dropshadow(one-pass-box, rgba(0, 0, 0, 0.25), 8, 0.25, 0, 2);
+    -fx-shadow-lg: dropshadow(one-pass-box, rgba(0, 0, 0, 0.35), 18, 0.25, 0, 6);
+    -fx-shadow-xl: dropshadow(one-pass-box, rgba(0, 0, 0, 0.5), 32, 0.35, 0, 12);
+    -fx-shadow-glow: dropshadow(one-pass-box, -fx-primary-glow, 20, 0.6, 0, 0);
+    -fx-shadow-glow-strong: dropshadow(one-pass-box, -fx-primary-glow, 24, 0.7, 0, 4);
+
+    /* ========= Transitions ========= */
+    -fx-transition-fast: 150ms;
+    -fx-transition-base: 250ms;
+    -fx-transition-slow: 400ms;
+}
+
+/* ========= Global Smooth Rendering ========= */
+* {
+    -fx-smooth: true;
+}

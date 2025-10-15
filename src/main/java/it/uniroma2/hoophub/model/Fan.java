@@ -2,6 +2,7 @@ package it.uniroma2.hoophub.model;
 
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 import it.uniroma2.hoophub.utilities.BookingStatus;
+import it.uniroma2.hoophub.utilities.UserType;
 
 import java.time.LocalDate;
 import java.time.Period;
@@ -229,7 +230,7 @@ public class Fan extends User {
         return Period.between(birthday, LocalDate.now()).getYears();
     }
 
-    // ========== GETTERS/SETTERS - Standard JavaBean ==========
+    // ========== GETTERS/SETTERS ==========
 
     public String getFavTeam() {
         return favTeam;
@@ -245,6 +246,11 @@ public class Fan extends User {
 
     public void setBirthday(LocalDate birthday) {
         this.birthday = birthday;
+    }
+
+    @Override
+    public UserType getUserType() {
+        return UserType.FAN;
     }
 
     /**
