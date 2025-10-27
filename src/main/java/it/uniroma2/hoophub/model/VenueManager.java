@@ -131,7 +131,7 @@ public class VenueManager extends User {
      * Called by: VenueManagerController for "Pending Requests" dashboard
      */
     public List<Booking> getAllPendingBookings() {
-        return collectBookingsByStatus(BookingStatus.PENDING);
+        return collectBookingsByStatus();
     }
 
     /**
@@ -172,17 +172,17 @@ public class VenueManager extends User {
      * PRIVATE - helper for addVenue validation
      */
     private boolean isVenueAssignedToManager(Venue venue) {
-        return venue.getVenueManagerUsername().equals(this.getUsername());
+        return venue.getVenueManager().equals(this);
     }
 
     /**
      * Collects all bookings with a specific status across all venues.
      * PRIVATE - helper for getAllPendingBookings and potential future methods
      */
-    private List<Booking> collectBookingsByStatus(BookingStatus status) {
+    private List<Booking> collectBookingsByStatus() {
         return managedVenues.stream()
                 .flatMap(venue -> venue.getAllBookings().stream())
-                .filter(booking -> booking.getStatus() == status)
+                .filter(booking -> booking.getStatus() == BookingStatus.PENDING)
                 .collect(Collectors.toList());
     }
 

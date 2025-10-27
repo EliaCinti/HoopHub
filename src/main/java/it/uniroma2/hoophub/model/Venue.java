@@ -20,8 +20,8 @@ public class Venue {
     private String address;
     private String city;
     private int maxCapacity;
-    private String venueManagerUsername;
-    private Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
+    private VenueManager venueManager;
+    private final Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
 
     private Venue(Builder builder) {
         this.id = builder.id;
@@ -30,7 +30,7 @@ public class Venue {
         this.address = builder.address;
         this.city = builder.city;
         this.maxCapacity = builder.maxCapacity;
-        this.venueManagerUsername = builder.venueManagerUsername;
+        this.venueManager = builder.venueManager;
     }
 
     public static class Builder {
@@ -40,7 +40,7 @@ public class Venue {
         private String address;
         private String city;
         private int maxCapacity;
-        private String venueManagerUsername;
+        private VenueManager venueManager;
 
         public Builder id(int id) {
             this.id = id;
@@ -72,8 +72,8 @@ public class Venue {
             return this;
         }
 
-        public Builder venueManagerUsername(String venueManagerUsername) {
-            this.venueManagerUsername = venueManagerUsername;
+        public Builder venueManager(VenueManager venueManager) {
+            this.venueManager = venueManager;
             return this;
         }
 
@@ -101,7 +101,7 @@ public class Venue {
             if (maxCapacity > 10000) {
                 throw new IllegalArgumentException("Max capacity cannot exceed 10000");
             }
-            if (venueManagerUsername == null || venueManagerUsername.trim().isEmpty()) {
+            if (venueManager == null || venueManager.getUsername().trim().isEmpty()) {
                 throw new IllegalArgumentException("Venue manager username cannot be null or empty");
             }
         }
@@ -267,12 +267,12 @@ public class Venue {
         this.maxCapacity = maxCapacity;
     }
 
-    public String getVenueManagerUsername() {
-        return venueManagerUsername;
+    public VenueManager getVenueManager() {
+        return venueManager;
     }
 
-    public void setVenueManagerUsername(String username) {
-        this.venueManagerUsername = username;
+    public void setVenueManager(VenueManager venueManager) {
+        this.venueManager = venueManager;
     }
 
     // ========== UTILITY METHODS ==========

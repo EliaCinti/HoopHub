@@ -339,7 +339,7 @@ public class InitialSyncManager {
                 .address(venue.getAddress())
                 .city(venue.getCity())
                 .maxCapacity(venue.getMaxCapacity())
-                .venueManagerUsername(venue.getVenueManagerUsername())
+                .venueManagerUsername(venue.getVenueManager())
                 .build();
     }
 }
