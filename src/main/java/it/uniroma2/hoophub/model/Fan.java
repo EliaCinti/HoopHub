@@ -24,7 +24,7 @@ public class Fan extends User {
         this.favTeam = builder.favTeam;
         this.birthday = builder.birthday;
         this.bookingList = builder.bookingList != null ?
-                builder.bookingList : new ArrayList<>();
+                new ArrayList<>(builder.bookingList) : new ArrayList<>();
     }
 
     public static class Builder extends User.Builder<Builder> {
@@ -86,6 +86,15 @@ public class Fan extends User {
      * Called by: VenueManager.confirmBooking(), BookingController
      */
     public void addBooking(Booking booking) throws BookingNotAllowedException {
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking cannot be null");
+        }
+
+        // Verifica che il booking sia associato a questo fan
+        if (!booking.getFan().equals(this)) {
+            throw new BookingNotAllowedException("Booking must be associated with this fan");
+        }
+
         if (hasBookingForGame(booking.getGameDate(), booking.getHomeTeam(), booking.getAwayTeam())) {
             throw new BookingNotAllowedException("You already have a booking for this game");
         }
@@ -112,11 +121,10 @@ public class Fan extends User {
         return true;
     }
 
-    // ========== PUBLIC API - Queries (Used by UI/Controllers) ==========
+    // ========== PUBLIC API - Queries ==========
 
     /**
      * Gets all upcoming bookings (future dates only).
-     * Called by: FanController for dashboard
      */
     public List<Booking> getUpcomingBookings() {
         return filterBookingsByDateCondition(b -> b.getGameDate().isAfter(LocalDate.now()));
@@ -124,7 +132,6 @@ public class Fan extends User {
 
     /**
      * Gets all past bookings (for history view).
-     * Called by: FanController for history page
      */
     public List<Booking> getPastBookings() {
         return filterBookingsByDateCondition(b -> b.getGameDate().isBefore(LocalDate.now()));
@@ -132,7 +139,6 @@ public class Fan extends User {
 
     /**
      * Gets bookings where fan's favorite team is playing.
-     * Called by: FanController for filtered view
      */
     public List<Booking> getFavoriteTeamBookings() {
         return bookingList.stream()
@@ -144,7 +150,6 @@ public class Fan extends User {
 
     /**
      * Checks if fan has unnotified confirmed bookings.
-     * Called by: NotificationService
      */
     public boolean hasUnnotifiedBookings() {
         return bookingList.stream()
@@ -153,18 +158,13 @@ public class Fan extends User {
 
     /**
      * Marks all bookings as notified.
-     * Called by: NotificationService after sending notifications
      */
     public void markAllBookingsAsNotified() {
         bookingList.forEach(Booking::markAsNotified);
     }
 
-    // ========== PRIVATE - Implementation Details (Information Hiding) ==========
+    // ========== PRIVATE - Implementation Details ==========
 
-    /**
-     * Checks if fan already has a booking for this specific game.
-     * PRIVATE - internal validation logic
-     */
     private boolean hasBookingForGame(LocalDate date, String homeTeam, String awayTeam) {
         return bookingList.stream()
                 .anyMatch(b -> b.getGameDate().equals(date) &&
@@ -172,20 +172,12 @@ public class Fan extends User {
                         b.getAwayTeam().equals(awayTeam));
     }
 
-    /**
-     * Counts bookings on a specific date.
-     * PRIVATE - helper for business rule validation
-     */
     private int countBookingsOnDate(LocalDate date) {
         return (int) bookingList.stream()
                 .filter(b -> b.getGameDate().equals(date))
                 .count();
     }
 
-    /**
-     * Finds a booking by ID.
-     * PRIVATE - helper for cancelBooking()
-     */
     private Booking findBookingById(int bookingId) {
         return bookingList.stream()
                 .filter(b -> b.getId() == bookingId)
@@ -193,41 +185,14 @@ public class Fan extends User {
                 .orElse(null);
     }
 
-    /**
-     * Checks if a booking is in the past.
-     * PRIVATE - helper for business logic
-     */
     private boolean isPastBooking(Booking booking) {
         return booking.getGameDate().isBefore(LocalDate.now());
     }
 
-    /**
-     * Generic filter method for bookings by date condition.
-     * PRIVATE - DRY principle, avoids code duplication
-     */
     private List<Booking> filterBookingsByDateCondition(java.util.function.Predicate<Booking> condition) {
         return bookingList.stream()
                 .filter(condition)
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * Counts bookings by status.
-     * PRIVATE - helper for statistics (could be public if needed in multiple places)
-     */
-    private int countBookingsByStatus(BookingStatus status) {
-        return (int) bookingList.stream()
-                .filter(b -> b.getStatus() == status)
-                .count();
-    }
-
-    /**
-     * Calculates the fan's age.
-     * PRIVATE - internal calculation, not needed externally
-     * (UI can show birthday directly without calculating age)
-     */
-    private int calculateAge() {
-        return Period.between(birthday, LocalDate.now()).getYears();
     }
 
     // ========== GETTERS/SETTERS ==========
@@ -255,7 +220,6 @@ public class Fan extends User {
 
     /**
      * Returns an UNMODIFIABLE view of the booking list.
-     * This prevents external modification of internal state.
      */
     public List<Booking> getBookingList() {
         return Collections.unmodifiableList(bookingList);
@@ -288,5 +252,15 @@ public class Fan extends User {
     @Override
     public int hashCode() {
         return super.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "Fan{" +
+                "username='" + getUsername() + '\'' +
+                ", fullName='" + getFullName() + '\'' +
+                ", favTeam='" + favTeam + '\'' +
+                ", bookingsCount=" + bookingList.size() +
+                '}';
     }
 }

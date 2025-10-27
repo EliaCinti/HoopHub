@@ -6,46 +6,99 @@ import java.time.LocalTime;
 
 /**
  * Represents a booking with business logic for status management and validation.
+ * Uses Builder pattern to avoid constructor with too many parameters (SonarQube S107).
  */
 public class Booking {
-    private int id;
-    private LocalDate gameDate;
-    private LocalTime gameTime;
-    private String homeTeam;
-    private String awayTeam;
-    private int venueId;
-    private String fanUsername;
-    private int seatsRequested;
+    private final int id;
+    private final LocalDate gameDate;
+    private final LocalTime gameTime;
+    private final String homeTeam;
+    private final String awayTeam;
+    private final Venue venue;
+    private final Fan fan;
+    private final int seatsRequested;
+
     private BookingStatus status;
     private boolean notified;
 
-    public Booking(int id, LocalDate gameDate, LocalTime gameTime, String homeTeam,
-                   String awayTeam, int venueId, String fanUsername, int seatsRequested,
-                   BookingStatus status, boolean notified) {
-        validateBookingData(id, gameDate, gameTime, homeTeam, awayTeam, seatsRequested);
-        this.id = id;
-        this.gameDate = gameDate;
-        this.gameTime = gameTime;
-        this.homeTeam = homeTeam;
-        this.awayTeam = awayTeam;
-        this.venueId = venueId;
-        this.fanUsername = fanUsername;
-        this.seatsRequested = seatsRequested;
-        this.status = status;
-        this.notified = notified;
+    private Booking(Builder builder) {
+        validateBookingData(builder.id, builder.gameDate, builder.gameTime,
+                builder.homeTeam, builder.awayTeam, builder.seatsRequested);
+
+        if (builder.venue == null) {
+            throw new IllegalArgumentException("Venue cannot be null");
+        }
+        if (builder.fan == null) {
+            throw new IllegalArgumentException("Fan cannot be null");
+        }
+
+        this.id = builder.id;
+        this.gameDate = builder.gameDate;
+        this.gameTime = builder.gameTime;
+        this.homeTeam = builder.homeTeam;
+        this.awayTeam = builder.awayTeam;
+        this.venue = builder.venue;
+        this.fan = builder.fan;
+        this.seatsRequested = builder.seatsRequested;
+        this.status = builder.status;
+        this.notified = builder.notified;
     }
 
-    public Booking(int id, LocalDate gameDate, LocalTime gameTime, String homeTeam,
-                   String awayTeam, int venueId, String fanUsername, int seatsRequested) {
-        this(id, gameDate, gameTime, homeTeam, awayTeam, venueId, fanUsername,
-                seatsRequested, BookingStatus.PENDING, false);
+    /**
+     * Builder for Booking with fluent API.
+     * Solves SonarQube S107 (too many constructor parameters).
+     */
+    public static class Builder {
+        // Required parameters
+        private final int id;
+        private final LocalDate gameDate;
+        private final LocalTime gameTime;
+        private final String homeTeam;
+        private final String awayTeam;
+        private final Venue venue;
+        private final Fan fan;
+        private final int seatsRequested;
+
+        // Optional parameters with defaults
+        private BookingStatus status = BookingStatus.PENDING;
+        private boolean notified = false;
+
+        /**
+         * Constructor with required parameters only.
+         * Optional parameters have sensible defaults.
+         */
+        public Builder(int id, LocalDate gameDate, LocalTime gameTime,
+                       String homeTeam, String awayTeam, Venue venue,
+                       Fan fan, int seatsRequested) {
+            this.id = id;
+            this.gameDate = gameDate;
+            this.gameTime = gameTime;
+            this.homeTeam = homeTeam;
+            this.awayTeam = awayTeam;
+            this.venue = venue;
+            this.fan = fan;
+            this.seatsRequested = seatsRequested;
+        }
+
+        public Builder status(BookingStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder notified(boolean notified) {
+            this.notified = notified;
+            return this;
+        }
+
+        public Booking build() {
+            return new Booking(this);
+        }
     }
 
     // ========== PUBLIC API - State Transitions ==========
 
     /**
      * Confirms the booking (PENDING → CONFIRMED).
-     * Called by: VenueManager.confirmBooking()
      */
     public void confirm() {
         if (status != BookingStatus.PENDING) {
@@ -57,7 +110,6 @@ public class Booking {
 
     /**
      * Rejects the booking (PENDING → REJECTED).
-     * Called by: VenueManager.rejectBooking()
      */
     public void reject() {
         if (status != BookingStatus.PENDING) {
@@ -68,7 +120,6 @@ public class Booking {
 
     /**
      * Cancels the booking (PENDING/CONFIRMED → CANCELLED).
-     * Called by: Fan.cancelBooking()
      */
     public void cancel() {
         if (status != BookingStatus.PENDING && status != BookingStatus.CONFIRMED) {
@@ -84,7 +135,6 @@ public class Booking {
 
     /**
      * Marks booking as notified.
-     * Called by: Fan.markAllBookingsAsNotified(), NotificationService
      */
     public void markAsNotified() {
         this.notified = true;
@@ -94,7 +144,6 @@ public class Booking {
 
     /**
      * Gets the game matchup as formatted string.
-     * Called by: UI for display
      */
     public String getMatchup() {
         return homeTeam + " vs " + awayTeam;
@@ -102,17 +151,13 @@ public class Booking {
 
     /**
      * Checks if a specific team is playing in this game.
-     * Called by: Fan.getFavoriteTeamBookings()
      */
     public boolean isFavoriteTeamPlaying(String teamName) {
         return homeTeam.equalsIgnoreCase(teamName) || awayTeam.equalsIgnoreCase(teamName);
     }
 
-    // ========== PRIVATE - Implementation Details ==========
+    // ========== PRIVATE - Validation ==========
 
-    /**
-     * Validates booking data during construction.
-     */
     private void validateBookingData(int id, LocalDate gameDate, LocalTime gameTime,
                                      String homeTeam, String awayTeam, int seatsRequested) {
         if (id < 0) {
@@ -146,16 +191,56 @@ public class Booking {
 
     // ========== GETTERS ==========
 
-    public int getId() { return id; }
-    public LocalDate getGameDate() { return gameDate; }
-    public LocalTime getGameTime() { return gameTime; }
-    public String getHomeTeam() { return homeTeam; }
-    public String getAwayTeam() { return awayTeam; }
-    public int getVenueId() { return venueId; }
-    public String getFanUsername() { return fanUsername; }
-    public int getSeatsRequested() { return seatsRequested; }
-    public BookingStatus getStatus() { return status; }
-    public boolean isNotified() { return notified; }
+    public int getId() {
+        return id;
+    }
+
+    public LocalDate getGameDate() {
+        return gameDate;
+    }
+
+    public LocalTime getGameTime() {
+        return gameTime;
+    }
+
+    public String getHomeTeam() {
+        return homeTeam;
+    }
+
+    public String getAwayTeam() {
+        return awayTeam;
+    }
+
+    public Venue getVenue() {
+        return venue;
+    }
+
+    public Fan getFan() {
+        return fan;
+    }
+
+    public int getVenueId() {
+        return venue.getId();
+    }
+
+    public String getFanUsername() {
+        return fan.getUsername();
+    }
+
+    public int getSeatsRequested() {
+        return seatsRequested;
+    }
+
+    public BookingStatus getStatus() {
+        return status;
+    }
+
+    public boolean isNotified() {
+        return notified;
+    }
+
+    // ========== NO SETTERS per attributi final ==========
+    // Gli attributi final non hanno setter, solo status e notified cambiano via metodi di business logic
 
     // ========== UTILITY METHODS ==========
 
@@ -193,6 +278,8 @@ public class Booking {
                 "id=" + id +
                 ", matchup='" + getMatchup() + '\'' +
                 ", date=" + gameDate +
+                ", venue='" + venue.getName() + '\'' +
+                ", fan='" + fan.getUsername() + '\'' +
                 ", status=" + status +
                 '}';
     }

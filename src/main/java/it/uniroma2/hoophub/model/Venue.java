@@ -20,8 +20,11 @@ public class Venue {
     private String address;
     private String city;
     private int maxCapacity;
+
+    // ✅ MODIFICATO: riferimento diretto invece di username
     private VenueManager venueManager;
-    private final Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
+
+    private Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
 
     private Venue(Builder builder) {
         this.id = builder.id;
@@ -40,7 +43,7 @@ public class Venue {
         private String address;
         private String city;
         private int maxCapacity;
-        private VenueManager venueManager;
+        private VenueManager venueManager;  // ✅ MODIFICATO
 
         public Builder id(int id) {
             this.id = id;
@@ -72,7 +75,7 @@ public class Venue {
             return this;
         }
 
-        public Builder venueManager(VenueManager venueManager) {
+        public Builder venueManager(VenueManager venueManager) {  // ✅ MODIFICATO
             this.venueManager = venueManager;
             return this;
         }
@@ -101,8 +104,8 @@ public class Venue {
             if (maxCapacity > 10000) {
                 throw new IllegalArgumentException("Max capacity cannot exceed 10000");
             }
-            if (venueManager == null || venueManager.getUsername().trim().isEmpty()) {
-                throw new IllegalArgumentException("Venue manager username cannot be null or empty");
+            if (venueManager == null) {  // ✅ AGGIUNTA validazione
+                throw new IllegalArgumentException("Venue manager cannot be null");
             }
         }
     }
@@ -111,18 +114,25 @@ public class Venue {
 
     /**
      * Adds a booking to this venue.
-     * Called by: VenueManager.confirmBooking()
      */
     public void addBooking(Booking booking) {
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking cannot be null");
+        }
+
+        // Verifica che il booking sia associato a questo venue
+        if (!booking.getVenue().equals(this)) {
+            throw new IllegalArgumentException("Booking must be associated with this venue");
+        }
+
         LocalDate gameDate = booking.getGameDate();
         bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
     }
 
-    // ========== PUBLIC API - Capacity Management (Critical) ==========
+    // ========== PUBLIC API - Capacity Management ==========
 
     /**
      * Checks if there's available capacity for a booking.
-     * Called by: VenueManager.confirmBooking() - CRITICAL validation
      */
     public boolean hasAvailableCapacity(LocalDate gameDate, int seatsRequested) {
         int bookedSeats = calculateBookedSeats(gameDate);
@@ -131,18 +141,16 @@ public class Venue {
 
     /**
      * Gets remaining capacity for a specific date.
-     * Called by: VenueCapacityExceededException, UI for "X seats available"
      */
     public int getRemainingCapacity(LocalDate gameDate) {
         int bookedSeats = calculateBookedSeats(gameDate);
         return maxCapacity - bookedSeats;
     }
 
-    // ========== PUBLIC API - Queries (Used by Controllers/VenueManager) ==========
+    // ========== PUBLIC API - Queries ==========
 
     /**
      * Gets all bookings for a specific date.
-     * Called by: VenueController for daily schedule view
      */
     public List<Booking> getBookingsByDate(LocalDate date) {
         return new ArrayList<>(bookingsByDate.getOrDefault(date, new ArrayList<>()));
@@ -150,7 +158,6 @@ public class Venue {
 
     /**
      * Gets all bookings for this venue (all dates).
-     * Called by: VenueManager.getAllPendingBookings()
      */
     public List<Booking> getAllBookings() {
         return bookingsByDate.values().stream()
@@ -160,7 +167,6 @@ public class Venue {
 
     /**
      * Gets total number of bookings (all statuses, all dates).
-     * Called by: VenueManager.getMostPopularVenue() for comparison
      */
     public int getTotalBookingsCount() {
         return countAllBookings();
@@ -170,18 +176,13 @@ public class Venue {
 
     /**
      * Gets venue's full address as formatted string.
-     * Called by: UI for display purposes
      */
     public String getFullAddress() {
         return formatAddress(address, city);
     }
 
-    // ========== PRIVATE - Implementation Details (Information Hiding) ==========
+    // ========== PRIVATE - Implementation Details ==========
 
-    /**
-     * Calculates total confirmed booked seats for a date.
-     * PRIVATE - used by hasAvailableCapacity, getRemainingCapacity, getOccupancyRate
-     */
     private int calculateBookedSeats(LocalDate gameDate) {
         return getBookingsByDate(gameDate).stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
@@ -189,30 +190,12 @@ public class Venue {
                 .sum();
     }
 
-    /**
-     * Gets count of confirmed bookings only.
-     * PRIVATE - aggregation that Controller can calculate if needed
-     */
-    private int getConfirmedBookingsCount() {
-        return (int) getAllBookings().stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
-                .count();
-    }
-
-    /**
-     * Counts total bookings across all dates.
-     * PRIVATE - helper for getTotalBookingsCount()
-     */
     private int countAllBookings() {
         return bookingsByDate.values().stream()
                 .mapToInt(List::size)
                 .sum();
     }
 
-    /**
-     * Formats address as a single string.
-     * PRIVATE - helper for getFullAddress()
-     */
     private String formatAddress(String streetAddress, String cityName) {
         return streetAddress + ", " + cityName;
     }
@@ -267,12 +250,21 @@ public class Venue {
         this.maxCapacity = maxCapacity;
     }
 
+    // ✅ MODIFICATO: getter per oggetto invece di username
     public VenueManager getVenueManager() {
         return venueManager;
     }
 
     public void setVenueManager(VenueManager venueManager) {
+        if (venueManager == null) {
+            throw new IllegalArgumentException("Venue manager cannot be null");
+        }
         this.venueManager = venueManager;
+    }
+
+    // ✅ AGGIUNTO: metodo di convenienza per retrocompatibilità
+    public String getVenueManagerUsername() {
+        return venueManager.getUsername();
     }
 
     // ========== UTILITY METHODS ==========
@@ -298,6 +290,7 @@ public class Venue {
                 ", type=" + type +
                 ", city='" + city + '\'' +
                 ", maxCapacity=" + maxCapacity +
+                ", manager='" + venueManager.getUsername() + '\'' +
                 '}';
     }
 }
