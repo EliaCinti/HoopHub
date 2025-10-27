@@ -55,7 +55,6 @@ HoopHub is a reservation management system that bridges the gap between NBA fans
 | **Singleton** | Database Connection | Single, efficient database connection management |
 | **Observer** | Data Synchronization | Real-time sync between different persistence layers |
 | **Builder** | Object Creation | Clean construction of beans and models |
-| **Strategy** | Venue Ranking | Flexible, weighted ranking algorithm |
 | **Decorator** | Search Filters | Dynamic combination of search criteria |
 
 ## 📁 Project Structure
