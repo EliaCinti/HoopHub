@@ -1,14 +1,10 @@
 package it.uniroma2.hoophub.app_controller;
 
 import it.uniroma2.hoophub.beans.CredentialsBean;
-import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
-import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
-import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.User;
-import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.UserType;
@@ -17,7 +13,7 @@ import it.uniroma2.hoophub.utilities.UserType;
  * LoginController manages the authentication process for users trying to log in to the MindHarbor application.
  * This class interacts with various data access objects (DAOs)
  * to validate user credentials and retrieve user information.
- *
+ * <p>
  * Uses polymorphism to handle different user types (Fan, VenueManager) uniformly.
  */
 public class LoginController extends AbstractController {

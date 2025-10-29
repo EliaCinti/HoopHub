@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class VenueManager extends User {
     private String companyName;
     private String phoneNumber;
-    private List<Venue> managedVenues = new ArrayList<>();
+    private List<Venue> managedVenues;
 
     private VenueManager(Builder builder) {
         super(builder);
@@ -78,6 +78,8 @@ public class VenueManager extends User {
 
     // ========== PUBLIC API - Core Operations ==========
 
+// ========== PUBLIC API - Core Operations ==========
+
     /**
      * Confirms a booking with full validation.
      * Called by: VenueManagerController when manager approves a booking request
@@ -88,10 +90,10 @@ public class VenueManager extends User {
         validateVenueOwnership(venue);
         validateBookingDate(booking);
 
-        if (!venue.hasAvailableCapacity(booking.getGameDate(), booking.getSeatsRequested())) {
+        if (!venue.hasAvailableCapacity(booking.getGameDate())) {
             throw new VenueCapacityExceededException(
                     venue.getName(),
-                    booking.getSeatsRequested(),
+                    1,
                     venue.getRemainingCapacity(booking.getGameDate())
             );
         }

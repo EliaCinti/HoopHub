@@ -5,7 +5,6 @@ import it.uniroma2.hoophub.utilities.BookingStatus;
 import it.uniroma2.hoophub.utilities.UserType;
 
 import java.time.LocalDate;
-import java.time.Period;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -17,7 +16,7 @@ import java.util.stream.Collectors;
 public class Fan extends User {
     private String favTeam;
     private LocalDate birthday;
-    private List<Booking> bookingList = new ArrayList<>();
+    private List<Booking> bookingList;
 
     private Fan(Builder builder) {
         super(builder);
@@ -90,7 +89,6 @@ public class Fan extends User {
             throw new IllegalArgumentException("Booking cannot be null");
         }
 
-        // Verifica che il booking sia associato a questo fan
         if (!booking.getFan().equals(this)) {
             throw new BookingNotAllowedException("Booking must be associated with this fan");
         }

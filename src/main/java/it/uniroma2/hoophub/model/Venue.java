@@ -21,7 +21,6 @@ public class Venue {
     private String city;
     private int maxCapacity;
 
-    // ✅ MODIFICATO: riferimento diretto invece di username
     private VenueManager venueManager;
 
     private Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
@@ -43,7 +42,7 @@ public class Venue {
         private String address;
         private String city;
         private int maxCapacity;
-        private VenueManager venueManager;  // ✅ MODIFICATO
+        private VenueManager venueManager;
 
         public Builder id(int id) {
             this.id = id;
@@ -75,7 +74,7 @@ public class Venue {
             return this;
         }
 
-        public Builder venueManager(VenueManager venueManager) {  // ✅ MODIFICATO
+        public Builder venueManager(VenueManager venueManager) {
             this.venueManager = venueManager;
             return this;
         }
@@ -104,7 +103,7 @@ public class Venue {
             if (maxCapacity > 10000) {
                 throw new IllegalArgumentException("Max capacity cannot exceed 10000");
             }
-            if (venueManager == null) {  // ✅ AGGIUNTA validazione
+            if (venueManager == null) {
                 throw new IllegalArgumentException("Venue manager cannot be null");
             }
         }
@@ -130,21 +129,30 @@ public class Venue {
     }
 
     // ========== PUBLIC API - Capacity Management ==========
+    // MODIFIED: Simplified - each booking = 1 person
 
     /**
-     * Checks if there's available capacity for a booking.
+     * Checks if there's available capacity for a new booking on the specified date.
+     * MODIFIED: Each booking represents ONE person.
+     *
+     * @param gameDate The date to check availability for
+     * @return true if there's at least one spot available, false otherwise
      */
-    public boolean hasAvailableCapacity(LocalDate gameDate, int seatsRequested) {
-        int bookedSeats = calculateBookedSeats(gameDate);
-        return (bookedSeats + seatsRequested) <= maxCapacity;
+    public boolean hasAvailableCapacity(LocalDate gameDate) {
+        int confirmedBookings = countConfirmedBookings(gameDate);
+        return confirmedBookings < maxCapacity;
     }
 
     /**
      * Gets remaining capacity for a specific date.
+     * MODIFIED: Simply counts confirmed bookings (each = 1 person).
+     *
+     * @param gameDate The date to check
+     * @return Number of available spots
      */
     public int getRemainingCapacity(LocalDate gameDate) {
-        int bookedSeats = calculateBookedSeats(gameDate);
-        return maxCapacity - bookedSeats;
+        int confirmedBookings = countConfirmedBookings(gameDate);
+        return maxCapacity - confirmedBookings;
     }
 
     // ========== PUBLIC API - Queries ==========
@@ -183,11 +191,14 @@ public class Venue {
 
     // ========== PRIVATE - Implementation Details ==========
 
-    private int calculateBookedSeats(LocalDate gameDate) {
-        return getBookingsByDate(gameDate).stream()
+    /**
+     * Counts confirmed bookings for a specific date.
+     * MODIFIED: Each booking = 1 person, so we just count them.
+     */
+    private int countConfirmedBookings(LocalDate gameDate) {
+        return (int) getBookingsByDate(gameDate).stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
-                .mapToInt(Booking::getSeatsRequested)
-                .sum();
+                .count();
     }
 
     private int countAllBookings() {
@@ -250,7 +261,6 @@ public class Venue {
         this.maxCapacity = maxCapacity;
     }
 
-    // ✅ MODIFICATO: getter per oggetto invece di username
     public VenueManager getVenueManager() {
         return venueManager;
     }
@@ -262,7 +272,6 @@ public class Venue {
         this.venueManager = venueManager;
     }
 
-    // ✅ AGGIUNTO: metodo di convenienza per retrocompatibilità
     public String getVenueManagerUsername() {
         return venueManager.getUsername();
     }

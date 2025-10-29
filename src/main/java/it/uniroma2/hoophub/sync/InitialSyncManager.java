@@ -221,13 +221,11 @@ public class InitialSyncManager {
         DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
         for (Fan fan : syncedFans) {
-            String username = fan.getUsername();
-
             factory.setPersistenceType(primary);
-            Map<Integer, Booking> primaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(username));
+            Map<Integer, Booking> primaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan));
 
             factory.setPersistenceType(secondary);
-            Map<Integer, Booking> secondaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(username));
+            Map<Integer, Booking> secondaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan));
 
             Set<Integer> allIds = new HashSet<>(primaryMap.keySet());
             allIds.addAll(secondaryMap.keySet());
@@ -239,11 +237,13 @@ public class InitialSyncManager {
                 if (primaryBooking != null && secondaryBooking == null) {
                     logger.info("Sync: Copying booking " + id + " from " + primary + " to " + secondary);
                     factory.setPersistenceType(secondary);
-                    factory.getBookingDao().saveBooking(primaryBooking, username);
+                    // Booking already contains Fan reference
+                    factory.getBookingDao().saveBooking(primaryBooking);
                 } else if (primaryBooking == null && secondaryBooking != null) {
                     logger.info("Sync: Copying booking " + id + " from " + secondary + " to " + primary);
                     factory.setPersistenceType(primary);
-                    factory.getBookingDao().saveBooking(secondaryBooking, username);
+                    // Booking already contains Fan reference
+                    factory.getBookingDao().saveBooking(secondaryBooking);
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
                     logger.info("Sync Conflict: Different data for booking " + id + ". Primary source " + primary + " takes precedence.");
                     factory.setPersistenceType(secondary);
@@ -339,7 +339,7 @@ public class InitialSyncManager {
                 .address(venue.getAddress())
                 .city(venue.getCity())
                 .maxCapacity(venue.getMaxCapacity())
-                .venueManagerUsername(venue.getVenueManager())
+                .venueManagerUsername(venue.getVenueManagerUsername())  // Fixed: use getVenueManagerUsername()
                 .build();
     }
 }

@@ -29,7 +29,7 @@ import java.util.logging.Logger;
  * <ul>
  *   <li><strong>INSERT</strong>: Receives Bean objects from the UI layer</li>
  *   <li><strong>UPDATE</strong>: Receives Model objects with updated data</li>
- *   <li><strong>DELETE</strong>: Receives entity identifiers for removal</li>
+ *   <li><strong>DELETE</strong>: Receives entity identifiers, retrieves objects, then deletes</li>
  * </ul>
  * </p>
  * <p>
@@ -110,10 +110,8 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                 }
                 case "Booking" -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
-                    Object[] syncPackage = (Object[]) entity;
-                    Booking booking = (Booking) syncPackage[0];
-                    String fanUsername = (String) syncPackage[1];
-                    targetDao.saveBooking(booking, fanUsername);
+                    // Booking already contains Fan reference, no need for separate username
+                    targetDao.saveBooking((Booking) entity);
                 }
                 default -> logger.log(Level.WARNING, "Sync INSERT not handled for entity type: {0}", entityType);
             }
@@ -190,7 +188,9 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
      * Handles entity deletion synchronization.
      * <p>
      * When an entity is deleted from the source persistence, this method
-     * replicates the deletion to the target persistence.
+     * replicates the deletion to the target persistence. Since DAOs now require
+     * objects instead of IDs, we first retrieve the object from the target persistence,
+     * then delete it.
      * </p>
      *
      * @param entityType The type of entity being deleted
@@ -205,16 +205,58 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
             DaoFactoryFacade targetFactory = getTargetFactory();
+
             switch (entityType) {
-                case "User" -> targetFactory.getUserDao().deleteUser(entityId);
-                case "Fan" -> targetFactory.getFanDao().deleteFan(entityId);
-                case "VenueManager" -> targetFactory.getVenueManagerDao().deleteVenueManager(entityId);
-                case "Venue" -> targetFactory.getVenueDao().deleteVenue(Integer.parseInt(entityId));
-                case "Booking" -> targetFactory.getBookingDao().deleteBooking(Integer.parseInt(entityId));
+                case "User" -> {
+                    // Retrieve User object first, then delete
+                    UserDao userDao = targetFactory.getUserDao();
+                    String[] userData = userDao.retrieveUser(entityId);
+                    if (userData != null) {
+                        // Create a minimal User object for deletion
+                        // We need to determine the actual type
+                        Fan fan = targetFactory.getFanDao().retrieveFan(entityId);
+                        if (fan != null) {
+                            targetFactory.getUserDao().deleteUser(fan);
+                        } else {
+                            VenueManager vm = targetFactory.getVenueManagerDao().retrieveVenueManager(entityId);
+                            if (vm != null) {
+                                targetFactory.getUserDao().deleteUser(vm);
+                            }
+                        }
+                    }
+                }
+                case "Fan" -> {
+                    Fan fan = targetFactory.getFanDao().retrieveFan(entityId);
+                    if (fan != null) {
+                        targetFactory.getFanDao().deleteFan(fan);
+                    }
+                }
+                case "VenueManager" -> {
+                    VenueManager venueManager = targetFactory.getVenueManagerDao().retrieveVenueManager(entityId);
+                    if (venueManager != null) {
+                        targetFactory.getVenueManagerDao().deleteVenueManager(venueManager);
+                    }
+                }
+                case "Venue" -> {
+                    int venueId = Integer.parseInt(entityId);
+                    Venue venue = targetFactory.getVenueDao().retrieveVenue(venueId);
+                    if (venue != null) {
+                        targetFactory.getVenueDao().deleteVenue(venue);
+                    }
+                }
+                case "Booking" -> {
+                    int bookingId = Integer.parseInt(entityId);
+                    Booking booking = targetFactory.getBookingDao().retrieveBooking(bookingId);
+                    if (booking != null) {
+                        targetFactory.getBookingDao().deleteBooking(booking);
+                    }
+                }
                 default -> logger.log(Level.WARNING, "Sync DELETE not handled for entity type: {0}", entityType);
             }
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Sync DELETE failed", e);
+        } catch (NumberFormatException e) {
+            logger.log(Level.SEVERE, "Invalid entity ID format for deletion: " + entityId, e);
         } finally {
             SyncContext.endSync();
         }

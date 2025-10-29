@@ -6,6 +6,7 @@ import java.time.LocalTime;
 
 /**
  * Represents a booking with business logic for status management and validation.
+ * MODIFIED: Removed seatsRequested - each booking is for ONE person only.
  * Uses Builder pattern to avoid constructor with too many parameters (SonarQube S107).
  */
 public class Booking {
@@ -16,14 +17,13 @@ public class Booking {
     private final String awayTeam;
     private final Venue venue;
     private final Fan fan;
-    private final int seatsRequested;
 
     private BookingStatus status;
     private boolean notified;
 
     private Booking(Builder builder) {
         validateBookingData(builder.id, builder.gameDate, builder.gameTime,
-                builder.homeTeam, builder.awayTeam, builder.seatsRequested);
+                builder.homeTeam, builder.awayTeam);
 
         if (builder.venue == null) {
             throw new IllegalArgumentException("Venue cannot be null");
@@ -39,14 +39,13 @@ public class Booking {
         this.awayTeam = builder.awayTeam;
         this.venue = builder.venue;
         this.fan = builder.fan;
-        this.seatsRequested = builder.seatsRequested;
         this.status = builder.status;
         this.notified = builder.notified;
     }
 
     /**
      * Builder for Booking with fluent API.
-     * Solves SonarQube S107 (too many constructor parameters).
+     * MODIFIED: Removed seatsRequested parameter.
      */
     public static class Builder {
         // Required parameters
@@ -57,7 +56,6 @@ public class Booking {
         private final String awayTeam;
         private final Venue venue;
         private final Fan fan;
-        private final int seatsRequested;
 
         // Optional parameters with defaults
         private BookingStatus status = BookingStatus.PENDING;
@@ -66,10 +64,10 @@ public class Booking {
         /**
          * Constructor with required parameters only.
          * Optional parameters have sensible defaults.
+         * MODIFIED: Removed seatsRequested parameter.
          */
         public Builder(int id, LocalDate gameDate, LocalTime gameTime,
-                       String homeTeam, String awayTeam, Venue venue,
-                       Fan fan, int seatsRequested) {
+                       String homeTeam, String awayTeam, Venue venue, Fan fan) {
             this.id = id;
             this.gameDate = gameDate;
             this.gameTime = gameTime;
@@ -77,7 +75,6 @@ public class Booking {
             this.awayTeam = awayTeam;
             this.venue = venue;
             this.fan = fan;
-            this.seatsRequested = seatsRequested;
         }
 
         public Builder status(BookingStatus status) {
@@ -159,7 +156,7 @@ public class Booking {
     // ========== PRIVATE - Validation ==========
 
     private void validateBookingData(int id, LocalDate gameDate, LocalTime gameTime,
-                                     String homeTeam, String awayTeam, int seatsRequested) {
+                                     String homeTeam, String awayTeam) {
         if (id < 0) {
             throw new IllegalArgumentException("Booking ID cannot be negative");
         }
@@ -177,12 +174,6 @@ public class Booking {
         }
         if (homeTeam.equalsIgnoreCase(awayTeam)) {
             throw new IllegalArgumentException("Home team and away team cannot be the same");
-        }
-        if (seatsRequested <= 0) {
-            throw new IllegalArgumentException("Seats requested must be greater than 0");
-        }
-        if (seatsRequested > 50) {
-            throw new IllegalArgumentException("Cannot request more than 50 seats");
         }
         if (gameDate.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Cannot book for past dates");
@@ -227,10 +218,6 @@ public class Booking {
         return fan.getUsername();
     }
 
-    public int getSeatsRequested() {
-        return seatsRequested;
-    }
-
     public BookingStatus getStatus() {
         return status;
     }
@@ -238,9 +225,6 @@ public class Booking {
     public boolean isNotified() {
         return notified;
     }
-
-    // ========== NO SETTERS per attributi final ==========
-    // Gli attributi final non hanno setter, solo status e notified cambiano via metodi di business logic
 
     // ========== UTILITY METHODS ==========
 
@@ -250,7 +234,6 @@ public class Booking {
         Booking booking = (Booking) o;
         return getId() == booking.getId() &&
                 getVenueId() == booking.getVenueId() &&
-                getSeatsRequested() == booking.getSeatsRequested() &&
                 isNotified() == booking.isNotified() &&
                 getGameDate().equals(booking.getGameDate()) &&
                 getGameTime().equals(booking.getGameTime()) &&

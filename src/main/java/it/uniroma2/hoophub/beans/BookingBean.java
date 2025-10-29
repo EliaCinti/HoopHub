@@ -7,6 +7,7 @@ import java.time.LocalTime;
 /**
  * Bean for booking data transfer.
  * Used when Fans create booking requests via UI.
+ * MODIFIED: Removed seatsRequested - each booking is for ONE person only.
  */
 public class BookingBean {
     private int id;
@@ -16,7 +17,6 @@ public class BookingBean {
     private String awayTeam;
     private int venueId;
     private String fanUsername;
-    private int seatsRequested;
     private BookingStatus status;
     private boolean notified;
 
@@ -28,7 +28,6 @@ public class BookingBean {
         this.awayTeam = builder.awayTeam;
         this.venueId = builder.venueId;
         this.fanUsername = builder.fanUsername;
-        this.seatsRequested = builder.seatsRequested;
         this.status = builder.status;
         this.notified = builder.notified;
     }
@@ -41,7 +40,6 @@ public class BookingBean {
         private String awayTeam;
         private int venueId;
         private String fanUsername;
-        private int seatsRequested;
         private BookingStatus status = BookingStatus.PENDING;
         private boolean notified = false;
 
@@ -80,11 +78,6 @@ public class BookingBean {
             return this;
         }
 
-        public Builder seatsRequested(int seatsRequested) {
-            this.seatsRequested = seatsRequested;
-            return this;
-        }
-
         public Builder status(BookingStatus status) {
             this.status = status;
             return this;
@@ -108,7 +101,6 @@ public class BookingBean {
     public String getAwayTeam() { return awayTeam; }
     public int getVenueId() { return venueId; }
     public String getFanUsername() { return fanUsername; }
-    public int getSeatsRequested() { return seatsRequested; }
     public BookingStatus getStatus() { return status; }
     public boolean isNotified() { return notified; }
 
@@ -120,7 +112,6 @@ public class BookingBean {
     public void setAwayTeam(String awayTeam) { this.awayTeam = awayTeam; }
     public void setVenueId(int venueId) { this.venueId = venueId; }
     public void setFanUsername(String fanUsername) { this.fanUsername = fanUsername; }
-    public void setSeatsRequested(int seats) { this.seatsRequested = seats; }
     public void setStatus(BookingStatus status) { this.status = status; }
     public void setNotified(boolean notified) { this.notified = notified; }
 }
