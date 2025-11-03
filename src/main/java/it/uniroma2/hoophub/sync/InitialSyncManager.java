@@ -11,6 +11,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
+import it.uniroma2.hoophub.utilities.UserType;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,15 +42,6 @@ public class InitialSyncManager {
 
     private static final Logger logger = Logger.getLogger(InitialSyncManager.class.getName());
 
-    /**
-     * Performs a complete initial synchronization between primary and secondary persistence types.
-     * <p>
-     * This method coordinates the synchronization of all entities in the correct order:
-     * fans and venue managers first, then venues, and finally bookings.
-     * </p>
-     *
-     * @param primaryType The primary persistence type that takes precedence in conflict resolution
-     */
     public void performInitialSync(PersistenceType primaryType) {
         logger.info("Starting initial synchronization...");
         SyncContext.startSync();
@@ -60,7 +52,7 @@ public class InitialSyncManager {
             // Synchronize entities in dependency order
             List<Fan> syncedFans = syncFans(primaryType, secondaryType);
             syncVenueManagers(primaryType, secondaryType);
-            List<Venue> syncedVenues = syncVenues(primaryType, secondaryType);
+            syncVenues(primaryType, secondaryType);  // <-- Rimosso "List<Venue> syncedVenues ="
             syncBookings(syncedFans, primaryType, secondaryType);
 
             logger.info("Initial synchronization completed successfully.");
@@ -98,17 +90,17 @@ public class InitialSyncManager {
             Fan secondaryFan = secondaryMap.get(key);
 
             if (primaryFan != null && secondaryFan == null) {
-                logger.info("Sync: Copying fan " + key + " from " + primary + " to " + secondary);
+                logger.info("Sync: Copying fan " + key + SyncConstants.FROM + primary + " to " + secondary);
                 FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan == null && secondaryFan != null) {
-                logger.info("Sync: Copying fan " + key + " from " + secondary + " to " + primary);
+                logger.info("Sync: Copying fan " + key + SyncConstants.FROM + secondary + " to " + primary);
                 FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
-                logger.info("Sync Conflict: Different data for fan " + key + ". Primary source " + primary + " takes precedence.");
+                logger.info("Sync Conflict: Different data for fan " + key + SyncConstants.FROM + primary + SyncConstants.TAKES_PRECEDENCE);
                 FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().updateFan(primaryFan, beanToUpdate);
@@ -144,17 +136,17 @@ public class InitialSyncManager {
             VenueManager secondaryVM = secondaryMap.get(key);
 
             if (primaryVM != null && secondaryVM == null) {
-                logger.info("Sync: Copying venue manager " + key + " from " + primary + " to " + secondary);
+                logger.info("Sync: Copying venue manager " + key + SyncConstants.FROM + primary + " to " + secondary);
                 VenueManagerBean bean = createVenueManagerBeanFromModel(primaryVM, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getVenueManagerDao().saveVenueManager(bean);
             } else if (primaryVM == null && secondaryVM != null) {
-                logger.info("Sync: Copying venue manager " + key + " from " + secondary + " to " + primary);
+                logger.info("Sync: Copying venue manager " + key + SyncConstants.FROM + secondary + " to " + primary);
                 VenueManagerBean bean = createVenueManagerBeanFromModel(secondaryVM, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getVenueManagerDao().saveVenueManager(bean);
             } else if (primaryVM != null && !primaryVM.isDataEquivalent(secondaryVM)) {
-                logger.info("Sync Conflict: Different data for venue manager " + key + ". Primary source " + primary + " takes precedence.");
+                logger.info("Sync Conflict: Different data for venue manager " + key + SyncConstants.PRIMARY_SOURCE + primary + SyncConstants.TAKES_PRECEDENCE);
                 VenueManagerBean beanToUpdate = createVenueManagerBeanFromModel(primaryVM, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getVenueManagerDao().updateVenueManager(primaryVM, beanToUpdate);
@@ -167,10 +159,9 @@ public class InitialSyncManager {
      *
      * @param primary The primary persistence type
      * @param secondary The secondary persistence type
-     * @return List of synchronized venues from the primary persistence
      * @throws DAOException if venue data access or synchronization fails
      */
-    private List<Venue> syncVenues(PersistenceType primary, PersistenceType secondary) throws DAOException {
+    private void syncVenues(PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Synchronizing venues...");
         DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
@@ -188,12 +179,12 @@ public class InitialSyncManager {
             Venue secondaryVenue = secondaryMap.get(id);
 
             if (primaryVenue != null && secondaryVenue == null) {
-                logger.info("Sync: Copying venue " + id + " from " + primary + " to " + secondary);
+                logger.info("Sync: Copying venue " + id + SyncConstants.FROM + primary + " to " + secondary);
                 VenueBean bean = createVenueBeanFromModel(primaryVenue);
                 factory.setPersistenceType(secondary);
                 factory.getVenueDao().saveVenue(bean);
             } else if (primaryVenue == null && secondaryVenue != null) {
-                logger.info("Sync: Copying venue " + id + " from " + secondary + " to " + primary);
+                logger.info("Sync: Copying venue " + id + SyncConstants.FROM + secondary + " to " + primary);
                 VenueBean bean = createVenueBeanFromModel(secondaryVenue);
                 factory.setPersistenceType(primary);
                 factory.getVenueDao().saveVenue(bean);
@@ -203,9 +194,7 @@ public class InitialSyncManager {
                 factory.getVenueDao().updateVenue(primaryVenue);
             }
         }
-
-        factory.setPersistenceType(primary);
-        return factory.getVenueDao().retrieveAllVenues();
+        // Rimosso il return
     }
 
     /**
@@ -235,17 +224,17 @@ public class InitialSyncManager {
                 Booking secondaryBooking = secondaryMap.get(id);
 
                 if (primaryBooking != null && secondaryBooking == null) {
-                    logger.info("Sync: Copying booking " + id + " from " + primary + " to " + secondary);
+                    logger.info("Sync: Copying booking " + id + SyncConstants.FROM + primary + " to " + secondary);
                     factory.setPersistenceType(secondary);
                     // Booking already contains Fan reference
                     factory.getBookingDao().saveBooking(primaryBooking);
                 } else if (primaryBooking == null && secondaryBooking != null) {
-                    logger.info("Sync: Copying booking " + id + " from " + secondary + " to " + primary);
+                    logger.info("Sync: Copying booking " + id + SyncConstants.FROM + secondary + " to " + primary);
                     factory.setPersistenceType(primary);
                     // Booking already contains Fan reference
                     factory.getBookingDao().saveBooking(secondaryBooking);
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
-                    logger.info("Sync Conflict: Different data for booking " + id + ". Primary source " + primary + " takes precedence.");
+                    logger.info("Sync Conflict: Different data for booking " + id + SyncConstants.PRIMARY_SOURCE + primary + SyncConstants.TAKES_PRECEDENCE);
                     factory.setPersistenceType(secondary);
                     factory.getBookingDao().updateBooking(primaryBooking);
                 }
@@ -324,7 +313,7 @@ public class InitialSyncManager {
                     .gender(vm.getGender())
                     .companyName(vm.getCompanyName())
                     .phoneNumber(vm.getPhoneNumber())
-                    .type("VENUE_MANAGER")
+                    .type(UserType.VENUE_MANAGER.toString())
                     .build();
         } finally {
             factory.setPersistenceType(originalType);

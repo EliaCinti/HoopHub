@@ -13,6 +13,7 @@ import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.patterns.observer.DaoObserver;
+import it.uniroma2.hoophub.utilities.UserType;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -96,19 +97,19 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
             switch (entityType) {
-                case "Fan" -> {
+                case SyncConstants.FAN -> {
                     FanDao targetDao = getTargetFactory().getFanDao();
                     targetDao.saveFan((FanBean) entity);
                 }
-                case "VenueManager" -> {
+                case SyncConstants.VENUE_MANAGER -> {
                     VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
                     targetDao.saveVenueManager((VenueManagerBean) entity);
                 }
-                case "Venue" -> {
+                case SyncConstants.VENUE -> {
                     VenueDao targetDao = getTargetFactory().getVenueDao();
                     targetDao.saveVenue((VenueBean) entity);
                 }
-                case "Booking" -> {
+                case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
                     // Booking already contains Fan reference, no need for separate username
                     targetDao.saveBooking((Booking) entity);
@@ -143,35 +144,35 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
             switch (entityType) {
-                case "Fan" -> {
+                case SyncConstants.FAN -> {
                     FanDao targetDao = getTargetFactory().getFanDao();
                     Fan fan = (Fan) entity;
                     UserBean userBean = new UserBean.Builder<>()
                             .username(fan.getUsername())
                             .fullName(fan.getFullName())
                             .gender(fan.getGender())
-                            .type("FAN")
+                            .type(UserType.FAN.toString())
                             .password(null) // Password not updated through this flow
                             .build();
                     targetDao.updateFan(fan, userBean);
                 }
-                case "VenueManager" -> {
+                case SyncConstants.VENUE_MANAGER -> {
                     VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
                     VenueManager venueManager = (VenueManager) entity;
                     UserBean userBean = new UserBean.Builder<>()
                             .username(venueManager.getUsername())
                             .fullName(venueManager.getFullName())
                             .gender(venueManager.getGender())
-                            .type("VENUE_MANAGER")
+                            .type(UserType.VENUE_MANAGER.toString())
                             .password(null)
                             .build();
                     targetDao.updateVenueManager(venueManager, userBean);
                 }
-                case "Venue" -> {
+                case SyncConstants.VENUE -> {
                     VenueDao targetDao = getTargetFactory().getVenueDao();
                     targetDao.updateVenue((Venue) entity);
                 }
-                case "Booking" -> {
+                case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
                     targetDao.updateBooking((Booking) entity);
                 }
@@ -207,58 +208,67 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
             DaoFactoryFacade targetFactory = getTargetFactory();
 
             switch (entityType) {
-                case "User" -> {
-                    // Retrieve User object first, then delete
-                    UserDao userDao = targetFactory.getUserDao();
-                    String[] userData = userDao.retrieveUser(entityId);
-                    if (userData != null) {
-                        // Create a minimal User object for deletion
-                        // We need to determine the actual type
-                        Fan fan = targetFactory.getFanDao().retrieveFan(entityId);
-                        if (fan != null) {
-                            targetFactory.getUserDao().deleteUser(fan);
-                        } else {
-                            VenueManager vm = targetFactory.getVenueManagerDao().retrieveVenueManager(entityId);
-                            if (vm != null) {
-                                targetFactory.getUserDao().deleteUser(vm);
-                            }
-                        }
-                    }
-                }
-                case "Fan" -> {
-                    Fan fan = targetFactory.getFanDao().retrieveFan(entityId);
-                    if (fan != null) {
-                        targetFactory.getFanDao().deleteFan(fan);
-                    }
-                }
-                case "VenueManager" -> {
-                    VenueManager venueManager = targetFactory.getVenueManagerDao().retrieveVenueManager(entityId);
-                    if (venueManager != null) {
-                        targetFactory.getVenueManagerDao().deleteVenueManager(venueManager);
-                    }
-                }
-                case "Venue" -> {
-                    int venueId = Integer.parseInt(entityId);
-                    Venue venue = targetFactory.getVenueDao().retrieveVenue(venueId);
-                    if (venue != null) {
-                        targetFactory.getVenueDao().deleteVenue(venue);
-                    }
-                }
-                case "Booking" -> {
-                    int bookingId = Integer.parseInt(entityId);
-                    Booking booking = targetFactory.getBookingDao().retrieveBooking(bookingId);
-                    if (booking != null) {
-                        targetFactory.getBookingDao().deleteBooking(booking);
-                    }
-                }
+                case SyncConstants.USER -> deleteUser(entityId, targetFactory);
+                case SyncConstants.FAN -> deleteFan(entityId, targetFactory);
+                case SyncConstants.VENUE_MANAGER -> deleteVenueManager(entityId, targetFactory);
+                case SyncConstants.VENUE -> deleteVenue(entityId, targetFactory);
+                case SyncConstants.BOOKING -> deleteBooking(entityId, targetFactory);
                 default -> logger.log(Level.WARNING, "Sync DELETE not handled for entity type: {0}", entityType);
             }
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Sync DELETE failed", e);
         } catch (NumberFormatException e) {
-            logger.log(Level.SEVERE, "Invalid entity ID format for deletion: " + entityId, e);
+            logger.log(Level.SEVERE, e, () -> "Invalid entity ID format for deletion: " + entityId);
         } finally {
             SyncContext.endSync();
+        }
+    }
+
+    // ========== Helper Methods for Deletion ==========
+
+    private void deleteUser(String username, DaoFactoryFacade factory) throws DAOException {
+        UserDao userDao = factory.getUserDao();
+        String[] userData = userDao.retrieveUser(username);
+        if (userData != null) {
+            Fan fan = factory.getFanDao().retrieveFan(username);
+            if (fan != null) {
+                factory.getUserDao().deleteUser(fan);
+            } else {
+                VenueManager vm = factory.getVenueManagerDao().retrieveVenueManager(username);
+                if (vm != null) {
+                    factory.getUserDao().deleteUser(vm);
+                }
+            }
+        }
+    }
+
+    private void deleteFan(String username, DaoFactoryFacade factory) throws DAOException {
+        Fan fan = factory.getFanDao().retrieveFan(username);
+        if (fan != null) {
+            factory.getFanDao().deleteFan(fan);
+        }
+    }
+
+    private void deleteVenueManager(String username, DaoFactoryFacade factory) throws DAOException {
+        VenueManager venueManager = factory.getVenueManagerDao().retrieveVenueManager(username);
+        if (venueManager != null) {
+            factory.getVenueManagerDao().deleteVenueManager(venueManager);
+        }
+    }
+
+    private void deleteVenue(String entityId, DaoFactoryFacade factory) throws DAOException {
+        int venueId = Integer.parseInt(entityId);
+        Venue venue = factory.getVenueDao().retrieveVenue(venueId);
+        if (venue != null) {
+            factory.getVenueDao().deleteVenue(venue);
+        }
+    }
+
+    private void deleteBooking(String entityId, DaoFactoryFacade factory) throws DAOException {
+        int bookingId = Integer.parseInt(entityId);
+        Booking booking = factory.getBookingDao().retrieveBooking(bookingId);
+        if (booking != null) {
+            factory.getBookingDao().deleteBooking(booking);
         }
     }
 }

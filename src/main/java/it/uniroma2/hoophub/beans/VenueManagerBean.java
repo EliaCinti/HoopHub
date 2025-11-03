@@ -37,6 +37,7 @@ public class VenueManagerBean extends UserBean {
             return this;
         }
 
+        @Override
         public VenueManagerBean build() {
             if (companyName == null || companyName.trim().isEmpty()) {
                 throw new IllegalArgumentException("Company name cannot be null or empty");

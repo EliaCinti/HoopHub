@@ -39,6 +39,7 @@ public class FanBean extends UserBean {
             return this;
         }
 
+        @Override
         public FanBean build() {
             return new FanBean(this);
         }
