@@ -5,11 +5,17 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
- * Represents a booking with business logic for status management and validation.
- * MODIFIED: Removed seatsRequested - each booking is for ONE person only.
- * Uses Builder pattern to avoid constructor with too many parameters (SonarQube S107).
+ * Represents a Booking entity.
+ * This class encapsulates all state and business logic for a booking.
+ * It perfectly follows BCE principles: state is private and can ONLY be modified
+ * through explicit public business operations (confirm, reject, cancel).
+ * It has NO public setters.
+ *
+ * @author Elia Cinti
  */
 public class Booking {
+    // All fields are final except for status and notified,
+    // which are managed by internal business logic.
     private final int id;
     private final LocalDate gameDate;
     private final LocalTime gameTime;
@@ -21,7 +27,12 @@ public class Booking {
     private BookingStatus status;
     private boolean notified;
 
+    /**
+     * Private constructor for use by the Builder.
+     * Validates all incoming data.
+     */
     private Booking(Builder builder) {
+        // Validation is centralized
         validateBookingData(builder.id, builder.gameDate, builder.gameTime,
                 builder.homeTeam, builder.awayTeam);
 
@@ -43,70 +54,30 @@ public class Booking {
         this.notified = builder.notified;
     }
 
-    /**
-     * Builder for Booking with fluent API.
-     * MODIFIED: Removed seatsRequested parameter.
-     */
-    public static class Builder {
-        // Required parameters
-        private final int id;
-        private final LocalDate gameDate;
-        private final LocalTime gameTime;
-        private final String homeTeam;
-        private final String awayTeam;
-        private final Venue venue;
-        private final Fan fan;
-
-        // Optional parameters with defaults
-        private BookingStatus status = BookingStatus.PENDING;
-        private boolean notified = false;
-
-        /**
-         * Constructor with required parameters only.
-         * Optional parameters have sensible defaults.
-         * MODIFIED: Removed seatsRequested parameter.
-         */
-        public Builder(int id, LocalDate gameDate, LocalTime gameTime,
-                       String homeTeam, String awayTeam, Venue venue, Fan fan) {
-            this.id = id;
-            this.gameDate = gameDate;
-            this.gameTime = gameTime;
-            this.homeTeam = homeTeam;
-            this.awayTeam = awayTeam;
-            this.venue = venue;
-            this.fan = fan;
-        }
-
-        public Builder status(BookingStatus status) {
-            this.status = status;
-            return this;
-        }
-
-        public Builder notified(boolean notified) {
-            this.notified = notified;
-            return this;
-        }
-
-        public Booking build() {
-            return new Booking(this);
-        }
-    }
-
-    // ========== PUBLIC API - State Transitions ==========
+    // ========================================================================
+    // PUBLIC BUSINESS OPERATIONS (State Transitions)
+    // ========================================================================
 
     /**
-     * Confirms the booking (PENDING → CONFIRMED).
+     * Confirms the booking.
+     * Business Rule: Can only confirm PENDING bookings.
+     * This operation also resets the notification flag.
+     *
+     * @throws IllegalStateException if booking is not PENDING.
      */
     public void confirm() {
         if (status != BookingStatus.PENDING) {
             throw new IllegalStateException("Can only confirm PENDING bookings");
         }
         this.status = BookingStatus.CONFIRMED;
-        this.notified = false;
+        this.notified = false; // Reset notification status
     }
 
     /**
-     * Rejects the booking (PENDING → REJECTED).
+     * Rejects the booking.
+     * Business Rule: Can only reject PENDING bookings.
+     *
+     * @throws IllegalStateException if booking is not PENDING.
      */
     public void reject() {
         if (status != BookingStatus.PENDING) {
@@ -116,31 +87,38 @@ public class Booking {
     }
 
     /**
-     * Cancels the booking (PENDING/CONFIRMED → CANCELLED).
+     * Cancels the booking.
+     * Business Rule: Can only cancel CONFIRMED or PENDING bookings.
+     * Business Rule: Cannot cancel bookings for past dates.
+     *
+     * @throws IllegalStateException if booking is not cancellable or is in the past.
      */
     public void cancel() {
         if (status != BookingStatus.PENDING && status != BookingStatus.CONFIRMED) {
             throw new IllegalStateException("Can only cancel CONFIRMED or PENDING bookings");
         }
-
         if (gameDate.isBefore(LocalDate.now())) {
             throw new IllegalStateException("Cannot cancel bookings for past dates");
         }
-
         this.status = BookingStatus.CANCELLED;
     }
 
     /**
      * Marks booking as notified.
+     * This is the only way to change the 'notified' flag.
      */
     public void markAsNotified() {
         this.notified = true;
     }
 
-    // ========== PUBLIC API - Display/Formatting ==========
+    // ========================================================================
+    // PUBLIC QUERIES (Read-Only Access & Business Questions)
+    // ========================================================================
 
     /**
      * Gets the game matchup as formatted string.
+     *
+     * @return A string like "Home Team vs Away Team".
      */
     public String getMatchup() {
         return homeTeam + " vs " + awayTeam;
@@ -148,39 +126,17 @@ public class Booking {
 
     /**
      * Checks if a specific team is playing in this game.
+     *
+     * @param teamName The name of the team to check.
+     * @return true if the team is playing, false otherwise.
      */
     public boolean isFavoriteTeamPlaying(String teamName) {
         return homeTeam.equalsIgnoreCase(teamName) || awayTeam.equalsIgnoreCase(teamName);
     }
 
-    // ========== PRIVATE - Validation ==========
-
-    private void validateBookingData(int id, LocalDate gameDate, LocalTime gameTime,
-                                     String homeTeam, String awayTeam) {
-        if (id < 0) {
-            throw new IllegalArgumentException("Booking ID cannot be negative");
-        }
-        if (gameDate == null) {
-            throw new IllegalArgumentException("Game date cannot be null");
-        }
-        if (gameTime == null) {
-            throw new IllegalArgumentException("Game time cannot be null");
-        }
-        if (homeTeam == null || homeTeam.trim().isEmpty()) {
-            throw new IllegalArgumentException("Home team cannot be null or empty");
-        }
-        if (awayTeam == null || awayTeam.trim().isEmpty()) {
-            throw new IllegalArgumentException("Away team cannot be null or empty");
-        }
-        if (homeTeam.equalsIgnoreCase(awayTeam)) {
-            throw new IllegalArgumentException("Home team and away team cannot be the same");
-        }
-        if (gameDate.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Cannot book for past dates");
-        }
-    }
-
-    // ========== GETTERS ==========
+    // ========================================================================
+    // PUBLIC GETTERS (Read-Only Access)
+    // ========================================================================
 
     public int getId() {
         return id;
@@ -226,7 +182,91 @@ public class Booking {
         return notified;
     }
 
-    // ========== UTILITY METHODS ==========
+    // ========================================================================
+    // BUILDER CLASS (For Object Construction)
+    // ========================================================================
+
+    /**
+     * Builder for Booking with fluent API.
+     */
+    public static class Builder {
+        // Required parameters
+        private final int id;
+        private final LocalDate gameDate;
+        private final LocalTime gameTime;
+        private final String homeTeam;
+        private final String awayTeam;
+        private final Venue venue;
+        private final Fan fan;
+
+        // Optional parameters with defaults
+        private BookingStatus status = BookingStatus.PENDING;
+        private boolean notified = false;
+
+        /**
+         * Constructor with required parameters only.
+         */
+        public Builder(int id, LocalDate gameDate, LocalTime gameTime,
+                       String homeTeam, String awayTeam, Venue venue, Fan fan) {
+            this.id = id;
+            this.gameDate = gameDate;
+            this.gameTime = gameTime;
+            this.homeTeam = homeTeam;
+            this.awayTeam = awayTeam;
+            this.venue = venue;
+            this.fan = fan;
+        }
+
+        public Builder status(BookingStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder notified(boolean notified) {
+            this.notified = notified;
+            return this;
+        }
+
+        public Booking build() {
+            return new Booking(this);
+        }
+    }
+
+    // ========================================================================
+    // PRIVATE VALIDATION HELPERS (Internal Logic)
+    // ========================================================================
+
+    /**
+     * Centralized validation logic for booking data.
+     */
+    private void validateBookingData(int id, LocalDate gameDate, LocalTime gameTime,
+                                     String homeTeam, String awayTeam) {
+        if (id < 0) {
+            throw new IllegalArgumentException("Booking ID cannot be negative");
+        }
+        if (gameDate == null) {
+            throw new IllegalArgumentException("Game date cannot be null");
+        }
+        if (gameTime == null) {
+            throw new IllegalArgumentException("Game time cannot be null");
+        }
+        if (homeTeam == null || homeTeam.trim().isEmpty()) {
+            throw new IllegalArgumentException("Home team cannot be null or empty");
+        }
+        if (awayTeam == null || awayTeam.trim().isEmpty()) {
+            throw new IllegalArgumentException("Away team cannot be null or empty");
+        }
+        if (homeTeam.equalsIgnoreCase(awayTeam)) {
+            throw new IllegalArgumentException("Home team and away team cannot be the same");
+        }
+        if (gameDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Cannot book for past dates");
+        }
+    }
+
+    // ========================================================================
+    // UTILITY METHODS (equals, hashCode, toString, isDataEquivalent)
+    // ========================================================================
 
     public boolean isDataEquivalent(Object o) {
         if (this == o) return true;
@@ -246,6 +286,7 @@ public class Booking {
     @Override
     public boolean equals(Object object) {
         if (object instanceof Booking booking)
+            // Equality is based on the immutable primary key (id)
             return this.id == booking.getId();
         return false;
     }

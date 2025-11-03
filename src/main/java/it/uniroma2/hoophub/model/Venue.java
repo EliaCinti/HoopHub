@@ -11,10 +11,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Represents a venue with business logic for capacity management and bookings.
+ * Represents a Venue entity.
+ * This class encapsulates a Venue's state and business logic.
+ * State modification is restricted to public business operations, as per BCE principles.
+ *
+ * @author Elia Cinti
  */
 public class Venue {
-    private int id;
+    private final int id; // Immutable Primary Key
     private String name;
     private VenueType type;
     private String address;
@@ -22,18 +26,243 @@ public class Venue {
     private int maxCapacity;
 
     private VenueManager venueManager;
+    private final Map<LocalDate, List<Booking>> bookingsByDate;
 
-    private Map<LocalDate, List<Booking>> bookingsByDate = new HashMap<>();
-
+    /**
+     * Private constructor for use by the Builder.
+     * Sets initial state.
+     */
     private Venue(Builder builder) {
+        // Immutable PK is set DIRECTLY. There is no setId() method.
         this.id = builder.id;
+
+        // Initial state for mutable fields is set DIRECTLY
         this.name = builder.name;
         this.type = builder.type;
         this.address = builder.address;
         this.city = builder.city;
         this.maxCapacity = builder.maxCapacity;
-        this.venueManager = builder.venueManager;
+
+        // We call the private setter for manager to reuse validation
+        this.setVenueManager(builder.venueManager);
+
+        // The map is initialized directly. There is no setBookingsByDate() method.
+        this.bookingsByDate = new HashMap<>();
     }
+
+    // ========================================================================
+    // PUBLIC BUSINESS OPERATIONS
+    // ========================================================================
+
+    /**
+     * Public business operation to update the Venue's core details.
+     * This is the ONLY way to modify these fields after construction.
+     *
+     * @param newName        The new name for the venue.
+     * @param newType        The new type for the venue.
+     * @param newAddress     The new street address.
+     * @param newCity        The new city.
+     * @param newMaxCapacity The new maximum capacity.
+     * @throws IllegalArgumentException if validation for new data fails.
+     */
+    public void updateVenueDetails(String newName, VenueType newType, String newAddress, String newCity, int newMaxCapacity) {
+        // 1. Validate the new data
+        validateDetails(newName, newType, newAddress, newCity, newMaxCapacity);
+
+        // 2. Mutate the state using private setters
+        this.setName(newName);
+        this.setType(newType);
+        this.setAddress(newAddress);
+        this.setCity(newCity);
+        this.setMaxCapacity(newMaxCapacity);
+    }
+
+    /**
+     * Public business operation to assign a new manager to this venue.
+     *
+     * @param newManager The VenueManager entity to assign.
+     * @throws IllegalArgumentException if the manager is null.
+     */
+    public void assignNewManager(VenueManager newManager) {
+        // Delegate to private setter that contains validation
+        this.setVenueManager(newManager);
+    }
+
+    /**
+     * Adds a booking to this venue's internal tracking.
+     * This is the only way to add a booking to the venue's list.
+     *
+     * @param booking The booking to add.
+     * @throws IllegalArgumentException if booking is null or not for this venue.
+     */
+    public void addBooking(Booking booking) {
+        if (booking == null) {
+            throw new IllegalArgumentException("Booking cannot be null");
+        }
+        if (!booking.getVenue().equals(this)) {
+            throw new IllegalArgumentException("Booking must be associated with this venue");
+        }
+        LocalDate gameDate = booking.getGameDate();
+        bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
+    }
+
+    // ========================================================================
+    // PUBLIC QUERIES (Read-Only Access & Business Questions)
+    // ========================================================================
+
+    /**
+     * Checks if there's available capacity for a new booking on the specified date.
+     *
+     * @param gameDate The date to check availability for
+     * @return true if there's at least one spot available, false otherwise
+     */
+    public boolean hasAvailableCapacity(LocalDate gameDate) {
+        int confirmedBookings = countConfirmedBookings(gameDate);
+        return confirmedBookings < maxCapacity;
+    }
+
+    /**
+     * Gets remaining capacity for a specific date.
+     *
+     * @param gameDate The date to check
+     * @return Number of available spots
+     */
+    public int getRemainingCapacity(LocalDate gameDate) {
+        int confirmedBookings = countConfirmedBookings(gameDate);
+        return maxCapacity - confirmedBookings;
+    }
+
+    /**
+     * Gets a COPY of the bookings list for a specific date.
+     *
+     * @param date The date to check.
+     * @return A new list containing the bookings for that date.
+     */
+    public List<Booking> getBookingsByDate(LocalDate date) {
+        // Returns a copy, protecting the internal map's list
+        return new ArrayList<>(bookingsByDate.getOrDefault(date, new ArrayList<>()));
+    }
+
+    /**
+     * Gets a new list of all bookings for this venue (all dates).
+     *
+     * @return A new list containing all bookings.
+     */
+    public List<Booking> getAllBookings() {
+        // Returns a new list, protecting the internal map
+        return bookingsByDate.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Gets total number of bookings (all statuses, all dates).
+     */
+    public int getTotalBookingsCount() {
+        return countAllBookings();
+    }
+
+    /**
+     * Gets venue's full address as formatted string.
+     */
+    public String getFullAddress() {
+        return formatAddress(address, city);
+    }
+
+    // ========================================================================
+    // PUBLIC GETTERS (Read-Only Access)
+    // ========================================================================
+
+    public int getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public VenueType getType() {
+        return type;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+
+    public VenueManager getVenueManager() {
+        return venueManager;
+    }
+
+    public String getVenueManagerUsername() {
+        return venueManager.getUsername();
+    }
+
+    // ========================================================================
+    // PRIVATE SETTERS (Internal State Mutation)
+    // ========================================================================
+
+    /**
+     * Private setter for name.
+     * Only called by updateVenueDetails().
+     */
+    private void setName(String name) {
+        this.name = name;
+    }
+
+    /**
+     * Private setter for type.
+     * Only called by updateVenueDetails().
+     */
+    private void setType(VenueType type) {
+        this.type = type;
+    }
+
+    /**
+     * Private setter for address.
+     * Only called by updateVenueDetails().
+     */
+    private void setAddress(String address) {
+        this.address = address;
+    }
+
+    /**
+     * Private setter for city.
+     * Only called by updateVenueDetails().
+     */
+    private void setCity(String city) {
+        this.city = city;
+    }
+
+    /**
+     * Private setter for max capacity.
+     * Only called by updateVenueDetails().
+     */
+    private void setMaxCapacity(int maxCapacity) {
+        this.maxCapacity = maxCapacity;
+    }
+
+    /**
+     * Private setter for venue manager.
+     * Called by assignNewManager() AND constructor to reuse validation.
+     */
+    private void setVenueManager(VenueManager venueManager) {
+        if (venueManager == null) {
+            throw new IllegalArgumentException("Venue manager cannot be null");
+        }
+        this.venueManager = venueManager;
+    }
+
+    // ========================================================================
+    // BUILDER CLASS (For Object Construction)
+    // ========================================================================
 
     public static class Builder {
         private int id;
@@ -84,116 +313,50 @@ public class Venue {
             return new Venue(this);
         }
 
+        /**
+         * Validation logic called by the Builder at construction time.
+         */
         private void validate() {
-            if (name == null || name.trim().isEmpty()) {
-                throw new IllegalArgumentException("Venue name cannot be null or empty");
-            }
-            if (type == null) {
-                throw new IllegalArgumentException("Venue type cannot be null");
-            }
-            if (address == null || address.trim().isEmpty()) {
-                throw new IllegalArgumentException("Address cannot be null or empty");
-            }
-            if (city == null || city.trim().isEmpty()) {
-                throw new IllegalArgumentException("City cannot be null or empty");
-            }
-            if (maxCapacity <= 0) {
-                throw new IllegalArgumentException("Max capacity must be greater than 0");
-            }
-            if (maxCapacity > 10000) {
-                throw new IllegalArgumentException("Max capacity cannot exceed 10000");
-            }
+            // Use the static validation helper
+            validateDetails(name, type, address, city, maxCapacity);
+            // Specific validation for manager (must be present at build time)
             if (venueManager == null) {
                 throw new IllegalArgumentException("Venue manager cannot be null");
             }
         }
     }
 
-    // ========== PUBLIC API - Core Operations ==========
+    // ========================================================================
+    // PRIVATE VALIDATION & HELPER METHODS (Internal Logic)
+    // ========================================================================
 
     /**
-     * Adds a booking to this venue.
+     * Validates core venue details.
+     * Static to be reusable by the Builder and updateVenueDetails.
      */
-    public void addBooking(Booking booking) {
-        if (booking == null) {
-            throw new IllegalArgumentException("Booking cannot be null");
+    private static void validateDetails(String name, VenueType type, String address, String city, int maxCapacity) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("Venue name cannot be null or empty");
         }
-
-        // Verifica che il booking sia associato a questo venue
-        if (!booking.getVenue().equals(this)) {
-            throw new IllegalArgumentException("Booking must be associated with this venue");
+        if (type == null) {
+            throw new IllegalArgumentException("Venue type cannot be null");
         }
-
-        LocalDate gameDate = booking.getGameDate();
-        bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
+        if (address == null || address.trim().isEmpty()) {
+            throw new IllegalArgumentException("Address cannot be null or empty");
+        }
+        if (city == null || city.trim().isEmpty()) {
+            throw new IllegalArgumentException("City cannot be null or empty");
+        }
+        if (maxCapacity <= 0) {
+            throw new IllegalArgumentException("Max capacity must be greater than 0");
+        }
+        if (maxCapacity > 10000) {
+            throw new IllegalArgumentException("Max capacity cannot exceed 10000");
+        }
     }
-
-    // ========== PUBLIC API - Capacity Management ==========
-    // MODIFIED: Simplified - each booking = 1 person
-
-    /**
-     * Checks if there's available capacity for a new booking on the specified date.
-     * MODIFIED: Each booking represents ONE person.
-     *
-     * @param gameDate The date to check availability for
-     * @return true if there's at least one spot available, false otherwise
-     */
-    public boolean hasAvailableCapacity(LocalDate gameDate) {
-        int confirmedBookings = countConfirmedBookings(gameDate);
-        return confirmedBookings < maxCapacity;
-    }
-
-    /**
-     * Gets remaining capacity for a specific date.
-     * MODIFIED: Simply counts confirmed bookings (each = 1 person).
-     *
-     * @param gameDate The date to check
-     * @return Number of available spots
-     */
-    public int getRemainingCapacity(LocalDate gameDate) {
-        int confirmedBookings = countConfirmedBookings(gameDate);
-        return maxCapacity - confirmedBookings;
-    }
-
-    // ========== PUBLIC API - Queries ==========
-
-    /**
-     * Gets all bookings for a specific date.
-     */
-    public List<Booking> getBookingsByDate(LocalDate date) {
-        return new ArrayList<>(bookingsByDate.getOrDefault(date, new ArrayList<>()));
-    }
-
-    /**
-     * Gets all bookings for this venue (all dates).
-     */
-    public List<Booking> getAllBookings() {
-        return bookingsByDate.values().stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Gets total number of bookings (all statuses, all dates).
-     */
-    public int getTotalBookingsCount() {
-        return countAllBookings();
-    }
-
-    // ========== PUBLIC API - Formatting/Display ==========
-
-    /**
-     * Gets venue's full address as formatted string.
-     */
-    public String getFullAddress() {
-        return formatAddress(address, city);
-    }
-
-    // ========== PRIVATE - Implementation Details ==========
 
     /**
      * Counts confirmed bookings for a specific date.
-     * MODIFIED: Each booking = 1 person, so we just count them.
      */
     private int countConfirmedBookings(LocalDate gameDate) {
         return (int) getBookingsByDate(gameDate).stream()
@@ -201,88 +364,32 @@ public class Venue {
                 .count();
     }
 
+    /**
+     * Counts all bookings across all dates.
+     */
     private int countAllBookings() {
         return bookingsByDate.values().stream()
                 .mapToInt(List::size)
                 .sum();
     }
 
+    /**
+     * Formats the address string.
+     */
     private String formatAddress(String streetAddress, String cityName) {
         return streetAddress + ", " + cityName;
     }
 
-    // ========== GETTERS/SETTERS ==========
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public VenueType getType() {
-        return type;
-    }
-
-    public void setType(VenueType type) {
-        this.type = type;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public int getMaxCapacity() {
-        return maxCapacity;
-    }
-
-    public void setMaxCapacity(int maxCapacity) {
-        this.maxCapacity = maxCapacity;
-    }
-
-    public VenueManager getVenueManager() {
-        return venueManager;
-    }
-
-    public void setVenueManager(VenueManager venueManager) {
-        if (venueManager == null) {
-            throw new IllegalArgumentException("Venue manager cannot be null");
-        }
-        this.venueManager = venueManager;
-    }
-
-    public String getVenueManagerUsername() {
-        return venueManager.getUsername();
-    }
-
-    // ========== UTILITY METHODS ==========
+    // ========================================================================
+    // UTILITY METHODS (equals, hashCode, toString)
+    // ========================================================================
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Venue venue = (Venue) o;
+        // Equality is based on the immutable primary key (id)
         return id == venue.id;
     }
 

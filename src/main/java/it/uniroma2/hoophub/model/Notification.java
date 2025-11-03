@@ -7,11 +7,17 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Notification entity representing a notification in the system.
- * Uses the Builder pattern for flexible and immutable object construction.
+ * Represents a Notification entity.
+ * This is an immutable object. Its state cannot be changed after creation.
+ * To "modify" a notification (e.g., mark as read), a new instance is
+ * created using the markAsRead() business operation.
+ * This is a very robust implementation of a BCE Entity.
+ *
+ * @author Elia Cinti
  */
 public class Notification {
 
+    // All fields are final, making the object immutable.
     private final Long id;
     private final Long userId;
     private final UserType userType;
@@ -35,7 +41,41 @@ public class Notification {
         this.createdAt = builder.createdAt;
     }
 
-    // Getters
+    // ========================================================================
+    // PUBLIC BUSINESS OPERATIONS
+    // ========================================================================
+
+    /**
+     * Creates a new Notification instance with the same data
+     * but marked as read. This is the only "modification" operation.
+     * It does not change the state of *this* object.
+     *
+     * @return new Notification instance marked as read
+     */
+    public Notification markAsRead() {
+        // Does not modify this object; returns a new one.
+        return new Builder()
+                .from(this)
+                .isRead(true)
+                .build();
+    }
+
+    // ========================================================================
+    // PUBLIC QUERIES (Read-Only Access & Business Questions)
+    // ========================================================================
+
+    /**
+     * Checks if this notification is unread.
+     *
+     * @return true if unread (isRead == false), false otherwise
+     */
+    public boolean isUnread() {
+        return !isRead;
+    }
+
+    // ========================================================================
+    // PUBLIC GETTERS (Read-Only Access)
+    // ========================================================================
 
     public Long getId() {
         return id;
@@ -69,55 +109,9 @@ public class Notification {
         return createdAt;
     }
 
-    // Utility methods
-
-    /**
-     * Creates a new Notification with the same data but marked as read.
-     * @return new Notification instance marked as read
-     */
-    public Notification markAsRead() {
-        return new Builder()
-                .from(this)
-                .isRead(true)
-                .build();
-    }
-
-    /**
-     * Checks if this notification is unread.
-     * @return true if unread, false otherwise
-     */
-    public boolean isUnread() {
-        return !isRead;
-    }
-
-    // Object methods
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Notification that = (Notification) o;
-        return Objects.equals(id, that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
-
-    @Override
-    public String toString() {
-        return "Notification{" +
-                "id=" + id +
-                ", userId=" + userId +
-                ", userType=" + userType +
-                ", type=" + type +
-                ", message='" + message + '\'' +
-                ", relatedBookingId=" + relatedBookingId +
-                ", isRead=" + isRead +
-                ", createdAt=" + createdAt +
-                '}';
-    }
+    // ========================================================================
+    // BUILDER CLASS (For Object Construction)
+    // ========================================================================
 
     /**
      * Builder class for constructing Notification instances.
@@ -174,7 +168,7 @@ public class Notification {
 
         /**
          * Copy all fields from an existing Notification.
-         * Useful for creating modified copies.
+         * Useful for creating modified copies (e.g., in markAsRead).
          */
         public Builder from(Notification notification) {
             this.id = notification.id;
@@ -190,6 +184,7 @@ public class Notification {
 
         /**
          * Validates and builds the Notification instance.
+         *
          * @return new Notification instance
          * @throws IllegalStateException if required fields are missing
          */
@@ -198,6 +193,13 @@ public class Notification {
             return new Notification(this);
         }
 
+        // ========================================================================
+        // PRIVATE VALIDATION HELPERS (Internal Logic)
+        // ========================================================================
+
+        /**
+         * Validation logic called by the Builder at construction time.
+         */
         private void validateRequiredFields() {
             if (userId == null) {
                 throw new IllegalStateException("userId is required");
@@ -215,5 +217,37 @@ public class Notification {
                 throw new IllegalStateException("createdAt is required");
             }
         }
+    }
+
+    // ========================================================================
+    // UTILITY METHODS (equals, hashCode, toString)
+    // ========================================================================
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Notification that = (Notification) o;
+        // Equality is based on the immutable primary key (id)
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return "Notification{" +
+                "id=" + id +
+                ", userId=" + userId +
+                ", userType=" + userType +
+                ", type=" + type +
+                ", message='" + message + '\'' +
+                ", relatedBookingId=" + relatedBookingId +
+                ", isRead=" + isRead +
+                ", createdAt=" + createdAt +
+                '}';
     }
 }

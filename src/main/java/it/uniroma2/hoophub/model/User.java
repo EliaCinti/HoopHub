@@ -5,30 +5,97 @@ import it.uniroma2.hoophub.utilities.UserType;
 import java.util.Objects;
 
 /**
- * Base class for users with common validation logic.
- * This is an abstract domain entity representing any user in the system.
+ * Base abstarct class for users.
+ * This class encapsulates the state and behavior common to all users.
+ * State modification is restricted to public business operations.
+ * @author Elia Cinti
  */
 public abstract class User {
-    private String username;
+    private final String username; // Immutable Primary Key
     private String fullName;
     private String gender;
 
     /**
-     * Protected constructor - only accessible via Builder or subclasses.
+     * Protected constructor for use by subclasses and the Builder.
+     * Initial state (including immutable PK) is set directly here.
      */
     protected User(Builder<?> builder) {
+        // Immutable fields like PK are set directly
         this.username = builder.username;
+
+        // Initial state for mutable fields is set directly
         this.fullName = builder.fullName;
         this.gender = builder.gender;
     }
 
-    // ========== METODI ASTRATTI (da implementare nelle sottoclassi) ==========
+    // ========================================================================
+    // PUBLIC ABSTRACT OPERATIONS (Business Logic)
+    // ========================================================================
 
     /**
-     * Returns the user type (FAN or VENUE_MANAGER).
-     * Used for: role-based UI navigation, access control.
+     * Returns the specific user type (FAN or VENUE_MANAGER).
+     * @return The UserType enum value.
      */
     public abstract UserType getUserType();
+
+    /**
+     * Public business operation to update the user's profile information.
+     * This is the ONLY way external classes can modify the user's state
+     * after construction.
+     *
+     * @param newFullName The user's new full name.
+     * @param newGender   The user's new gender.
+     * @throws IllegalArgumentException if validation for new data fails.
+     */
+    public void updateProfileDetails(String newFullName, String newGender) {
+        // 1. Validate the new data
+        validateFullName(newFullName);
+        validateGender(newGender);
+
+        // 2. Mutate the state using private setters
+        this.setFullName(newFullName);
+        this.setGender(newGender);
+    }
+
+    // ========================================================================
+    // PUBLIC GETTERS (Read-Only Access)
+    // ========================================================================
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getFullName() {
+        return fullName;
+    }
+
+    public String getGender() {
+        return gender;
+    }
+
+    // ========================================================================
+    // PRIVATE/PROTECTED SETTERS (Internal State Mutation)
+    // ========================================================================
+
+    /**
+     * Private setter for full name.
+     * Only called by updateProfileDetails().
+     */
+    public void setFullName(String fullName) {
+        this.fullName = fullName;
+    }
+
+    /**
+     * Private setter for gender.
+     * Only called by updateProfileDetails().
+     */
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    // ========================================================================
+    // BUILDER CLASS (For Object Construction)
+    // ========================================================================
 
     /**
      * Builder for creating User instances with validation.
@@ -58,96 +125,44 @@ public abstract class User {
             return (T) this;
         }
 
-        /**
-         * Template method for validation.
-         * Subclasses can override to add more validation.
-         * PROTECTED - allows subclass builders to extend validation.
-         */
         protected void validate() {
-            validateUsername();
-            validateFullName();
-            validateGender();
-        }
-
-        /**
-         * Validates username field.
-         * PROTECTED - allows subclass builders to reuse or override.
-         */
-        protected void validateUsername() {
-            if (username == null || username.trim().isEmpty()) {
-                throw new IllegalArgumentException("Username cannot be null or empty");
-            }
-            if (username.length() < 3) {
-                throw new IllegalArgumentException("Username must be at least 3 characters");
-            }
-            if (!username.matches("^[a-zA-Z0-9_]+$")) {
-                throw new IllegalArgumentException("Username can only contain letters, numbers, and underscores");
-            }
-        }
-
-        /**
-         * Validates full name field.
-         * PROTECTED - allows subclass builders to reuse or override.
-         */
-        protected void validateFullName() {
-            if (fullName == null || fullName.trim().isEmpty()) {
-                throw new IllegalArgumentException("Full name cannot be null or empty");
-            }
-        }
-
-        /**
-         * Validates gender field.
-         * PROTECTED - allows subclass builders to reuse or override.
-         */
-        protected void validateGender() {
-            if (gender == null || gender.trim().isEmpty()) {
-                throw new IllegalArgumentException("Gender cannot be null or empty");
-            }
+            validateUsername(username);
+            validateFullName(fullName);
+            validateGender(gender);
         }
     }
 
-    // ========== STANDARD GETTERS - Always PUBLIC ==========
+    // ========================================================================
+    // PRIVATE VALIDATION HELPERS (Internal Logic)
+    // ========================================================================
 
-    public String getUsername() {
-        return username;
+    protected static void validateUsername(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException("Username cannot be null or empty");
+        }
+        if (username.length() < 3) {
+            throw new IllegalArgumentException("Username must be at least 3 characters");
+        }
+        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+            throw new IllegalArgumentException("Username can only contain letters, numbers, and underscores");
+        }
     }
 
-    public String getFullName() {
-        return fullName;
+    protected static void validateFullName(String fullName) {
+        if (fullName == null || fullName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Full name cannot be null or empty");
+        }
     }
 
-    public String getGender() {
-        return gender;
+    protected static void validateGender(String gender) {
+        if (gender == null || gender.trim().isEmpty()) {
+            throw new IllegalArgumentException("Gender cannot be null or empty");
+        }
     }
 
-    // ========== SETTERS - PUBLIC but use with caution ==========
-
-    /**
-     * Sets username.
-     * WARNING: Username is typically immutable (primary key).
-     * Consider removing this setter or making it package-private.
-     */
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    /**
-     * Sets full name.
-     * Used by: UserController when user updates profile.
-     */
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    /**
-     * Sets gender.
-     * Used by: UserController when user updates profile.
-     */
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    // ========== UTILITY METHODS ==========
+// ========================================================================
+// UTILITY METHODS (equals, hashCode, toString)
+// ========================================================================
 
     @Override
     public boolean equals(Object o) {
