@@ -2,10 +2,8 @@ package it.uniroma2.hoophub.view;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.graphic_controller.cli.LoginCliController;
-import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.CliView;
 
 import java.util.logging.Level;
@@ -32,6 +30,11 @@ import java.util.logging.Logger;
  *   <li><strong>Model:</strong> DAOs, entities, business objects</li>
  * </ul>
  * </p>
+ * <p>
+ * <strong>Controller Lifecycle:</strong> Controllers are instantiated ONCE and reused
+ * throughout the application lifecycle (no new controller instances per operation).
+ * Each controller manages its entire use case from start to finish.
+ * </p>
  *
  * @see CliView
  * @see LoginCliController
@@ -39,16 +42,20 @@ import java.util.logging.Logger;
 public class CliApplication {
 
     private final CliView view;
+    private final LoginCliController loginController;
     private static final Logger logger = Logger.getLogger(CliApplication.class.getName());
 
     /**
      * Constructs a new CliApplication.
      * <p>
-     * Initializes the CliView for formatted console I/O.
+     * Initializes the CliView for formatted console I/O and creates
+     * controller instances (ONE instance per controller, reused throughout lifecycle).
      * </p>
      */
     public CliApplication() {
         this.view = new CliView();
+        // Create controller instances ONCE - they will be reused
+        this.loginController = new LoginCliController(view);
     }
 
     /**
@@ -124,77 +131,14 @@ public class CliApplication {
     /**
      * Handles the login flow.
      * <p>
-     * Delegates to LoginCliController for the actual login process,
-     * then handles the post-login navigation.
+     * Delegates to the LoginCliController instance (reused, not recreated).
+     * The controller manages the entire login use case from start to finish,
+     * including post-login navigation.
      * </p>
      */
     private void handleLogin() {
-        LoginCliController loginController = new LoginCliController(view);
-        User loggedUser = loginController.showLogin();
-
-        if (loggedUser != null) {
-            handlePostLogin(loggedUser);
-        }
-    }
-
-    /**
-     * Handles post-login actions.
-     * <p>
-     * Determines the next screen based on user type and displays appropriate messages.
-     * Currently logs out the user as dashboard controllers are not yet implemented.
-     * </p>
-     *
-     * @param loggedUser The authenticated user
-     */
-    private void handlePostLogin(User loggedUser) {
-        String nextController = getNextController(loggedUser);
-
-        view.newLine();
-        view.showInfo("Loading " + loggedUser.getUserType() + " dashboard...");
-        view.showWarning("Note: Dashboard controllers not yet implemented");
-        view.showInfo("Next controller: " + nextController);
-        view.newLine();
-
-        // TODO: Implement Fan and VenueManager dashboard controllers
-        // For now, just logout
-        performLogout();
-    }
-
-    /**
-     * Determines the next controller name based on user type.
-     * <p>
-     * Uses polymorphism - User.getUserType() is implemented differently
-     * by Fan and VenueManager subclasses.
-     * </p>
-     *
-     * @param user The authenticated user
-     * @return The name of the next controller to load
-     */
-    private String getNextController(User user) {
-        switch (user.getUserType()) {
-            case FAN:
-                return "FanHomeCliController";
-            case VENUE_MANAGER:
-                return "VenueManagerHomeCliController";
-            default:
-                return "UnknownController";
-        }
-    }
-
-    /**
-     * Performs user logout.
-     */
-    private void performLogout() {
-        view.showInfo("Logging out...");
-
-        try {
-            SessionManager.INSTANCE.logout();
-            view.showSuccess("Logged out successfully");
-            view.newLine();
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Error during logout", e);
-            view.showWarning("Error during logout: " + e.getMessage());
-        }
+        // Use the SAME controller instance (no new)
+        loginController.execute();
     }
 
     /**

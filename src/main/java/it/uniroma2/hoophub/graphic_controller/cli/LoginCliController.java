@@ -5,13 +5,14 @@ import it.uniroma2.hoophub.beans.CredentialsBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
+import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.CliView;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * LoginCliController manages the CLI login interface.
+ * LoginCliController manages the entire login use case for CLI.
  * <p>
  * This is a graphic controller for the Command Line Interface (CLI),
  * parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController}
@@ -30,6 +31,11 @@ import java.util.logging.Logger;
  *   <li>CliView - View utility (formatted console output)</li>
  * </ul>
  * </p>
+ * <p>
+ * <strong>Controller Lifecycle:</strong> This controller is instantiated ONCE in CliApplication
+ * and reused for all login operations. It manages the entire login use case from start to finish,
+ * including post-login navigation and eventual logout.
+ * </p>
  *
  * @see LoginController
  * @see CliView
@@ -43,6 +49,10 @@ public class LoginCliController {
 
     /**
      * Constructs a new LoginCliController with the specified view.
+     * <p>
+     * This constructor is called ONCE by CliApplication. The same instance
+     * is reused for all login operations (no new instances created per login).
+     * </p>
      *
      * @param view The CliView instance for formatted console I/O
      */
@@ -52,20 +62,35 @@ public class LoginCliController {
     }
 
     /**
-     * Displays the login interface and handles user interaction.
+     * Executes the complete login use case.
      * <p>
-     * This method:
+     * This method manages the entire login flow:
      * <ol>
      *   <li>Shows the login screen</li>
      *   <li>Prompts for username and password</li>
      *   <li>Delegates authentication to LoginController</li>
-     *   <li>Returns the authenticated User or null if login fails/cancelled</li>
+     *   <li>Handles post-login navigation (dashboard loading)</li>
+     *   <li>Manages logout when dashboard is not yet implemented</li>
      * </ol>
      * </p>
-     *
-     * @return The authenticated User object, or null if login fails or is cancelled
+     * <p>
+     * This is the main entry point for the login use case, called by CliApplication.
+     * </p>
      */
-    public User showLogin() {
+    public void execute() {
+        User loggedUser = performLogin();
+
+        if (loggedUser != null) {
+            handlePostLogin(loggedUser);
+        }
+    }
+
+    /**
+     * Performs the login operation with user input loop.
+     *
+     * @return The authenticated User object, or null if login is cancelled
+     */
+    private User performLogin() {
         view.showTitle("HOOPHUB - LOGIN");
 
         while (true) {
@@ -123,6 +148,49 @@ public class LoginCliController {
                 view.showInfo("Please logout first or try another account");
                 view.newLine();
             }
+        }
+    }
+
+    /**
+     * Handles post-login navigation and actions.
+     * <p>
+     * This method determines what happens after successful login based on user type.
+     * Currently shows a placeholder message and logs out the user since
+     * dashboard controllers are not yet implemented.
+     * </p>
+     * <p>
+     * In a complete implementation, this would delegate to FanHomeCliController
+     * or VenueManagerHomeCliController based on user type.
+     * </p>
+     *
+     * @param user The authenticated user
+     */
+    private void handlePostLogin(User user) {
+        view.newLine();
+        view.showInfo("Loading " + user.getUserType() + " dashboard...");
+        view.showWarning("Note: Dashboard controllers not yet implemented");
+
+        // TODO: Implement navigation to dashboard controllers
+        // switch (user.getUserType()) {
+        //     case FAN:
+        //         fanHomeController.execute();
+        //         break;
+        //     case VENUE_MANAGER:
+        //         venueManagerHomeController.execute();
+        //         break;
+        // }
+
+        // For now, just logout
+        view.showInfo("Logging out...");
+        view.newLine();
+
+        try {
+            SessionManager.INSTANCE.logout();
+            view.showSuccess("Logged out successfully");
+            view.newLine();
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error during logout", e);
+            view.showWarning("Error during logout: " + e.getMessage());
         }
     }
 }
