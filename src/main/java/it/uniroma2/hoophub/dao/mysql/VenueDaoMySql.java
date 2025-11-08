@@ -71,6 +71,9 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     private static final String SQL_GET_MAX_ID =
             "SELECT COALESCE(MAX(id), 0) FROM venues";
 
+    // ========== Constants ==========
+    private static final String VENUE = "Venue";
+
     // ========== Error messages ==========
     private static final String ERR_NULL_VENUE_BEAN = "VenueBean cannot be null";
     private static final String ERR_NULL_CITY = "City cannot be null or empty";
@@ -112,7 +115,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
                 logger.log(Level.INFO, "Venue saved successfully: {0} (ID: {1})",
                         new Object[]{venueBean.getName(), venueBean.getId()});
-                notifyObservers(DaoOperation.INSERT, "Venue", String.valueOf(venueBean.getId()), venueBean);
+                notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(venueBean.getId()), venueBean);
             }
 
         } catch (SQLException e) {
@@ -259,7 +262,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
             if (affectedRows > 0) {
                 logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
-                notifyObservers(DaoOperation.UPDATE, "Venue", String.valueOf(venueBean.getId()), venueBean);
+                notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
             } else {
                 logger.log(Level.WARNING, "Venue not found for update: {0}", venueBean.getId());
                 throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
@@ -287,7 +290,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
             if (affectedRows > 0) {
                 logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
-                notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venueId), null);
+                notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
             } else {
                 logger.log(Level.WARNING, "Venue not found for deletion: {0}", venueId);
                 throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
