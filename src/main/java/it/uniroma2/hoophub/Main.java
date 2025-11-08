@@ -1,9 +1,13 @@
 package it.uniroma2.hoophub;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
+import it.uniroma2.hoophub.graphic_controller.cli.LoginCliController;
+import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
+import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
+import it.uniroma2.hoophub.utilities.CliView;
 import it.uniroma2.hoophub.utilities.FontLoader;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import javafx.application.Application;
@@ -13,16 +17,17 @@ import java.util.logging.Logger;
 import java.io.IOException;
 
 /**
- * Main class serves as the entry point for the MindHarbor application.
+ * Main class serves as the entry point for the HoopHub application.
  * <p>
  * This class extends {@link javafx.application.Application} to create a JavaFX application
- * that provides a user interface for managing psychological appointments and patient-psychologist
- * interactions. It handles application initialization, persistence type configuration,
- * and proper resource cleanup on shutdown.
+ * that provides a user interface for managing basketball venue bookings. It handles
+ * application initialization, persistence type configuration, and proper resource cleanup
+ * on shutdown.
  * </p>
  * <p>
  * The application supports multiple persistence types (MySQL and CSV) with automatic
- * fallback mechanisms and can be configured via command-line arguments.
+ * fallback mechanisms, and multiple interfaces (GUI and CLI), configurable via
+ * command-line arguments.
  * </p>
  */
 public class Main extends Application {
@@ -45,7 +50,7 @@ public class Main extends Application {
         // Load custom fonts before loading FXML
         FontLoader.loadFonts();
         NavigatorSingleton navigator = NavigatorSingleton.getInstance(primaryStage);
-        navigator.gotoPage("/it/uniroma2/mindharbor/fxml/Login.fxml");
+        navigator.gotoPage("/it/uniroma2/hoophub/fxml/Login.fxml");
     }
 
     /**
@@ -72,12 +77,12 @@ public class Main extends Application {
     }
 
     /**
-     * Main method to configure and launch the MindHarbor application.
+     * Main method to configure and launch the HoopHub application.
      * <p>
      * This method processes command-line arguments to determine persistence and interface types,
      * configures the DAO factory, tests database connectivity with automatic fallback to CSV
      * if MySQL is unavailable, performs initial data synchronization, and launches the
-     * appropriate user interface.
+     * appropriate user interface (GUI or CLI).
      * </p>
      * <p>
      * <strong>Persistence Logic:</strong>
@@ -87,14 +92,20 @@ public class Main extends Application {
      * <li>Performs initial sync between persistence types if needed</li>
      * </ul>
      * </p>
+     * <p>
+     * <strong>Interface Logic:</strong>
+     * <ul>
+     * <li>If "gui" is specified, launches JavaFX GUI interface</li>
+     * <li>If "cli" is specified, launches Command Line Interface</li>
+     * </ul>
+     * </p>
      *
      * @param args Command-line arguments to configure the application:
      *             <ul>
      *             <li><strong>args[0]</strong> (optional): Persistence type.
      *                 Values: "mysql" or "csv". Default: "mysql"</li>
      *             <li><strong>args[1]</strong> (optional): Interface type.
-     *                 Values: "gui" or "cli". Default: "gui".
-     *                 Note: CLI interface is not yet implemented</li>
+     *                 Values: "gui" or "cli". Default: "gui"</li>
      *             </ul>
      */
     public static void main(String[] args) {
@@ -138,8 +149,106 @@ public class Main extends Application {
             logger.log(Level.INFO, "Launching GUI interface");
             launch(args);
         } else {
-            logger.info("Command-line interface requested, but not yet implemented");
-            // @TODO Placeholder for CLI logic
+            logger.info("Launching CLI interface");
+            launchCli();
+        }
+    }
+
+    /**
+     * Launches the Command Line Interface (CLI).
+     * <p>
+     * This method initializes the CLI view and login controller,
+     * handles the login flow, and manages the user session.
+     * </p>
+     */
+    private static void launchCli() {
+        CliView view = new CliView();
+
+        try {
+            // Show application banner
+            view.showBanner("🏀 HOOPHUB 🏀");
+            view.showInfo("Welcome to HoopHub - Basketball Venue Booking System");
+            view.showSeparator();
+
+            // Main CLI loop
+            boolean running = true;
+
+            while (running) {
+                // Show main menu
+                view.showMenu("MAIN MENU",
+                        "Login",
+                        "Exit");
+
+                String choice = view.readInput("\nSelect an option: ");
+
+                switch (choice) {
+                    case "1":
+                        handleCliLogin(view);
+                        break;
+                    case "2":
+                        running = false;
+                        view.newLine();
+                        view.showInfo("Thank you for using HoopHub!");
+                        view.showSuccess("Goodbye!");
+                        view.newLine();
+                        break;
+                    default:
+                        view.showWarning("Invalid option. Please select 1 or 2.");
+                        view.newLine();
+                }
+            }
+
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Unexpected error in CLI application", e);
+            view.showError("An unexpected error occurred: " + e.getMessage());
+            view.showInfo("Please restart the application");
+        } finally {
+            // Cleanup resources
+            view.close();
+
+            // Close database connection if using MySQL
+            if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {
+                try {
+                    ConnectionFactory.closeConnection();
+                    logger.info("Database connection closed successfully");
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Error closing database connection", e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Handles the CLI login flow.
+     *
+     * @param view The CliView instance for console I/O
+     */
+    private static void handleCliLogin(CliView view) {
+        LoginCliController loginController = new LoginCliController(view);
+
+        User loggedUser = loginController.showLogin();
+
+        if (loggedUser != null) {
+            // Login successful - show next screen based on user type
+            String nextController = loginController.getNextController(loggedUser);
+
+            view.newLine();
+            view.showInfo("Loading " + loggedUser.getUserType() + " dashboard...");
+            view.showWarning("Note: Dashboard controllers not yet implemented");
+            view.showInfo("Next controller: " + nextController);
+            view.newLine();
+
+            // For now, just logout after showing the message
+            view.showInfo("Logging out...");
+
+            try {
+                SessionManager.INSTANCE.logout();
+                view.showSuccess("Logged out successfully");
+                view.newLine();
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Error during logout", e);
+                view.showWarning("Error during logout: " + e.getMessage());
+            }
         }
     }
 }
