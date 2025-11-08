@@ -286,24 +286,12 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     public synchronized void deleteVenue(int venueId) throws DAOException {
         validatePositiveId(venueId);
 
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        // Skip header, find and remove matching row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            if (Integer.parseInt(data.get(i)[COL_ID]) == venueId) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
+        boolean found = deleteById(venueId, COL_ID);
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
                     "Venue", "deletion", venueId));
         }
-
-        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
         notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venueId), null);
