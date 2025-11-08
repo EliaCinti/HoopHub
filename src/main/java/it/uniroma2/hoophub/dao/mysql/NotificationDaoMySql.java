@@ -17,7 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the NotificationDAO interface.
@@ -35,10 +34,9 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see NotificationDAO
+ * @see AbstractMySqlDao
  */
-public class NotificationDaoMySql implements NotificationDAO {
-
-    private static final Logger logger = Logger.getLogger(NotificationDaoMySql.class.getName());
+public class NotificationDaoMySql extends AbstractMySqlDao implements NotificationDAO {
 
     // SQL Queries
     private static final String SQL_INSERT_NOTIFICATION =
@@ -100,7 +98,6 @@ public class NotificationDaoMySql implements NotificationDAO {
 
     // Error messages
     private static final String ERR_NULL_NOTIFICATION = "Notification cannot be null";
-    private static final String ERR_INVALID_ID = "ID must be positive";
     private static final String ERR_INVALID_LIMIT = "Limit must be positive";
 
     /**
@@ -604,11 +601,4 @@ public class NotificationDaoMySql implements NotificationDAO {
                 .build();
     }
 
-    // ========== VALIDATION METHODS ==========
-
-    private void validateIdInput(Long id) {
-        if (id == null || id <= 0) {
-            throw new IllegalArgumentException(ERR_INVALID_ID);
-        }
-    }
 }

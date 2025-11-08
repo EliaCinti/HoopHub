@@ -42,6 +42,7 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
      */
     protected static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
     protected static final String ERR_NULL_USER_BEAN = "UserBean cannot be null";
+    protected static final String ERR_INVALID_ID = "ID must be positive";
 
     /**
      * Constructs a new AbstractMySqlDao.
@@ -128,6 +129,38 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
     protected void validateUserBeanInput(UserBean userBean) {
         if (userBean == null) {
             throw new IllegalArgumentException(ERR_NULL_USER_BEAN);
+        }
+    }
+
+    /**
+     * Validates that an ID (int) is positive.
+     * <p>
+     * This validation is commonly used in retrieve, update, and delete operations
+     * that require a positive integer ID as input (booking ID, venue ID, etc.).
+     * </p>
+     *
+     * @param id The ID to validate
+     * @throws IllegalArgumentException if ID is zero or negative
+     */
+    protected void validateIdInput(int id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException(ERR_INVALID_ID);
+        }
+    }
+
+    /**
+     * Validates that an ID (Long) is not null and positive.
+     * <p>
+     * This validation is commonly used in retrieve, update, and delete operations
+     * that require a positive Long ID as input (notification ID, user ID, etc.).
+     * </p>
+     *
+     * @param id The ID to validate
+     * @throws IllegalArgumentException if ID is null or not positive
+     */
+    protected void validateIdInput(Long id) {
+        if (id == null || id <= 0) {
+            throw new IllegalArgumentException(ERR_INVALID_ID);
         }
     }
 }

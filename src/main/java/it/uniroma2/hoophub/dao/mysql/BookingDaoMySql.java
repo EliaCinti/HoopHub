@@ -1,7 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.BookingBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -22,7 +21,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the BookingDao interface.
@@ -40,11 +38,9 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see BookingDao
- * @see AbstractObservableDao
+ * @see AbstractMySqlDao
  */
-public class BookingDaoMySql extends AbstractObservableDao implements BookingDao {
-
-    private static final Logger logger = Logger.getLogger(BookingDaoMySql.class.getName());
+public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
     // SQL Queries
     private static final String SQL_INSERT_BOOKING =
@@ -102,9 +98,6 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
 
     // Error messages
     private static final String ERR_NULL_BOOKING_BEAN = "BookingBean cannot be null";
-    private static final String ERR_INVALID_BOOKING_ID = "Booking ID must be positive";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
-    private static final String ERR_INVALID_VENUE_ID = "Venue ID must be positive";
     private static final String ERR_NULL_DATE = "Date cannot be null";
     private static final String ERR_NULL_STATUS = "Status cannot be null";
     private static final String ERR_BOOKING_NOT_FOUND = "Booking not found";
@@ -154,7 +147,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      */
     @Override
     public Booking retrieveBooking(int bookingId) throws DAOException {
-        validateBookingIdInput(bookingId);
+        validateIdInput(bookingId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKING)) {
@@ -233,7 +226,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      */
     @Override
     public List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
-        validateVenueIdInput(venueId);
+        validateIdInput(venueId);
 
         List<Booking> bookings = new ArrayList<>();
 
@@ -423,7 +416,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      */
     @Override
     public void deleteBooking(int bookingId) throws DAOException {
-        validateBookingIdInput(bookingId);
+        validateIdInput(bookingId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
@@ -450,7 +443,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      */
     @Override
     public boolean bookingExists(int bookingId) throws DAOException {
-        validateBookingIdInput(bookingId);
+        validateIdInput(bookingId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
@@ -536,24 +529,6 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
     private void validateBookingBeanInput(BookingBean bookingBean) {
         if (bookingBean == null) {
             throw new IllegalArgumentException(ERR_NULL_BOOKING_BEAN);
-        }
-    }
-
-    private void validateBookingIdInput(int bookingId) {
-        if (bookingId <= 0) {
-            throw new IllegalArgumentException(ERR_INVALID_BOOKING_ID);
-        }
-    }
-
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
-        }
-    }
-
-    private void validateVenueIdInput(int venueId) {
-        if (venueId <= 0) {
-            throw new IllegalArgumentException(ERR_INVALID_VENUE_ID);
         }
     }
 
