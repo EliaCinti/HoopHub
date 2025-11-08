@@ -242,6 +242,47 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
     }
 
     /**
+     * Deletes an entity from the CSV file by its ID.
+     * <p>
+     * This is a common delete pattern used across all CSV DAOs. It:
+     * <ol>
+     *   <li>Reads all data from the CSV file</li>
+     *   <li>Searches for the row with the matching ID</li>
+     *   <li>Removes that row if found</li>
+     *   <li>Writes the updated data back to the file</li>
+     * </ol>
+     * </p>
+     * <p>
+     * <strong>Thread Safety:</strong> This method is synchronized to prevent
+     * concurrent modification issues.
+     * </p>
+     *
+     * @param id The ID of the entity to delete
+     * @param idColumnIndex The index of the ID column in the CSV file
+     * @return {@code true} if the entity was found and deleted, {@code false} otherwise
+     * @throws DAOException If there is an error reading or writing the CSV file
+     */
+    protected synchronized boolean deleteById(long id, int idColumnIndex) throws DAOException {
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        // Skip header, find and remove matching row
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            if (Long.parseLong(data.get(i)[idColumnIndex]) == id) {
+                data.remove(i);
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            CsvUtilities.updateFile(csvFile, getHeader(), data.subList(1, data.size()));
+        }
+
+        return found;
+    }
+
+    /**
      * Returns the path of the CSV file managed by this DAO.
      * <p>
      * Useful for logging and debugging purposes.

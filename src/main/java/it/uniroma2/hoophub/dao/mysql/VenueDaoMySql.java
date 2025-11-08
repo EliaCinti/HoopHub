@@ -1,7 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.VenueBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -18,7 +17,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the VenueDao interface.
@@ -35,11 +33,9 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see VenueDao
- * @see AbstractObservableDao
+ * @see AbstractMySqlDao
  */
-public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
-
-    private static final Logger logger = Logger.getLogger(VenueDaoMySql.class.getName());
+public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
     // ========== SQL Queries ==========
     private static final String SQL_INSERT_VENUE =
@@ -77,8 +73,6 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
 
     // ========== Error messages ==========
     private static final String ERR_NULL_VENUE_BEAN = "VenueBean cannot be null";
-    private static final String ERR_INVALID_VENUE_ID = "Venue ID must be positive";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
     private static final String ERR_NULL_CITY = "City cannot be null or empty";
     private static final String ERR_VENUE_NOT_FOUND = "Venue not found";
 
@@ -136,7 +130,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      */
     @Override
     public Venue retrieveVenue(int venueId) throws DAOException {
-        validateVenueIdInput(venueId);
+        validateIdInput(venueId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE)) {
@@ -267,6 +261,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
                 logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
                 notifyObservers(DaoOperation.UPDATE, "Venue", String.valueOf(venueBean.getId()), venueBean);
             } else {
+                logger.log(Level.WARNING, "Venue not found for update: {0}", venueBean.getId());
                 throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
             }
 
@@ -281,7 +276,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      */
     @Override
     public void deleteVenue(int venueId) throws DAOException {
-        validateVenueIdInput(venueId);
+        validateIdInput(venueId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
@@ -294,6 +289,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
                 logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
                 notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venueId), null);
             } else {
+                logger.log(Level.WARNING, "Venue not found for deletion: {0}", venueId);
                 throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
             }
 
@@ -308,7 +304,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      */
     @Override
     public boolean venueExists(int venueId) throws DAOException {
-        validateVenueIdInput(venueId);
+        validateIdInput(venueId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
@@ -368,6 +364,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
         VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
 
         if (venueManager == null) {
+            logger.log(Level.SEVERE, "VenueManager not found for venue mapping: {0}", managerUsername);
             throw new DAOException("VenueManager not found: " + managerUsername);
         }
 
@@ -387,18 +384,6 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
     private void validateVenueBeanInput(VenueBean venueBean) {
         if (venueBean == null) {
             throw new IllegalArgumentException(ERR_NULL_VENUE_BEAN);
-        }
-    }
-
-    private void validateVenueIdInput(int venueId) {
-        if (venueId <= 0) {
-            throw new IllegalArgumentException(ERR_INVALID_VENUE_ID);
-        }
-    }
-
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
         }
     }
 

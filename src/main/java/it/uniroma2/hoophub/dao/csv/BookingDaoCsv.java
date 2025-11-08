@@ -287,23 +287,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized void deleteBooking(int bookingId) throws DAOException {
         validatePositiveId(bookingId);
 
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            if (Integer.parseInt(data.get(i)[COL_ID]) == bookingId) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
+        boolean found = deleteById(bookingId, COL_ID);
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
                     BOOKING, "deletion", bookingId));
         }
-
-        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
         notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);

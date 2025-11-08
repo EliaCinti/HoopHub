@@ -113,18 +113,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
              PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
                      Statement.RETURN_GENERATED_KEYS)) {
 
-            stmt.setLong(1, notification.getUserId());
-            stmt.setString(2, notification.getUserType().name());
-            stmt.setString(3, notification.getType().name());
-            stmt.setString(4, notification.getMessage());
-
-            if (notification.getRelatedBookingId() != null) {
-                stmt.setLong(5, notification.getRelatedBookingId());
-            } else {
-                stmt.setNull(5, java.sql.Types.BIGINT);
-            }
-
-            stmt.setBoolean(6, notification.isRead());
+            setNotificationParameters(stmt, notification, 1);
             stmt.setTimestamp(7, Timestamp.valueOf(notification.getCreatedAt()));
 
             int affectedRows = stmt.executeUpdate();
@@ -416,18 +405,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
 
-            stmt.setLong(1, notification.getUserId());
-            stmt.setString(2, notification.getUserType().name());
-            stmt.setString(3, notification.getType().name());
-            stmt.setString(4, notification.getMessage());
-
-            if (notification.getRelatedBookingId() != null) {
-                stmt.setLong(5, notification.getRelatedBookingId());
-            } else {
-                stmt.setNull(5, java.sql.Types.BIGINT);
-            }
-
-            stmt.setBoolean(6, notification.isRead());
+            setNotificationParameters(stmt, notification, 1);
             stmt.setLong(7, notification.getId());
 
             int affectedRows = stmt.executeUpdate();
@@ -579,6 +557,34 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     }
 
     // ========== PRIVATE HELPER METHODS ==========
+
+    /**
+     * Sets the common notification parameters in a PreparedStatement.
+     * <p>
+     * This helper method eliminates code duplication between save() and update() methods
+     * by centralizing the logic for setting notification fields.
+     * </p>
+     *
+     * @param stmt The PreparedStatement to populate
+     * @param notification The Notification object containing the data
+     * @param startIndex The starting parameter index (1 for save, varies for update)
+     * @throws SQLException If there is an error setting parameters
+     */
+    private void setNotificationParameters(PreparedStatement stmt, Notification notification, int startIndex)
+            throws SQLException {
+        stmt.setLong(startIndex, notification.getUserId());
+        stmt.setString(startIndex + 1, notification.getUserType().name());
+        stmt.setString(startIndex + 2, notification.getType().name());
+        stmt.setString(startIndex + 3, notification.getMessage());
+
+        if (notification.getRelatedBookingId() != null) {
+            stmt.setLong(startIndex + 4, notification.getRelatedBookingId());
+        } else {
+            stmt.setNull(startIndex + 4, java.sql.Types.BIGINT);
+        }
+
+        stmt.setBoolean(startIndex + 5, notification.isRead());
+    }
 
     /**
      * Maps a ResultSet row to a Notification domain object.
