@@ -1,8 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.UserBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
@@ -18,7 +16,6 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the FanDao interface.
@@ -36,11 +33,9 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see FanDao
- * @see AbstractObservableDao
+ * @see AbstractMySqlDao
  */
-public class FanDaoMySql extends AbstractObservableDao implements FanDao {
-
-    private static final Logger logger = Logger.getLogger(FanDaoMySql.class.getName());
+public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
     private final UserDao userDao;
 
@@ -67,7 +62,6 @@ public class FanDaoMySql extends AbstractObservableDao implements FanDao {
 
     // Error messages
     private static final String ERR_NULL_FAN_BEAN = "FanBean cannot be null";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
     private static final String ERR_NULL_FAN = "Fan cannot be null";
     private static final String ERR_FAN_NOT_FOUND = "Fan not found";
 
@@ -302,33 +296,6 @@ public class FanDaoMySql extends AbstractObservableDao implements FanDao {
                 .build();
     }
 
-    /**
-     * Rolls back a transaction safely, logging any errors that occur.
-     */
-    private void rollbackTransaction(Connection conn) {
-        if (conn != null) {
-            try {
-                conn.rollback();
-                logger.info("Transaction rolled back");
-            } catch (SQLException ex) {
-                logger.log(Level.SEVERE, "Error rolling back transaction", ex);
-            }
-        }
-    }
-
-    /**
-     * Resets auto-commit to true safely, logging any errors that occur.
-     */
-    private void resetAutoCommit(Connection conn) {
-        if (conn != null) {
-            try {
-                conn.setAutoCommit(true);
-            } catch (SQLException ex) {
-                logger.log(Level.SEVERE, "Error resetting auto-commit", ex);
-            }
-        }
-    }
-
     // ========== VALIDATION METHODS ==========
 
     private void validateFanBeanInput(FanBean fanBean) {
@@ -337,21 +304,9 @@ public class FanDaoMySql extends AbstractObservableDao implements FanDao {
         }
     }
 
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
-        }
-    }
-
     private void validateFanInput(Fan fan) {
         if (fan == null) {
             throw new IllegalArgumentException(ERR_NULL_FAN);
-        }
-    }
-
-    private void validateUserBeanInput(UserBean userBean) {
-        if (userBean == null) {
-            throw new IllegalArgumentException("UserBean cannot be null");
         }
     }
 }

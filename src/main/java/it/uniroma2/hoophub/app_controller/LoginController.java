@@ -80,7 +80,6 @@ public class LoginController extends AbstractController {
      */
     @Override
     protected void storeUserSession(User user) throws UserSessionException {
-        SessionManager sessionManager = SessionManager.getInstance();
-        sessionManager.login(user);
+        SessionManager.INSTANCE.login(user);
     }
 }
