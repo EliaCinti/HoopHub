@@ -15,6 +15,7 @@ import it.uniroma2.hoophub.utilities.UserType;
  * to validate user credentials and retrieve user information.
  * <p>
  * Uses polymorphism to handle different user types (Fan, VenueManager) uniformly.
+ * </p>
  */
 public class LoginController extends AbstractController {
 

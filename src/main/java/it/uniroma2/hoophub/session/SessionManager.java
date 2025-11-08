@@ -11,8 +11,13 @@ import it.uniroma2.hoophub.model.User;
  * without having to pass the user object between controllers.
  * </p>
  * <p>
- * This implementation uses the Enum Singleton pattern, which is the recommended approach
- * for singletons in Java (Effective Java, Joshua Bloch). It provides:
+ * <strong>Singleton Pattern Justification:</strong>
+ * The Singleton pattern is REQUIRED here because the application needs exactly one shared session
+ * across all controllers and UI components. Multiple instances would create separate, isolated
+ * sessions, breaking the fundamental requirement of having a single, application-wide user session.
+ * </p>
+ * <p>
+ * This implementation uses the Enum Singleton pattern (Effective Java, Joshua Bloch) which provides:
  * <ul>
  *   <li>Thread safety without explicit synchronization</li>
  *   <li>Protection against serialization attacks</li>
@@ -21,6 +26,7 @@ import it.uniroma2.hoophub.model.User;
  * </ul>
  * </p>
  */
+@SuppressWarnings("java:S6548") // Singleton is required for shared application-wide session state
 public enum SessionManager {
     /**
      * The singleton instance of SessionManager.
