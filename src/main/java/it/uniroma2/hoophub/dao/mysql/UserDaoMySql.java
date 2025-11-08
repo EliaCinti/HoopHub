@@ -2,7 +2,6 @@ package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.CredentialsBean;
 import it.uniroma2.hoophub.beans.UserBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -15,13 +14,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the UserDao interface.
  * <p>
  * This class provides data access operations for User entities stored in a MySQL database.
- * It extends {@link AbstractObservableDao} to support the Observer pattern for cross-persistence
+ * It extends {@link AbstractMySqlDao} to support the Observer pattern for cross-persistence
  * synchronization. All database operations use prepared statements to prevent SQL injection attacks.
  * </p>
  * <p>
@@ -35,12 +33,10 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see UserDao
- * @see AbstractObservableDao
+ * @see AbstractMySqlDao
  * @see ConnectionFactory
  */
-public class UserDaoMySql extends AbstractObservableDao implements UserDao {
-
-    private static final Logger logger = Logger.getLogger(UserDaoMySql.class.getName());
+public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
 
     // SQL Queries - constants to avoid string duplication and magic strings
     private static final String SQL_VALIDATE_USER =
@@ -63,8 +59,6 @@ public class UserDaoMySql extends AbstractObservableDao implements UserDao {
 
     // Error messages
     private static final String ERR_NULL_CREDENTIALS = "Credentials cannot be null";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
-    private static final String ERR_NULL_USERBEAN = "UserBean cannot be null";
     private static final String ERR_NULL_USER = "User cannot be null";
     private static final String ERR_INVALID_CREDENTIALS = "Invalid username or password";
     private static final String ERR_USERNAME_EXISTS = "Username already exists";
@@ -126,6 +120,7 @@ public class UserDaoMySql extends AbstractObservableDao implements UserDao {
         validateUserBeanInput(userBean);
 
         if (isUsernameTaken(userBean.getUsername())) {
+            logger.log(Level.WARNING, "Attempt to save user with existing username: {0}", userBean.getUsername());
             throw new DAOException(ERR_USERNAME_EXISTS);
         }
 
@@ -243,6 +238,7 @@ public class UserDaoMySql extends AbstractObservableDao implements UserDao {
                 logger.log(Level.INFO, "User updated successfully: {0}", user.getUsername());
                 notifyObservers(DaoOperation.UPDATE, "User", user.getUsername(), user);
             } else {
+                logger.log(Level.WARNING, "User not found for update: {0}", user.getUsername());
                 throw new DAOException("User not found for update: " + user.getUsername());
             }
 
@@ -274,6 +270,7 @@ public class UserDaoMySql extends AbstractObservableDao implements UserDao {
                 logger.log(Level.INFO, "User deleted successfully: {0}", user.getUsername());
                 notifyObservers(DaoOperation.DELETE, "User", user.getUsername(), null);
             } else {
+                logger.log(Level.WARNING, "User not found for deletion: {0}", user.getUsername());
                 throw new DAOException("User not found for deletion: " + user.getUsername());
             }
 
@@ -293,24 +290,6 @@ public class UserDaoMySql extends AbstractObservableDao implements UserDao {
                 credentials.getUsername().trim().isEmpty() ||
                 credentials.getPassword() == null || credentials.getPassword().trim().isEmpty()) {
             throw new IllegalArgumentException(ERR_NULL_CREDENTIALS);
-        }
-    }
-
-    /**
-     * Validates username input to prevent null pointer exceptions.
-     */
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
-        }
-    }
-
-    /**
-     * Validates UserBean input to prevent null pointer exceptions.
-     */
-    private void validateUserBeanInput(UserBean userBean) {
-        if (userBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_USERBEAN);
         }
     }
 
