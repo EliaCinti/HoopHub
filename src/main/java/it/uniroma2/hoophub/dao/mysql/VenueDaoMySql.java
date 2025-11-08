@@ -41,7 +41,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
 
     private static final Logger logger = Logger.getLogger(VenueDaoMySql.class.getName());
 
-    // SQL Queries
+    // ========== SQL Queries ==========
     private static final String SQL_INSERT_VENUE =
             "INSERT INTO venues (name, type, address, city, max_capacity, venue_manager_username) " +
                     "VALUES (?, ?, ?, ?, ?, ?)";
@@ -75,7 +75,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
     private static final String SQL_GET_MAX_ID =
             "SELECT COALESCE(MAX(id), 0) FROM venues";
 
-    // Error messages
+    // ========== Error messages ==========
     private static final String ERR_NULL_VENUE_BEAN = "VenueBean cannot be null";
     private static final String ERR_INVALID_VENUE_ID = "Venue ID must be positive";
     private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";

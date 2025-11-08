@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.FanBean;
+import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
@@ -39,7 +40,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
     private final UserDao userDao;
 
-    // SQL Queries
+    // ========== SQL Queries ==========
     private static final String SQL_INSERT_FAN =
             "INSERT INTO fans (username, fav_team, birthday) VALUES (?, ?, ?)";
 
@@ -60,7 +61,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     private static final String SQL_DELETE_FAN =
             "DELETE FROM fans WHERE username = ?";
 
-    // Error messages
+    // ========== Error messages ==========
     private static final String ERR_NULL_FAN_BEAN = "FanBean cannot be null";
     private static final String ERR_NULL_FAN = "Fan cannot be null";
     private static final String ERR_FAN_NOT_FOUND = "Fan not found";

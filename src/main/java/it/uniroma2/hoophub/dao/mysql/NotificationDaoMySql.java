@@ -38,7 +38,7 @@ import java.util.logging.Level;
  */
 public class NotificationDaoMySql extends AbstractMySqlDao implements NotificationDAO {
 
-    // SQL Queries
+    // ========== SQL Queries ==========
     private static final String SQL_INSERT_NOTIFICATION =
             "INSERT INTO notifications (user_id, user_type, type, message, related_booking_id, " +
                     "is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -96,7 +96,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
                     "FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?";
 
-    // Error messages
+    // ========== Error messages ==========
     private static final String ERR_NULL_NOTIFICATION = "Notification cannot be null";
     private static final String ERR_INVALID_LIMIT = "Limit must be positive";
 

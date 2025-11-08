@@ -42,7 +42,7 @@ import java.util.logging.Level;
  */
 public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
-    // SQL Queries
+    // ========== SQL Queries ==========
     private static final String SQL_INSERT_BOOKING =
             "INSERT INTO bookings (game_date, game_time, home_team, away_team, venue_id, " +
                     "fan_username, status, notified) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -96,7 +96,10 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     private static final String SQL_GET_MAX_ID =
             "SELECT COALESCE(MAX(id), 0) FROM bookings";
 
-    // Error messages
+
+    // ========== Constants ==========
+    private static final String BOOKING = "Booking";
+    // ========== Error messages ==========
     private static final String ERR_NULL_BOOKING_BEAN = "BookingBean cannot be null";
     private static final String ERR_NULL_DATE = "Date cannot be null";
     private static final String ERR_NULL_STATUS = "Status cannot be null";
@@ -130,7 +133,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
             if (affectedRows > 0) {
                 logger.log(Level.INFO, "Booking saved successfully: {0}", bookingBean.getId());
-                notifyObservers(DaoOperation.INSERT, "Booking", String.valueOf(bookingBean.getId()), bookingBean);
+                notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
             }
 
         } catch (SQLException e) {
@@ -400,7 +403,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
             if (affectedRows > 0) {
                 logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
-                notifyObservers(DaoOperation.UPDATE, "Booking", String.valueOf(bookingBean.getId()), bookingBean);
+                notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
             } else {
                 throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingBean.getId());
             }
@@ -427,7 +430,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
             if (affectedRows > 0) {
                 logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
-                notifyObservers(DaoOperation.DELETE, "Booking", String.valueOf(bookingId), null);
+                notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
             } else {
                 throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingId);
             }

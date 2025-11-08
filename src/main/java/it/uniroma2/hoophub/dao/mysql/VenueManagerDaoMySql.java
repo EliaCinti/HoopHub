@@ -39,7 +39,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
     private final UserDao userDao;
 
-    // SQL Queries
+    // ========== SQL Queries ==========
     private static final String SQL_INSERT_VENUE_MANAGER =
             "INSERT INTO venue_managers (username, company_name, phone_number) VALUES (?, ?, ?)";
 
@@ -63,7 +63,10 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     private static final String SQL_SELECT_MANAGER_VENUES =
             "SELECT id FROM venues WHERE venue_manager_username = ?";
 
-    // Error messages
+    // ========== Constants ==========
+    private static final String VENUE_MANAGER = "VenueManager";
+
+    // ========== Error messages ==========
     private static final String ERR_NULL_VENUE_MANAGER_BEAN = "VenueManagerBean cannot be null";
     private static final String ERR_NULL_VENUE_MANAGER = "VenueManager cannot be null";
     private static final String ERR_VENUE_MANAGER_NOT_FOUND = "VenueManager not found";
@@ -109,7 +112,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 if (affectedRows > 0) {
                     conn.commit();
                     logger.log(Level.INFO, "VenueManager saved successfully: {0}", venueManagerBean.getUsername());
-                    notifyObservers(DaoOperation.INSERT, "VenueManager", venueManagerBean.getUsername(), venueManagerBean);
+                    notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManagerBean.getUsername(), venueManagerBean);
                 } else {
                     conn.rollback();
                     throw new DAOException("Failed to insert venue manager-specific data");
@@ -213,7 +216,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 if (affectedRows > 0) {
                     conn.commit();
                     logger.log(Level.INFO, "VenueManager updated successfully: {0}", venueManager.getUsername());
-                    notifyObservers(DaoOperation.UPDATE, "VenueManager", venueManager.getUsername(), venueManager);
+                    notifyObservers(DaoOperation.UPDATE, VENUE_MANAGER, venueManager.getUsername(), venueManager);
                 } else {
                     conn.rollback();
                     throw new DAOException(ERR_VENUE_MANAGER_NOT_FOUND + ": " + venueManager.getUsername());
@@ -260,7 +263,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
                     conn.commit();
                     logger.log(Level.INFO, "VenueManager deleted successfully: {0}", venueManager.getUsername());
-                    notifyObservers(DaoOperation.DELETE, "VenueManager", venueManager.getUsername(), null);
+                    notifyObservers(DaoOperation.DELETE, VENUE_MANAGER, venueManager.getUsername(), null);
                 } else {
                     conn.rollback();
                     throw new DAOException(ERR_VENUE_MANAGER_NOT_FOUND + ": " + venueManager.getUsername());
