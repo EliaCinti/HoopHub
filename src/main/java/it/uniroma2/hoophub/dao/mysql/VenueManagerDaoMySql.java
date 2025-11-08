@@ -1,8 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
@@ -17,7 +15,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * MySQL implementation of the VenueManagerDao interface.
@@ -35,11 +32,9 @@ import java.util.logging.Logger;
  * </p>
  *
  * @see VenueManagerDao
- * @see AbstractObservableDao
+ * @see AbstractMySqlDao
  */
-public class VenueManagerDaoMySql extends AbstractObservableDao implements VenueManagerDao {
-
-    private static final Logger logger = Logger.getLogger(VenueManagerDaoMySql.class.getName());
+public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManagerDao {
 
     private final UserDao userDao;
 
@@ -69,7 +64,6 @@ public class VenueManagerDaoMySql extends AbstractObservableDao implements Venue
 
     // Error messages
     private static final String ERR_NULL_VENUE_MANAGER_BEAN = "VenueManagerBean cannot be null";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
     private static final String ERR_NULL_VENUE_MANAGER = "VenueManager cannot be null";
     private static final String ERR_VENUE_MANAGER_NOT_FOUND = "VenueManager not found";
 
@@ -337,33 +331,6 @@ public class VenueManagerDaoMySql extends AbstractObservableDao implements Venue
                 .build();
     }
 
-    /**
-     * Rolls back a transaction safely, logging any errors that occur.
-     */
-    private void rollbackTransaction(Connection conn) {
-        if (conn != null) {
-            try {
-                conn.rollback();
-                logger.info("Transaction rolled back");
-            } catch (SQLException ex) {
-                logger.log(Level.SEVERE, "Error rolling back transaction", ex);
-            }
-        }
-    }
-
-    /**
-     * Resets auto-commit to true safely, logging any errors that occur.
-     */
-    private void resetAutoCommit(Connection conn) {
-        if (conn != null) {
-            try {
-                conn.setAutoCommit(true);
-            } catch (SQLException ex) {
-                logger.log(Level.SEVERE, "Error resetting auto-commit", ex);
-            }
-        }
-    }
-
     // ========== VALIDATION METHODS ==========
 
     private void validateVenueManagerBeanInput(VenueManagerBean venueManagerBean) {
@@ -372,21 +339,9 @@ public class VenueManagerDaoMySql extends AbstractObservableDao implements Venue
         }
     }
 
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
-        }
-    }
-
     private void validateVenueManagerInput(VenueManager venueManager) {
         if (venueManager == null) {
             throw new IllegalArgumentException(ERR_NULL_VENUE_MANAGER);
-        }
-    }
-
-    private void validateUserBeanInput(UserBean userBean) {
-        if (userBean == null) {
-            throw new IllegalArgumentException("UserBean cannot be null");
         }
     }
 }
