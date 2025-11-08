@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.sync;
 
+import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueBean;
@@ -111,8 +112,7 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                 }
                 case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
-                    // Booking already contains Fan reference, no need for separate username
-                    targetDao.saveBooking((Booking) entity);
+                    targetDao.saveBooking((BookingBean) entity);
                 }
                 default -> logger.log(Level.WARNING, "Sync INSERT not handled for entity type: {0}", entityType);
             }
@@ -170,11 +170,15 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                 }
                 case SyncConstants.VENUE -> {
                     VenueDao targetDao = getTargetFactory().getVenueDao();
-                    targetDao.updateVenue((Venue) entity);
+                    Venue venue = (Venue) entity;
+                    VenueBean venueBean = createVenueBeanFromModel(venue);
+                    targetDao.updateVenue(venueBean);
                 }
                 case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
-                    targetDao.updateBooking((Booking) entity);
+                    Booking booking = (Booking) entity;
+                    BookingBean bookingBean = createBookingBeanFromModel(booking);
+                    targetDao.updateBooking(bookingBean);
                 }
                 default -> logger.log(Level.WARNING, "Sync UPDATE not handled for entity type: {0}", entityType);
             }
@@ -258,17 +262,59 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
 
     private void deleteVenue(String entityId, DaoFactoryFacade factory) throws DAOException {
         int venueId = Integer.parseInt(entityId);
-        Venue venue = factory.getVenueDao().retrieveVenue(venueId);
-        if (venue != null) {
-            factory.getVenueDao().deleteVenue(venue);
-        }
+        factory.getVenueDao().deleteVenue(venueId);
     }
 
     private void deleteBooking(String entityId, DaoFactoryFacade factory) throws DAOException {
         int bookingId = Integer.parseInt(entityId);
-        Booking booking = factory.getBookingDao().retrieveBooking(bookingId);
-        if (booking != null) {
-            factory.getBookingDao().deleteBooking(booking);
-        }
+        factory.getBookingDao().deleteBooking(bookingId);
+    }
+
+    // ========== Helper Methods for Bean Creation ==========
+
+    /**
+     * Creates a VenueBean from a Venue model object.
+     * <p>
+     * This helper method extracts primitive values from the Venue model
+     * to create a lightweight Bean suitable for DAO operations.
+     * </p>
+     *
+     * @param venue The Venue model object
+     * @return A VenueBean with data from the model
+     */
+    private VenueBean createVenueBeanFromModel(Venue venue) {
+        return new VenueBean.Builder()
+                .id(venue.getId())
+                .name(venue.getName())
+                .type(venue.getType())
+                .address(venue.getAddress())
+                .city(venue.getCity())
+                .maxCapacity(venue.getMaxCapacity())
+                .venueManagerUsername(venue.getVenueManagerUsername())
+                .build();
+    }
+
+    /**
+     * Creates a BookingBean from a Booking model object.
+     * <p>
+     * This helper method extracts primitive values from the Booking model
+     * to create a lightweight Bean suitable for DAO operations.
+     * </p>
+     *
+     * @param booking The Booking model object
+     * @return A BookingBean with data from the model
+     */
+    private BookingBean createBookingBeanFromModel(Booking booking) {
+        return new BookingBean.Builder()
+                .id(booking.getId())
+                .gameDate(booking.getGameDate())
+                .gameTime(booking.getGameTime())
+                .homeTeam(booking.getHomeTeam())
+                .awayTeam(booking.getAwayTeam())
+                .venueId(booking.getVenueId())
+                .fanUsername(booking.getFanUsername())
+                .status(booking.getStatus())
+                .notified(booking.isNotified())
+                .build();
     }
 }
