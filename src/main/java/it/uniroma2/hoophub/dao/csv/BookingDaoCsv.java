@@ -48,6 +48,10 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             "venue_id", "fan_username", "status", "notified"
     };
 
+    // ========== CONSTANTS ==========
+    private static final String BOOKING = "Booking";
+    private static final String FAN_USERNAME = "Fan username";
+
     // ========== COLUMN INDICES ==========
 
     private static final int COL_ID = 0;
@@ -101,7 +105,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         CsvUtilities.writeFile(csvFile, newRow);
 
         logger.log(Level.INFO, "Booking saved successfully: {0}", id);
-        notifyObservers(DaoOperation.INSERT, "Booking", String.valueOf(id), bookingBean);
+        notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), bookingBean);
     }
 
     @Override
@@ -131,7 +135,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
     @Override
     public synchronized List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
-        validateNotNullOrEmpty(fanUsername, "Fan username");
+        validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
 
         List<Booking> bookings = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
@@ -203,7 +207,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
     @Override
     public synchronized List<Booking> retrieveBookingsByStatus(String fanUsername, BookingStatus status) throws DAOException {
-        validateNotNullOrEmpty(fanUsername, "Fan username");
+        validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
         validateNotNull(status, "BookingStatus");
 
         List<Booking> bookings = new ArrayList<>();
@@ -225,7 +229,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
     @Override
     public synchronized List<Booking> retrieveUnnotifiedBookings(String fanUsername) throws DAOException {
-        validateNotNullOrEmpty(fanUsername, "Fan username");
+        validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
 
         List<Booking> bookings = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
@@ -270,13 +274,13 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "Booking", "update", bookingBean.getId()));
+                    BOOKING, "update", bookingBean.getId()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
-        notifyObservers(DaoOperation.UPDATE, "Booking", String.valueOf(bookingBean.getId()), bookingBean);
+        notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
     }
 
     @Override
@@ -296,13 +300,13 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "Booking", "deletion", bookingId));
+                    BOOKING, "deletion", bookingId));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
-        notifyObservers(DaoOperation.DELETE, "Booking", String.valueOf(bookingId), null);
+        notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
     }
 
     @Override
@@ -352,7 +356,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
                     .bookingList(new ArrayList<>())
                     .build();
 
-            // Create stub Venue (only ID populated, other fields placeholder)
+            // Create stub Venue (only ID populated, other fields' placeholder)
             Venue stubVenue = new Venue.Builder()
                     .id(venueId)
                     .name("") // Placeholder

@@ -164,7 +164,7 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
      */
     protected synchronized String[] findRowByValue(int columnIndex, String value) throws DAOException {
         if (value == null) {
-            return null;
+            return new String[0];
         }
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
@@ -177,7 +177,7 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
             }
         }
 
-        return null;
+        return new String[0];
     }
 
     /**

@@ -449,7 +449,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
         List<String[]> toKeep = new ArrayList<>();
 
         // Keep header
-        toKeep.add(data.get(CsvDaoConstants.HEADER_ROW));
+        toKeep.add(data.getFirst());
 
         int count = 0;
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
@@ -482,7 +482,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
         List<String[]> toKeep = new ArrayList<>();
 
         // Keep header
-        toKeep.add(data.get(CsvDaoConstants.HEADER_ROW));
+        toKeep.add(data.getFirst());
 
         int count = 0;
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {

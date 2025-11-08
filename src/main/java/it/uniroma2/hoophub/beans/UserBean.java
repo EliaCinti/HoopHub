@@ -39,6 +39,7 @@ public class UserBean extends CredentialsBean {
             return (T) this;
         }
 
+        @Override
         public UserBean build() {
             return new UserBean(this);
         }

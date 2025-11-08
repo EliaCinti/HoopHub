@@ -104,26 +104,28 @@ public class Main extends Application {
         String interfaceType = args.length > 1 ? args[1].toLowerCase() : "gui";
         PersistenceType primaryPersistenceType;
 
-        logger.info("Starting MindHarbor with persistence: " + persistenceType + ", interface: " + interfaceType);
+        logger.log(Level.INFO,
+                "Starting HoopHub with persistence: {0}, interface: {1}",
+                new Object[]{persistenceType, interfaceType});
 
         if ("mysql".equals(persistenceType)) {
             daoFactoryFacade.setPersistenceType(PersistenceType.MYSQL);
             try {
                 boolean connectionOk = ConnectionFactory.testConnection();
                 if (!connectionOk) {
-                    logger.warning("Database connection test failed. Switching to CSV persistence.");
+                    logger.log(Level.WARNING, "Database connection test failed. Switching to CSV persistence.");
                     primaryPersistenceType = PersistenceType.CSV;
                 } else {
-                    logger.info("Database connection test successful");
+                    logger.log(Level.INFO, "Database connection test successful");
                     primaryPersistenceType = PersistenceType.MYSQL;
                 }
             } catch (Exception e) {
-                logger.log(Level.WARNING, "Error testing database connection: " + e.getMessage());
+                logger.log(Level.WARNING, "Error testing database connection", e);
                 logger.info("Switching to CSV persistence due to connection error");
                 primaryPersistenceType = PersistenceType.CSV;
             }
         } else {
-            logger.info("Using CSV persistence as specified");
+            logger.log(Level.INFO, "Using CSV persistence as specified");
             primaryPersistenceType = PersistenceType.CSV;
         }
 
@@ -133,7 +135,7 @@ public class Main extends Application {
         daoFactoryFacade.setPersistenceType(primaryPersistenceType);
 
         if ("gui".equals(interfaceType)) {
-            logger.info("Launching GUI interface");
+            logger.log(Level.INFO, "Launching GUI interface");
             launch(args);
         } else {
             logger.info("Command-line interface requested, but not yet implemented");
