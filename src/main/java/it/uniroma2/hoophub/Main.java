@@ -6,6 +6,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
 import it.uniroma2.hoophub.utilities.FontLoader;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
+import it.uniroma2.hoophub.view.CliApplication;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import java.util.logging.Level;
@@ -13,16 +14,17 @@ import java.util.logging.Logger;
 import java.io.IOException;
 
 /**
- * Main class serves as the entry point for the MindHarbor application.
+ * Main class serves as the entry point for the HoopHub application.
  * <p>
  * This class extends {@link javafx.application.Application} to create a JavaFX application
- * that provides a user interface for managing psychological appointments and patient-psychologist
- * interactions. It handles application initialization, persistence type configuration,
- * and proper resource cleanup on shutdown.
+ * that provides a user interface for managing basketball venue bookings. It handles
+ * application initialization, persistence type configuration, and proper resource cleanup
+ * on shutdown.
  * </p>
  * <p>
  * The application supports multiple persistence types (MySQL and CSV) with automatic
- * fallback mechanisms and can be configured via command-line arguments.
+ * fallback mechanisms, and multiple interfaces (GUI and CLI), configurable via
+ * command-line arguments.
  * </p>
  */
 public class Main extends Application {
@@ -45,7 +47,7 @@ public class Main extends Application {
         // Load custom fonts before loading FXML
         FontLoader.loadFonts();
         NavigatorSingleton navigator = NavigatorSingleton.getInstance(primaryStage);
-        navigator.gotoPage("/it/uniroma2/mindharbor/fxml/Login.fxml");
+        navigator.gotoPage("/it/uniroma2/hoophub/fxml/Login.fxml");
     }
 
     /**
@@ -72,12 +74,12 @@ public class Main extends Application {
     }
 
     /**
-     * Main method to configure and launch the MindHarbor application.
+     * Main method to configure and launch the HoopHub application.
      * <p>
      * This method processes command-line arguments to determine persistence and interface types,
      * configures the DAO factory, tests database connectivity with automatic fallback to CSV
      * if MySQL is unavailable, performs initial data synchronization, and launches the
-     * appropriate user interface.
+     * appropriate user interface (GUI or CLI).
      * </p>
      * <p>
      * <strong>Persistence Logic:</strong>
@@ -87,14 +89,20 @@ public class Main extends Application {
      * <li>Performs initial sync between persistence types if needed</li>
      * </ul>
      * </p>
+     * <p>
+     * <strong>Interface Logic:</strong>
+     * <ul>
+     * <li>If "gui" is specified, launches JavaFX GUI interface</li>
+     * <li>If "cli" is specified, launches Command Line Interface</li>
+     * </ul>
+     * </p>
      *
      * @param args Command-line arguments to configure the application:
      *             <ul>
      *             <li><strong>args[0]</strong> (optional): Persistence type.
      *                 Values: "mysql" or "csv". Default: "mysql"</li>
      *             <li><strong>args[1]</strong> (optional): Interface type.
-     *                 Values: "gui" or "cli". Default: "gui".
-     *                 Note: CLI interface is not yet implemented</li>
+     *                 Values: "gui" or "cli". Default: "gui"</li>
      *             </ul>
      */
     public static void main(String[] args) {
@@ -138,8 +146,8 @@ public class Main extends Application {
             logger.log(Level.INFO, "Launching GUI interface");
             launch(args);
         } else {
-            logger.info("Command-line interface requested, but not yet implemented");
-            // @TODO Placeholder for CLI logic
+            logger.info("Launching CLI interface");
+            new CliApplication().start();
         }
     }
 }
