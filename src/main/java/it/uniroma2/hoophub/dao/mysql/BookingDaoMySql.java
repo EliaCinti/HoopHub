@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
+import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
@@ -7,7 +8,6 @@ import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.Venue;
-import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.BookingStatus;
 
@@ -101,11 +101,10 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             "SELECT COALESCE(MAX(id), 0) FROM bookings";
 
     // Error messages
-    private static final String ERR_NULL_BOOKING = "Booking cannot be null";
+    private static final String ERR_NULL_BOOKING_BEAN = "BookingBean cannot be null";
     private static final String ERR_INVALID_BOOKING_ID = "Booking ID must be positive";
-    private static final String ERR_NULL_FAN = "Fan cannot be null";
-    private static final String ERR_NULL_VENUE = "Venue cannot be null";
-    private static final String ERR_NULL_VENUE_MANAGER = "VenueManager cannot be null";
+    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
+    private static final String ERR_INVALID_VENUE_ID = "Venue ID must be positive";
     private static final String ERR_NULL_DATE = "Date cannot be null";
     private static final String ERR_NULL_STATUS = "Status cannot be null";
     private static final String ERR_BOOKING_NOT_FOUND = "Booking not found";
@@ -113,32 +112,32 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
     /**
      * {@inheritDoc}
      * <p>
-     * Extracts fan username and venue ID from the Booking object to save the relationship.
+     * Extracts fan username and venue ID from the BookingBean to save the relationship.
      * After successful insertion, observers are notified for cross-persistence sync.
      * </p>
      */
     @Override
-    public void saveBooking(Booking booking) throws DAOException {
-        validateBookingInput(booking);
+    public void saveBooking(BookingBean bookingBean) throws DAOException {
+        validateBookingBeanInput(bookingBean);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
                      Statement.RETURN_GENERATED_KEYS)) {
 
-            stmt.setDate(1, Date.valueOf(booking.getGameDate()));
-            stmt.setTime(2, Time.valueOf(booking.getGameTime()));
-            stmt.setString(3, booking.getHomeTeam());
-            stmt.setString(4, booking.getAwayTeam());
-            stmt.setInt(5, booking.getVenueId());
-            stmt.setString(6, booking.getFanUsername());
-            stmt.setString(7, booking.getStatus().name());
-            stmt.setBoolean(8, booking.isNotified());
+            stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
+            stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
+            stmt.setString(3, bookingBean.getHomeTeam());
+            stmt.setString(4, bookingBean.getAwayTeam());
+            stmt.setInt(5, bookingBean.getVenueId());
+            stmt.setString(6, bookingBean.getFanUsername());
+            stmt.setString(7, bookingBean.getStatus().name());
+            stmt.setBoolean(8, bookingBean.isNotified());
 
             int affectedRows = stmt.executeUpdate();
 
             if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking saved successfully: {0}", booking.getId());
-                notifyObservers(DaoOperation.INSERT, "Booking", String.valueOf(booking.getId()), booking);
+                logger.log(Level.INFO, "Booking saved successfully: {0}", bookingBean.getId());
+                notifyObservers(DaoOperation.INSERT, "Booking", String.valueOf(bookingBean.getId()), bookingBean);
             }
 
         } catch (SQLException e) {
@@ -203,15 +202,15 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public List<Booking> retrieveBookingsByFan(Fan fan) throws DAOException {
-        validateFanInput(fan);
+    public List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
+        validateUsernameInput(fanUsername);
 
         List<Booking> bookings = new ArrayList<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
 
-            stmt.setString(1, fan.getUsername());
+            stmt.setString(1, fanUsername);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -220,7 +219,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             }
 
             logger.log(Level.INFO, "Retrieved {0} bookings for fan {1}",
-                    new Object[]{bookings.size(), fan.getUsername()});
+                    new Object[]{bookings.size(), fanUsername});
             return bookings;
 
         } catch (SQLException e) {
@@ -233,15 +232,15 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public List<Booking> retrieveBookingsByVenue(Venue venue) throws DAOException {
-        validateVenueInput(venue);
+    public List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
+        validateVenueIdInput(venueId);
 
         List<Booking> bookings = new ArrayList<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
 
-            stmt.setInt(1, venue.getId());
+            stmt.setInt(1, venueId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -250,7 +249,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             }
 
             logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
-                    new Object[]{bookings.size(), venue.getId()});
+                    new Object[]{bookings.size(), venueId});
             return bookings;
 
         } catch (SQLException e) {
@@ -267,15 +266,15 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * </p>
      */
     @Override
-    public List<Booking> retrieveBookingsByVenueManager(VenueManager venueManager) throws DAOException {
-        validateVenueManagerInput(venueManager);
+    public List<Booking> retrieveBookingsByVenueManager(String venueManagerUsername) throws DAOException {
+        validateUsernameInput(venueManagerUsername);
 
         List<Booking> bookings = new ArrayList<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
 
-            stmt.setString(1, venueManager.getUsername());
+            stmt.setString(1, venueManagerUsername);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -284,7 +283,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             }
 
             logger.log(Level.INFO, "Retrieved {0} bookings for venue manager {1}",
-                    new Object[]{bookings.size(), venueManager.getUsername()});
+                    new Object[]{bookings.size(), venueManagerUsername});
             return bookings;
 
         } catch (SQLException e) {
@@ -327,8 +326,8 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public List<Booking> retrieveBookingsByStatus(Fan fan, BookingStatus status) throws DAOException {
-        validateFanInput(fan);
+    public List<Booking> retrieveBookingsByStatus(String fanUsername, BookingStatus status) throws DAOException {
+        validateUsernameInput(fanUsername);
         validateStatusInput(status);
 
         List<Booking> bookings = new ArrayList<>();
@@ -336,7 +335,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
 
-            stmt.setString(1, fan.getUsername());
+            stmt.setString(1, fanUsername);
             stmt.setString(2, status.name());
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -346,7 +345,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             }
 
             logger.log(Level.INFO, "Retrieved {0} {1} bookings for fan {2}",
-                    new Object[]{bookings.size(), status, fan.getUsername()});
+                    new Object[]{bookings.size(), status, fanUsername});
             return bookings;
 
         } catch (SQLException e) {
@@ -359,15 +358,15 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public List<Booking> retrieveUnnotifiedBookings(Fan fan) throws DAOException {
-        validateFanInput(fan);
+    public List<Booking> retrieveUnnotifiedBookings(String fanUsername) throws DAOException {
+        validateUsernameInput(fanUsername);
 
         List<Booking> bookings = new ArrayList<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
 
-            stmt.setString(1, fan.getUsername());
+            stmt.setString(1, fanUsername);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -376,7 +375,7 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
             }
 
             logger.log(Level.INFO, "Retrieved {0} unnotified bookings for fan {1}",
-                    new Object[]{bookings.size(), fan.getUsername()});
+                    new Object[]{bookings.size(), fanUsername});
             return bookings;
 
         } catch (SQLException e) {
@@ -389,28 +388,28 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public void updateBooking(Booking booking) throws DAOException {
-        validateBookingInput(booking);
+    public void updateBooking(BookingBean bookingBean) throws DAOException {
+        validateBookingBeanInput(bookingBean);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
 
-            stmt.setDate(1, Date.valueOf(booking.getGameDate()));
-            stmt.setTime(2, Time.valueOf(booking.getGameTime()));
-            stmt.setString(3, booking.getHomeTeam());
-            stmt.setString(4, booking.getAwayTeam());
-            stmt.setInt(5, booking.getVenueId());
-            stmt.setString(6, booking.getStatus().name());
-            stmt.setBoolean(7, booking.isNotified());
-            stmt.setInt(8, booking.getId());
+            stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
+            stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
+            stmt.setString(3, bookingBean.getHomeTeam());
+            stmt.setString(4, bookingBean.getAwayTeam());
+            stmt.setInt(5, bookingBean.getVenueId());
+            stmt.setString(6, bookingBean.getStatus().name());
+            stmt.setBoolean(7, bookingBean.isNotified());
+            stmt.setInt(8, bookingBean.getId());
 
             int affectedRows = stmt.executeUpdate();
 
             if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking updated successfully: {0}", booking.getId());
-                notifyObservers(DaoOperation.UPDATE, "Booking", String.valueOf(booking.getId()), booking);
+                logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
+                notifyObservers(DaoOperation.UPDATE, "Booking", String.valueOf(bookingBean.getId()), bookingBean);
             } else {
-                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + booking.getId());
+                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingBean.getId());
             }
 
         } catch (SQLException e) {
@@ -423,21 +422,21 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public void deleteBooking(Booking booking) throws DAOException {
-        validateBookingInput(booking);
+    public void deleteBooking(int bookingId) throws DAOException {
+        validateBookingIdInput(bookingId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
 
-            stmt.setInt(1, booking.getId());
+            stmt.setInt(1, bookingId);
 
             int affectedRows = stmt.executeUpdate();
 
             if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking deleted successfully: {0}", booking.getId());
-                notifyObservers(DaoOperation.DELETE, "Booking", String.valueOf(booking.getId()), null);
+                logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
+                notifyObservers(DaoOperation.DELETE, "Booking", String.valueOf(bookingId), null);
             } else {
-                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + booking.getId());
+                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingId);
             }
 
         } catch (SQLException e) {
@@ -450,13 +449,13 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
      * {@inheritDoc}
      */
     @Override
-    public boolean bookingExists(Booking booking) throws DAOException {
-        validateBookingInput(booking);
+    public boolean bookingExists(int bookingId) throws DAOException {
+        validateBookingIdInput(bookingId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
 
-            stmt.setInt(1, booking.getId());
+            stmt.setInt(1, bookingId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -534,9 +533,9 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
 
     // ========== VALIDATION METHODS ==========
 
-    private void validateBookingInput(Booking booking) {
-        if (booking == null) {
-            throw new IllegalArgumentException(ERR_NULL_BOOKING);
+    private void validateBookingBeanInput(BookingBean bookingBean) {
+        if (bookingBean == null) {
+            throw new IllegalArgumentException(ERR_NULL_BOOKING_BEAN);
         }
     }
 
@@ -546,21 +545,15 @@ public class BookingDaoMySql extends AbstractObservableDao implements BookingDao
         }
     }
 
-    private void validateFanInput(Fan fan) {
-        if (fan == null) {
-            throw new IllegalArgumentException(ERR_NULL_FAN);
+    private void validateUsernameInput(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException(ERR_NULL_USERNAME);
         }
     }
 
-    private void validateVenueInput(Venue venue) {
-        if (venue == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE);
-        }
-    }
-
-    private void validateVenueManagerInput(VenueManager venueManager) {
-        if (venueManager == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE_MANAGER);
+    private void validateVenueIdInput(int venueId) {
+        if (venueId <= 0) {
+            throw new IllegalArgumentException(ERR_INVALID_VENUE_ID);
         }
     }
 

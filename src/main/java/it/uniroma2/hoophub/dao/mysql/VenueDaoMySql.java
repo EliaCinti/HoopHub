@@ -78,8 +78,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
     // Error messages
     private static final String ERR_NULL_VENUE_BEAN = "VenueBean cannot be null";
     private static final String ERR_INVALID_VENUE_ID = "Venue ID must be positive";
-    private static final String ERR_NULL_VENUE = "Venue cannot be null";
-    private static final String ERR_NULL_VENUE_MANAGER = "VenueManager cannot be null";
+    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
     private static final String ERR_NULL_CITY = "City cannot be null or empty";
     private static final String ERR_VENUE_NOT_FOUND = "Venue not found";
 
@@ -183,20 +182,17 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Extracts the username from the VenueManager object to query venues.
-     * </p>
      */
     @Override
-    public List<Venue> retrieveVenuesByManager(VenueManager venueManager) throws DAOException {
-        validateVenueManagerInput(venueManager);
+    public List<Venue> retrieveVenuesByManager(String venueManagerUsername) throws DAOException {
+        validateUsernameInput(venueManagerUsername);
 
         List<Venue> venues = new ArrayList<>();
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
 
-            stmt.setString(1, venueManager.getUsername());
+            stmt.setString(1, venueManagerUsername);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -205,7 +201,7 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
             }
 
             logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
-                    new Object[]{venues.size(), venueManager.getUsername()});
+                    new Object[]{venues.size(), venueManagerUsername});
             return venues;
 
         } catch (SQLException e) {
@@ -252,26 +248,26 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      * </p>
      */
     @Override
-    public void updateVenue(Venue venue) throws DAOException {
-        validateVenueInput(venue);
+    public void updateVenue(VenueBean venueBean) throws DAOException {
+        validateVenueBeanInput(venueBean);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
 
-            stmt.setString(1, venue.getName());
-            stmt.setString(2, venue.getType().name());
-            stmt.setString(3, venue.getAddress());
-            stmt.setString(4, venue.getCity());
-            stmt.setInt(5, venue.getMaxCapacity());
-            stmt.setInt(6, venue.getId());
+            stmt.setString(1, venueBean.getName());
+            stmt.setString(2, venueBean.getType().name());
+            stmt.setString(3, venueBean.getAddress());
+            stmt.setString(4, venueBean.getCity());
+            stmt.setInt(5, venueBean.getMaxCapacity());
+            stmt.setInt(6, venueBean.getId());
 
             int affectedRows = stmt.executeUpdate();
 
             if (affectedRows > 0) {
-                logger.log(Level.INFO, "Venue updated successfully: {0}", venue.getId());
-                notifyObservers(DaoOperation.UPDATE, "Venue", String.valueOf(venue.getId()), venue);
+                logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
+                notifyObservers(DaoOperation.UPDATE, "Venue", String.valueOf(venueBean.getId()), venueBean);
             } else {
-                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venue.getId());
+                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
             }
 
         } catch (SQLException e) {
@@ -284,21 +280,21 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      * {@inheritDoc}
      */
     @Override
-    public void deleteVenue(Venue venue) throws DAOException {
-        validateVenueInput(venue);
+    public void deleteVenue(int venueId) throws DAOException {
+        validateVenueIdInput(venueId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
 
-            stmt.setInt(1, venue.getId());
+            stmt.setInt(1, venueId);
 
             int affectedRows = stmt.executeUpdate();
 
             if (affectedRows > 0) {
-                logger.log(Level.INFO, "Venue deleted successfully: {0}", venue.getId());
-                notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venue.getId()), null);
+                logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
+                notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venueId), null);
             } else {
-                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venue.getId());
+                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
             }
 
         } catch (SQLException e) {
@@ -311,13 +307,13 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
      * {@inheritDoc}
      */
     @Override
-    public boolean venueExists(Venue venue) throws DAOException {
-        validateVenueInput(venue);
+    public boolean venueExists(int venueId) throws DAOException {
+        validateVenueIdInput(venueId);
 
         try (Connection conn = ConnectionFactory.getConnection();
              PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
 
-            stmt.setInt(1, venue.getId());
+            stmt.setInt(1, venueId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
@@ -400,15 +396,9 @@ public class VenueDaoMySql extends AbstractObservableDao implements VenueDao {
         }
     }
 
-    private void validateVenueInput(Venue venue) {
-        if (venue == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE);
-        }
-    }
-
-    private void validateVenueManagerInput(VenueManager venueManager) {
-        if (venueManager == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE_MANAGER);
+    private void validateUsernameInput(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException(ERR_NULL_USERNAME);
         }
     }
 
