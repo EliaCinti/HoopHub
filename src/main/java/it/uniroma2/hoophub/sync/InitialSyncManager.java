@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.sync;
 
+import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
@@ -190,8 +191,9 @@ public class InitialSyncManager {
                 factory.getVenueDao().saveVenue(bean);
             } else if (primaryVenue != null && !primaryVenue.equals(secondaryVenue)) {
                 logger.info("Sync Conflict: Different data for venue " + id + ". Primary source " + primary + " takes precedence.");
+                VenueBean beanToUpdate = createVenueBeanFromModel(primaryVenue);
                 factory.setPersistenceType(secondary);
-                factory.getVenueDao().updateVenue(primaryVenue);
+                factory.getVenueDao().updateVenue(beanToUpdate);
             }
         }
         // Rimosso il return
@@ -211,10 +213,10 @@ public class InitialSyncManager {
 
         for (Fan fan : syncedFans) {
             factory.setPersistenceType(primary);
-            Map<Integer, Booking> primaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan));
+            Map<Integer, Booking> primaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan.getUsername()));
 
             factory.setPersistenceType(secondary);
-            Map<Integer, Booking> secondaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan));
+            Map<Integer, Booking> secondaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan.getUsername()));
 
             Set<Integer> allIds = new HashSet<>(primaryMap.keySet());
             allIds.addAll(secondaryMap.keySet());
@@ -225,18 +227,19 @@ public class InitialSyncManager {
 
                 if (primaryBooking != null && secondaryBooking == null) {
                     logger.info("Sync: Copying booking " + id + SyncConstants.FROM + primary + " to " + secondary);
+                    BookingBean beanToSave = createBookingBeanFromModel(primaryBooking);
                     factory.setPersistenceType(secondary);
-                    // Booking already contains Fan reference
-                    factory.getBookingDao().saveBooking(primaryBooking);
+                    factory.getBookingDao().saveBooking(beanToSave);
                 } else if (primaryBooking == null && secondaryBooking != null) {
                     logger.info("Sync: Copying booking " + id + SyncConstants.FROM + secondary + " to " + primary);
+                    BookingBean beanToSave = createBookingBeanFromModel(secondaryBooking);
                     factory.setPersistenceType(primary);
-                    // Booking already contains Fan reference
-                    factory.getBookingDao().saveBooking(secondaryBooking);
+                    factory.getBookingDao().saveBooking(beanToSave);
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
                     logger.info("Sync Conflict: Different data for booking " + id + SyncConstants.PRIMARY_SOURCE + primary + SyncConstants.TAKES_PRECEDENCE);
+                    BookingBean beanToUpdate = createBookingBeanFromModel(primaryBooking);
                     factory.setPersistenceType(secondary);
-                    factory.getBookingDao().updateBooking(primaryBooking);
+                    factory.getBookingDao().updateBooking(beanToUpdate);
                 }
             }
         }
@@ -328,7 +331,31 @@ public class InitialSyncManager {
                 .address(venue.getAddress())
                 .city(venue.getCity())
                 .maxCapacity(venue.getMaxCapacity())
-                .venueManagerUsername(venue.getVenueManagerUsername())  // Fixed: use getVenueManagerUsername()
+                .venueManagerUsername(venue.getVenueManagerUsername())
+                .build();
+    }
+
+    /**
+     * Creates a BookingBean from a Booking model object.
+     * <p>
+     * This helper method extracts primitive values from the Booking model
+     * to create a lightweight Bean suitable for DAO operations.
+     * </p>
+     *
+     * @param booking The Booking model object
+     * @return A BookingBean with data from the model
+     */
+    private BookingBean createBookingBeanFromModel(Booking booking) {
+        return new BookingBean.Builder()
+                .id(booking.getId())
+                .gameDate(booking.getGameDate())
+                .gameTime(booking.getGameTime())
+                .homeTeam(booking.getHomeTeam())
+                .awayTeam(booking.getAwayTeam())
+                .venueId(booking.getVenueId())
+                .fanUsername(booking.getFanUsername())
+                .status(booking.getStatus())
+                .notified(booking.isNotified())
                 .build();
     }
 }
