@@ -16,39 +16,8 @@ import it.uniroma2.hoophub.utilities.UserType;
  * <p>
  * Uses polymorphism to handle different user types (Fan, VenueManager) uniformly.
  * </p>
- * <p>
- * Session management is handled through a dedicated SessionManager instance,
- * following dependency injection principles for better testability.
- * </p>
  */
 public class LoginController extends AbstractController {
-
-    private final SessionManager sessionManager;
-
-    /**
-     * Constructs a new LoginController with default SessionManager.
-     * <p>
-     * This constructor creates a new SessionManager instance for handling
-     * user sessions. For testing purposes, use {@link #LoginController(SessionManager)}
-     * to inject a mock SessionManager.
-     * </p>
-     */
-    public LoginController() {
-        this.sessionManager = new SessionManager();
-    }
-
-    /**
-     * Constructs a new LoginController with a custom SessionManager.
-     * <p>
-     * This constructor allows dependency injection of a SessionManager instance,
-     * which is useful for testing with mock objects.
-     * </p>
-     *
-     * @param sessionManager The SessionManager instance to use for session handling
-     */
-    public LoginController(SessionManager sessionManager) {
-        this.sessionManager = sessionManager;
-    }
 
     /**
      * Attempts to log in a user using the provided credentials.
@@ -112,6 +81,6 @@ public class LoginController extends AbstractController {
      */
     @Override
     protected void storeUserSession(User user) throws UserSessionException {
-        sessionManager.login(user);
+        SessionManager.INSTANCE.login(user);
     }
 }
