@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.dao.mysql;
 
+import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.UserDao;
