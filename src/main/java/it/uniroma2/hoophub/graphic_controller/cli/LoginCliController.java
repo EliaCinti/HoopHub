@@ -6,7 +6,6 @@ import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.utilities.CliView;
-import it.uniroma2.hoophub.utilities.UserType;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -125,27 +124,5 @@ public class LoginCliController {
                 view.newLine();
             }
         }
-    }
-
-    /**
-     * Returns the next controller based on user type.
-     * <p>
-     * Uses polymorphism - the User.getUserType() method is implemented
-     * differently by Fan and VenueManager subclasses.
-     * </p>
-     *
-     * @param user The authenticated user
-     * @return The name of the next controller to load ("FanHomeCliController" or "VenueManagerHomeCliController")
-     */
-    public String getNextController(User user) {
-        UserType userType = user.getUserType();
-
-        if (userType == UserType.FAN) {
-            return "FanHomeCliController";
-        } else if (userType == UserType.VENUE_MANAGER) {
-            return "VenueManagerHomeCliController";
-        }
-
-        return null;
     }
 }

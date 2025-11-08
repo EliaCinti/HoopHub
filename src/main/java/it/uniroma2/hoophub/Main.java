@@ -1,15 +1,12 @@
 package it.uniroma2.hoophub;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
-import it.uniroma2.hoophub.graphic_controller.cli.LoginCliController;
-import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
-import it.uniroma2.hoophub.utilities.CliView;
 import it.uniroma2.hoophub.utilities.FontLoader;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
+import it.uniroma2.hoophub.view.CliApplication;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import java.util.logging.Level;
@@ -150,105 +147,7 @@ public class Main extends Application {
             launch(args);
         } else {
             logger.info("Launching CLI interface");
-            launchCli();
-        }
-    }
-
-    /**
-     * Launches the Command Line Interface (CLI).
-     * <p>
-     * This method initializes the CLI view and login controller,
-     * handles the login flow, and manages the user session.
-     * </p>
-     */
-    private static void launchCli() {
-        CliView view = new CliView();
-
-        try {
-            // Show application banner
-            view.showBanner("🏀 HOOPHUB 🏀");
-            view.showInfo("Welcome to HoopHub - Basketball Venue Booking System");
-            view.showSeparator();
-
-            // Main CLI loop
-            boolean running = true;
-
-            while (running) {
-                // Show main menu
-                view.showMenu("MAIN MENU",
-                        "Login",
-                        "Exit");
-
-                String choice = view.readInput("\nSelect an option: ");
-
-                switch (choice) {
-                    case "1":
-                        handleCliLogin(view);
-                        break;
-                    case "2":
-                        running = false;
-                        view.newLine();
-                        view.showInfo("Thank you for using HoopHub!");
-                        view.showSuccess("Goodbye!");
-                        view.newLine();
-                        break;
-                    default:
-                        view.showWarning("Invalid option. Please select 1 or 2.");
-                        view.newLine();
-                }
-            }
-
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Unexpected error in CLI application", e);
-            view.showError("An unexpected error occurred: " + e.getMessage());
-            view.showInfo("Please restart the application");
-        } finally {
-            // Cleanup resources
-            view.close();
-
-            // Close database connection if using MySQL
-            if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {
-                try {
-                    ConnectionFactory.closeConnection();
-                    logger.info("Database connection closed successfully");
-                } catch (Exception e) {
-                    logger.log(Level.SEVERE, "Error closing database connection", e);
-                }
-            }
-        }
-    }
-
-    /**
-     * Handles the CLI login flow.
-     *
-     * @param view The CliView instance for console I/O
-     */
-    private static void handleCliLogin(CliView view) {
-        LoginCliController loginController = new LoginCliController(view);
-
-        User loggedUser = loginController.showLogin();
-
-        if (loggedUser != null) {
-            // Login successful - show next screen based on user type
-            String nextController = loginController.getNextController(loggedUser);
-
-            view.newLine();
-            view.showInfo("Loading " + loggedUser.getUserType() + " dashboard...");
-            view.showWarning("Note: Dashboard controllers not yet implemented");
-            view.showInfo("Next controller: " + nextController);
-            view.newLine();
-
-            // For now, just logout after showing the message
-            view.showInfo("Logging out...");
-
-            try {
-                SessionManager.INSTANCE.logout();
-                view.showSuccess("Logged out successfully");
-                view.newLine();
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Error during logout", e);
-                view.showWarning("Error during logout: " + e.getMessage());
-            }
+            new CliApplication().start();
         }
     }
 }
