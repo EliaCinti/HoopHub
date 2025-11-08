@@ -413,25 +413,18 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
     /**
      * {@inheritDoc}
+     * <p>
+     * This implementation uses the {@link AbstractCsvDao#deleteById(long, int)} helper method
+     * to eliminate code duplication and ensure correct CSV file handling.
+     * </p>
      */
     @Override
     public synchronized boolean deleteById(Long id) throws DAOException {
         validatePositiveId(id);
 
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            if (Long.parseLong(data.get(i)[COL_ID]) == id) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
+        boolean found = deleteById(id.longValue(), COL_ID);
 
         if (found) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
             logger.log(Level.INFO, "Notification deleted successfully: {0}", id);
         }
 
