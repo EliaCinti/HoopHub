@@ -12,7 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * LoginCliController manages the entire login use case for CLI.
+ * CliLoginGraphicController is the CLI graphic controller for the login use case.
  * <p>
  * This is a graphic controller for the Command Line Interface (CLI),
  * parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController}
@@ -20,15 +20,16 @@ import java.util.logging.Logger;
  * <ul>
  *   <li><strong>Model:</strong> User, CredentialsBean (domain objects)</li>
  *   <li><strong>View:</strong> CliView (handles formatted console I/O)</li>
- *   <li><strong>Controller:</strong> This class + LoginController (application controller)</li>
+ *   <li><strong>Graphic Controller:</strong> This class (CLI presentation logic)</li>
+ *   <li><strong>Application Controller:</strong> LoginController (business logic)</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Separation of Concerns:</strong>
+ * <strong>Naming Convention:</strong>
  * <ul>
- *   <li>LoginController - Application logic (authentication, session management)</li>
- *   <li>LoginCliController - Presentation logic (CLI-specific input/output)</li>
- *   <li>CliView - View utility (formatted console output)</li>
+ *   <li>GUI Graphic Controller: LoginGraphicController</li>
+ *   <li>CLI Graphic Controller: CliLoginGraphicController (this class)</li>
+ *   <li>Application Controller: LoginController (shared by both GUI and CLI)</li>
  * </ul>
  * </p>
  * <p>
@@ -41,14 +42,14 @@ import java.util.logging.Logger;
  * @see CliView
  * @see it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController
  */
-public class LoginCliController {
+public class CliLoginGraphicController {
 
     private final CliView view;
     private final LoginController loginController;
-    private static final Logger logger = Logger.getLogger(LoginCliController.class.getName());
+    private static final Logger logger = Logger.getLogger(CliLoginGraphicController.class.getName());
 
     /**
-     * Constructs a new LoginCliController with the specified view.
+     * Constructs a new CliLoginGraphicController with the specified view.
      * <p>
      * This constructor is called ONCE by CliApplication. The same instance
      * is reused for all login operations (no new instances created per login).
@@ -56,7 +57,7 @@ public class LoginCliController {
      *
      * @param view The CliView instance for formatted console I/O
      */
-    public LoginCliController(CliView view) {
+    public CliLoginGraphicController(CliView view) {
         this.view = view;
         this.loginController = new LoginController();
     }
@@ -156,11 +157,11 @@ public class LoginCliController {
      * <p>
      * This method determines what happens after successful login based on user type.
      * Currently shows a placeholder message and logs out the user since
-     * dashboard controllers are not yet implemented.
+     * dashboard graphic controllers are not yet implemented.
      * </p>
      * <p>
-     * In a complete implementation, this would delegate to FanHomeCliController
-     * or VenueManagerHomeCliController based on user type.
+     * In a complete implementation, this would delegate to CliFanHomeGraphicController
+     * or CliVenueManagerHomeGraphicController based on user type.
      * </p>
      *
      * @param user The authenticated user
@@ -168,15 +169,15 @@ public class LoginCliController {
     private void handlePostLogin(User user) {
         view.newLine();
         view.showInfo("Loading " + user.getUserType() + " dashboard...");
-        view.showWarning("Note: Dashboard controllers not yet implemented");
+        view.showWarning("Note: Dashboard graphic controllers not yet implemented");
 
-        // TODO: Implement navigation to dashboard controllers
+        // TODO: Implement navigation to dashboard graphic controllers
         // switch (user.getUserType()) {
         //     case FAN:
-        //         fanHomeController.execute();
+        //         cliFanHomeGraphicController.execute();
         //         break;
         //     case VENUE_MANAGER:
-        //         venueManagerHomeController.execute();
+        //         cliVenueManagerHomeGraphicController.execute();
         //         break;
         // }
 

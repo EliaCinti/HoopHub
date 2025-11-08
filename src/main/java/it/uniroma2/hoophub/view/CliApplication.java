@@ -1,7 +1,7 @@
 package it.uniroma2.hoophub.view;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
-import it.uniroma2.hoophub.graphic_controller.cli.LoginCliController;
+import it.uniroma2.hoophub.graphic_controller.cli.CliLoginGraphicController;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.utilities.CliView;
@@ -25,37 +25,37 @@ import java.util.logging.Logger;
  * It serves as the top-level View component for the CLI interface, following MVC pattern:
  * <ul>
  *   <li><strong>View:</strong> CliApplication + CliView (presentation layer)</li>
- *   <li><strong>Controller:</strong> LoginCliController (graphic controller for CLI)</li>
+ *   <li><strong>Graphic Controller:</strong> CliLoginGraphicController (CLI presentation logic)</li>
  *   <li><strong>Application Controller:</strong> LoginController (business logic)</li>
  *   <li><strong>Model:</strong> DAOs, entities, business objects</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Controller Lifecycle:</strong> Controllers are instantiated ONCE and reused
+ * <strong>Controller Lifecycle:</strong> Graphic controllers are instantiated ONCE and reused
  * throughout the application lifecycle (no new controller instances per operation).
  * Each controller manages its entire use case from start to finish.
  * </p>
  *
  * @see CliView
- * @see LoginCliController
+ * @see CliLoginGraphicController
  */
 public class CliApplication {
 
     private final CliView view;
-    private final LoginCliController loginController;
+    private final CliLoginGraphicController cliLoginGraphicController;
     private static final Logger logger = Logger.getLogger(CliApplication.class.getName());
 
     /**
      * Constructs a new CliApplication.
      * <p>
      * Initializes the CliView for formatted console I/O and creates
-     * controller instances (ONE instance per controller, reused throughout lifecycle).
+     * graphic controller instances (ONE instance per controller, reused throughout lifecycle).
      * </p>
      */
     public CliApplication() {
         this.view = new CliView();
-        // Create controller instances ONCE - they will be reused
-        this.loginController = new LoginCliController(view);
+        // Create graphic controller instances ONCE - they will be reused
+        this.cliLoginGraphicController = new CliLoginGraphicController(view);
     }
 
     /**
@@ -131,14 +131,14 @@ public class CliApplication {
     /**
      * Handles the login flow.
      * <p>
-     * Delegates to the LoginCliController instance (reused, not recreated).
-     * The controller manages the entire login use case from start to finish,
+     * Delegates to the CliLoginGraphicController instance (reused, not recreated).
+     * The graphic controller manages the entire login use case from start to finish,
      * including post-login navigation.
      * </p>
      */
     private void handleLogin() {
-        // Use the SAME controller instance (no new)
-        loginController.execute();
+        // Use the SAME graphic controller instance (no new)
+        cliLoginGraphicController.execute();
     }
 
     /**
