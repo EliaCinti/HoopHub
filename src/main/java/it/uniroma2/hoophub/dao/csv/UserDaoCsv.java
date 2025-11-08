@@ -2,7 +2,6 @@ package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.beans.CredentialsBean;
 import it.uniroma2.hoophub.beans.UserBean;
-import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.User;
@@ -10,98 +9,122 @@ import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
 import it.uniroma2.hoophub.utilities.PasswordUtils;
 
-import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * CSV implementation of the UserDao interface.
  * <p>
  * This class provides data access operations for User entities stored in CSV files.
- * It uses {@link CsvUtilities} for file I/O operations and extends {@link AbstractObservableDao}
- * to support the Observer pattern for cross-persistence synchronization.
+ * It extends {@link AbstractCsvDao} to leverage common functionality like file initialization,
+ * ID generation, and validation, eliminating code duplication across DAO implementations.
  * </p>
  * <p>
- * CSV file structure (users.csv):
+ * <strong>CSV File Structure (users.csv):</strong>
  * <pre>
  * username,password_hash,full_name,gender,user_type
  * john_doe,$2a$12$...,John Doe,Male,FAN
+ * jane_smith,$2a$12$...,Jane Smith,Female,VENUE_MANAGER
  * </pre>
  * </p>
  * <p>
- * Note: This implementation uses synchronized methods to prevent concurrent modification
- * issues when multiple threads access the CSV file.
+ * <strong>Security:</strong> Passwords are hashed using BCrypt (via {@link PasswordUtils})
+ * before being written to the CSV file. The DAO never stores or logs plain-text passwords.
+ * </p>
+ * <p>
+ * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
+ * modification issues when multiple threads access the CSV file.
+ * </p>
+ * <p>
+ * <strong>Observer Pattern:</strong> This DAO extends {@link AbstractCsvDao} (which extends
+ * {@link it.uniroma2.hoophub.dao.AbstractObservableDao}), so it notifies observers after
+ * successful INSERT, UPDATE, and DELETE operations for cross-persistence synchronization.
  * </p>
  *
- * @see UserDao
- * @see AbstractObservableDao
- * @see CsvUtilities
+ * @see UserDao Interface defining the contract
+ * @see AbstractCsvDao Base class providing common CSV functionality
+ * @see PasswordUtils Utility for secure password hashing and verification
+ * @see CsvUtilities Low-level CSV file operations
  */
-public class UserDaoCsv extends AbstractObservableDao implements UserDao {
+public class UserDaoCsv extends AbstractCsvDao implements UserDao {
 
-    private static final Logger logger = Logger.getLogger(UserDaoCsv.class.getName());
+    // ========== CSV CONFIGURATION ==========
 
-    // CSV File configuration
-    private static final String CSV_FILE_PATH = "data/users.csv";
+    private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "users.csv";
     private static final String[] CSV_HEADER = {"username", "password_hash", "full_name", "gender", "user_type"};
 
-    // Column indices for clarity and maintainability
+    // ========== COLUMN INDICES ==========
+
     private static final int COL_USERNAME = 0;
     private static final int COL_PASSWORD_HASH = 1;
     private static final int COL_FULL_NAME = 2;
     private static final int COL_GENDER = 3;
     private static final int COL_USER_TYPE = 4;
 
-    // Error messages
-    private static final String ERR_NULL_CREDENTIALS = "Credentials cannot be null";
-    private static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
-    private static final String ERR_NULL_USERBEAN = "UserBean cannot be null";
-    private static final String ERR_NULL_USER = "User cannot be null";
-    private static final String ERR_INVALID_CREDENTIALS = "Invalid username or password";
-    private static final String ERR_USERNAME_EXISTS = "Username already exists";
-
-    private final File csvFile;
+    // ========== CONSTRUCTOR ==========
 
     /**
      * Constructs a new UserDaoCsv and initializes the CSV file.
-     * Creates the file and directory structure if they don't exist.
+     * <p>
+     * The parent constructor ({@link AbstractCsvDao}) handles:
+     * <ul>
+     *   <li>Creating the File object</li>
+     *   <li>Creating parent directories if needed</li>
+     *   <li>Initializing the CSV file with headers if it doesn't exist</li>
+     *   <li>Setting up the logger</li>
+     * </ul>
+     * </p>
      */
     public UserDaoCsv() {
-        this.csvFile = new File(CSV_FILE_PATH);
-        initializeCsvFile();
+        super(CSV_FILE_PATH);
     }
+
+    @Override
+    protected String[] getHeader() {
+        return CSV_HEADER;
+    }
+
+    // ========== PUBLIC METHODS (UserDao Interface Implementation) ==========
 
     /**
      * {@inheritDoc}
+     * <p>
+     * This method performs authentication by:
+     * <ol>
+     *   <li>Looking up the user by username in the CSV file</li>
+     *   <li>Verifying the password using BCrypt (constant-time comparison)</li>
+     *   <li>If valid, setting the user type in the CredentialsBean</li>
+     *   <li>If invalid, throwing a DAOException</li>
+     * </ol>
+     * </p>
+     * <p>
+     * <strong>Security Note:</strong> This method uses {@link PasswordUtils#checkPassword}
+     * which performs constant-time comparison to prevent timing attacks.
+     * </p>
      */
     @Override
     public synchronized void validateUser(CredentialsBean credentials) throws DAOException {
-        validateCredentialsInput(credentials);
+        validateNotNull(credentials, "Credentials");
+        validateNotNullOrEmpty(credentials.getUsername(), "Username");
+        validateNotNullOrEmpty(credentials.getPassword(), "Password");
 
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        String[] userRow = findRowByValue(COL_USERNAME, credentials.getUsername());
 
-        // Skip header
-        for (int i = 1; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (row[COL_USERNAME].equals(credentials.getUsername())) {
-                String storedHash = row[COL_PASSWORD_HASH];
-
-                if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
-                    credentials.setType(row[COL_USER_TYPE]);
-                    logger.log(Level.INFO, "User validated successfully: {0}", credentials.getUsername());
-                    return;
-                }
-
-                logger.log(Level.WARNING, "Invalid password for user: {0}", credentials.getUsername());
-                throw new DAOException(ERR_INVALID_CREDENTIALS);
-            }
+        if (userRow == null) {
+            logger.log(Level.WARNING, "User not found: {0}", credentials.getUsername());
+            throw new DAOException("Invalid username or password");
         }
 
-        logger.log(Level.WARNING, "User not found: {0}", credentials.getUsername());
-        throw new DAOException(ERR_INVALID_CREDENTIALS);
+        String storedHash = userRow[COL_PASSWORD_HASH];
+
+        if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
+            credentials.setType(userRow[COL_USER_TYPE]);
+            logger.log(Level.INFO, "User validated successfully: {0}", credentials.getUsername());
+            return;
+        }
+
+        logger.log(Level.WARNING, "Invalid password for user: {0}", credentials.getUsername());
+        throw new DAOException("Invalid username or password");
     }
 
     /**
@@ -113,10 +136,15 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
      */
     @Override
     public synchronized void saveUser(UserBean userBean) throws DAOException {
-        validateUserBeanInput(userBean);
+        validateNotNull(userBean, "UserBean");
+        validateNotNullOrEmpty(userBean.getUsername(), "Username");
+        validateNotNullOrEmpty(userBean.getPassword(), "Password");
+        validateNotNullOrEmpty(userBean.getFullName(), "Full name");
+        validateNotNullOrEmpty(userBean.getGender(), "Gender");
+        validateNotNullOrEmpty(userBean.getType(), "User type");
 
         if (isUsernameTaken(userBean.getUsername())) {
-            throw new DAOException(ERR_USERNAME_EXISTS);
+            throw new DAOException("Username already exists: " + userBean.getUsername());
         }
 
         String hashedPassword = PasswordUtils.hashPassword(userBean.getPassword());
@@ -150,20 +178,8 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
      */
     @Override
     public synchronized String[] retrieveUser(String username) throws DAOException {
-        validateUsernameInput(username);
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        // Skip header
-        for (int i = 1; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (row[COL_USERNAME].equals(username)) {
-                return row;
-            }
-        }
-
-        return null;
+        validateNotNullOrEmpty(username, "Username");
+        return findRowByValue(COL_USERNAME, username);
     }
 
     /**
@@ -171,18 +187,8 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
      */
     @Override
     public synchronized boolean isUsernameTaken(String username) throws DAOException {
-        validateUsernameInput(username);
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        // Skip header
-        for (int i = 1; i < data.size(); i++) {
-            if (data.get(i)[COL_USERNAME].equals(username)) {
-                return true;
-            }
-        }
-
-        return false;
+        validateNotNullOrEmpty(username, "Username");
+        return findRowByValue(COL_USERNAME, username) != null;
     }
 
     /**
@@ -193,14 +199,16 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
      */
     @Override
     public synchronized void updateUser(User user, UserBean userBean) throws DAOException {
-        validateUserInput(user);
-        validateUserBeanInput(userBean);
+        validateNotNull(user, "User");
+        validateNotNull(userBean, "UserBean");
+        validateNotNullOrEmpty(userBean.getFullName(), "Full name");
+        validateNotNullOrEmpty(userBean.getGender(), "Gender");
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
         // Skip header, update matching row
-        for (int i = 1; i < data.size(); i++) {
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
             if (row[COL_USERNAME].equals(user.getUsername())) {
@@ -213,7 +221,8 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
         }
 
         if (!found) {
-            throw new DAOException("User not found for update: " + user.getUsername());
+            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
+                    "User", "update", user.getUsername()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
@@ -231,13 +240,13 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
      */
     @Override
     public synchronized void deleteUser(User user) throws DAOException {
-        validateUserInput(user);
+        validateNotNull(user, "User");
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
         // Skip header, find and remove matching row
-        for (int i = 1; i < data.size(); i++) {
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             if (data.get(i)[COL_USERNAME].equals(user.getUsername())) {
                 data.remove(i);
                 found = true;
@@ -246,68 +255,13 @@ public class UserDaoCsv extends AbstractObservableDao implements UserDao {
         }
 
         if (!found) {
-            throw new DAOException("User not found for deletion: " + user.getUsername());
+            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
+                    "User", "deletion", user.getUsername()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "User deleted successfully: {0}", user.getUsername());
         notifyObservers(DaoOperation.DELETE, "User", user.getUsername(), null);
-    }
-
-    // ========== PRIVATE HELPER METHODS ==========
-
-    /**
-     * Initializes the CSV file if it doesn't exist.
-     * Creates the directory structure and an empty file with headers.
-     */
-    private void initializeCsvFile() {
-        try {
-            if (!csvFile.exists()) {
-                // Create parent directories if they don't exist
-                File parentDir = csvFile.getParentFile();
-                if (parentDir != null && !parentDir.exists()) {
-                    boolean dirsCreated = parentDir.mkdirs();
-                    if (!dirsCreated) {
-                        logger.warning("Failed to create directories for CSV file");
-                    }
-                }
-
-                // Create file with header
-                List<String[]> emptyData = new ArrayList<>();
-                CsvUtilities.updateFile(csvFile, CSV_HEADER, emptyData);
-                logger.info("Initialized CSV file: " + CSV_FILE_PATH);
-            }
-        } catch (DAOException e) {
-            logger.log(Level.SEVERE, "Failed to initialize CSV file", e);
-        }
-    }
-
-    // ========== VALIDATION METHODS ==========
-
-    private void validateCredentialsInput(CredentialsBean credentials) {
-        if (credentials == null || credentials.getUsername() == null ||
-                credentials.getUsername().trim().isEmpty() ||
-                credentials.getPassword() == null || credentials.getPassword().trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_CREDENTIALS);
-        }
-    }
-
-    private void validateUsernameInput(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_USERNAME);
-        }
-    }
-
-    private void validateUserBeanInput(UserBean userBean) {
-        if (userBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_USERBEAN);
-        }
-    }
-
-    private void validateUserInput(User user) {
-        if (user == null) {
-            throw new IllegalArgumentException(ERR_NULL_USER);
-        }
     }
 }
