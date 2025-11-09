@@ -56,7 +56,7 @@ public class NavigatorSingleton {
      * Navigates to a new page by loading the specified FXML file.
      * This method initializes a new scene with the contents of the FXML file and displays it on a new stage.
      *
-     * @param fxmlPath the relative path to the FXML file to load, starting from the classpath root (for example, "/it/uniroma2/mindharbor/fxml/Login.fxml").
+     * @param fxmlPath the relative path to the FXML file to load, starting from the classpath root (for example, "/it/uniroma2/hoophub/fxml/Login.fxml").
      * @throws IOException if an error occurs while loading or parsing the FXML file.
      */
     public void gotoPage(String fxmlPath) throws IOException {
