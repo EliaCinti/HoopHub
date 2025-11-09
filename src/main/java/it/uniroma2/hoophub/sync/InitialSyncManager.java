@@ -187,32 +187,58 @@ public class InitialSyncManager {
         Set<String> allKeys = new HashSet<>(primaryMap.keySet());
         allKeys.addAll(secondaryMap.keySet());
 
+        logger.info("===== SYNC FANS DEBUG START =====");
         logger.info("Primary fans found: " + primaryMap.keySet());
         logger.info("Secondary fans found: " + secondaryMap.keySet());
+        logger.info("All keys to process: " + allKeys);
 
+        int iteration = 0;
         for (String key : allKeys) {
+            iteration++;
+            logger.info(">>> Iteration " + iteration + ": Processing key '" + key + "'");
+
             Fan primaryFan = primaryMap.get(key);
             Fan secondaryFan = secondaryMap.get(key);
 
+            logger.info("    primaryFan: " + (primaryFan != null ? primaryFan.getUsername() : "null"));
+            logger.info("    secondaryFan: " + (secondaryFan != null ? secondaryFan.getUsername() : "null"));
+
             if (primaryFan != null && secondaryFan == null) {
-                logger.info("Sync: Copying fan " + key + SyncConstants.FROM + primary + " to " + secondary);
+                logger.info(">>> CASE: Copy from primary to secondary");
+                logger.info("    Current factory persistence: " + factory.getPersistenceType());
+
                 FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
+
+                logger.info("    After createFanBeanFromModel, factory persistence: " + factory.getPersistenceType());
+                logger.info("    Bean username: " + beanToSave.getUsername());
+                logger.info("    Bean fullName: " + beanToSave.getFullName());
+
                 factory.setPersistenceType(secondary);
-                logger.info("About to save fan: " + beanToSave.getUsername());
+                logger.info("    Set factory to secondary (" + secondary + ")");
+                logger.info(">>> About to call saveFan() for: " + beanToSave.getUsername());
+
                 factory.getFanDao().saveFan(beanToSave);
-                logger.info("Successfully saved fan: " + beanToSave.getUsername());
+
+                logger.info(">>> Successfully saved fan: " + beanToSave.getUsername());
             } else if (primaryFan == null && secondaryFan != null) {
                 logger.info("Sync: Copying fan " + key + SyncConstants.FROM + secondary + " to " + primary);
                 FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
+                logger.info(">>> CASE: Update conflict");
                 logger.info("Sync Conflict: Different data for fan " + key + SyncConstants.FROM + primary + SyncConstants.TAKES_PRECEDENCE);
                 FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().updateFan(primaryFan, beanToUpdate);
+            } else {
+                logger.info(">>> CASE: Already in sync, skipping");
             }
+
+            logger.info("<<< Iteration " + iteration + " completed\n");
         }
+
+        logger.info("===== SYNC FANS DEBUG END =====");
 
         factory.setPersistenceType(primary);
         return factory.getFanDao().retrieveAllFans();
