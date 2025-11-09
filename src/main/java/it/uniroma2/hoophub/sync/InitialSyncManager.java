@@ -137,6 +137,16 @@ public class InitialSyncManager {
                     new String[]{"id", "user_id", "type", "title", "message", "booking_id", "is_read", "created_at"});
 
             logger.info("CSV data cleared successfully - all files reinitialized");
+
+            // Verify the files are actually empty by checking users.csv
+            DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+            factory.setPersistenceType(PersistenceType.CSV);
+            try {
+                List<Fan> csvFans = factory.getFanDao().retrieveAllFans();
+                logger.info("Verification after clearing: CSV fans count = " + csvFans.size());
+            } catch (DAOException e) {
+                logger.log(Level.WARNING, "Could not verify CSV clearing", e);
+            }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error during CSV data clearing", e);
             throw new DAOException("Failed to clear CSV data", e);
@@ -177,27 +187,58 @@ public class InitialSyncManager {
         Set<String> allKeys = new HashSet<>(primaryMap.keySet());
         allKeys.addAll(secondaryMap.keySet());
 
+        logger.info("===== SYNC FANS DEBUG START =====");
+        logger.info("Primary fans found: " + primaryMap.keySet());
+        logger.info("Secondary fans found: " + secondaryMap.keySet());
+        logger.info("All keys to process: " + allKeys);
+
+        int iteration = 0;
         for (String key : allKeys) {
+            iteration++;
+            logger.info(">>> Iteration " + iteration + ": Processing key '" + key + "'");
+
             Fan primaryFan = primaryMap.get(key);
             Fan secondaryFan = secondaryMap.get(key);
 
+            logger.info("    primaryFan: " + (primaryFan != null ? primaryFan.getUsername() : "null"));
+            logger.info("    secondaryFan: " + (secondaryFan != null ? secondaryFan.getUsername() : "null"));
+
             if (primaryFan != null && secondaryFan == null) {
-                logger.info("Sync: Copying fan " + key + SyncConstants.FROM + primary + " to " + secondary);
+                logger.info(">>> CASE: Copy from primary to secondary");
+                logger.info("    Current factory persistence: " + factory.getPersistenceType());
+
                 FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
+
+                logger.info("    After createFanBeanFromModel, factory persistence: " + factory.getPersistenceType());
+                logger.info("    Bean username: " + beanToSave.getUsername());
+                logger.info("    Bean fullName: " + beanToSave.getFullName());
+
                 factory.setPersistenceType(secondary);
+                logger.info("    Set factory to secondary (" + secondary + ")");
+                logger.info(">>> About to call saveFan() for: " + beanToSave.getUsername());
+
                 factory.getFanDao().saveFan(beanToSave);
+
+                logger.info(">>> Successfully saved fan: " + beanToSave.getUsername());
             } else if (primaryFan == null && secondaryFan != null) {
                 logger.info("Sync: Copying fan " + key + SyncConstants.FROM + secondary + " to " + primary);
                 FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
+                logger.info(">>> CASE: Update conflict");
                 logger.info("Sync Conflict: Different data for fan " + key + SyncConstants.FROM + primary + SyncConstants.TAKES_PRECEDENCE);
                 FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().updateFan(primaryFan, beanToUpdate);
+            } else {
+                logger.info(">>> CASE: Already in sync, skipping");
             }
+
+            logger.info("<<< Iteration " + iteration + " completed\n");
         }
+
+        logger.info("===== SYNC FANS DEBUG END =====");
 
         factory.setPersistenceType(primary);
         return factory.getFanDao().retrieveAllFans();
@@ -372,13 +413,14 @@ public class InitialSyncManager {
 
     private FanBean createFanBeanFromModel(Fan fan, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
         PersistenceType originalType = factory.getPersistenceType();
+        logger.info("Creating FanBean from model: fan.username=" + fan.getUsername() + ", originalType=" + originalType + ", sourcePersistence=" + sourcePersistence);
         try {
             factory.setPersistenceType(sourcePersistence);
             UserDao userDao = factory.getUserDao();
             String[] userInfo = userDao.retrieveUser(fan.getUsername());
             String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            return new FanBean.Builder()
+            FanBean bean = new FanBean.Builder()
                     .username(fan.getUsername())
                     .password(hashedPassword)
                     .fullName(fan.getFullName())
@@ -387,6 +429,8 @@ public class InitialSyncManager {
                     .favTeam(fan.getFavTeam())
                     .type("FAN")
                     .build();
+            logger.info("Created FanBean: username=" + bean.getUsername() + ", fullName=" + bean.getFullName());
+            return bean;
         } finally {
             factory.setPersistenceType(originalType);
         }
