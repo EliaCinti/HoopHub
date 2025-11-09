@@ -143,7 +143,8 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
         validateNotNullOrEmpty(userBean.getGender(), "Gender");
         validateNotNullOrEmpty(userBean.getType(), "User type");
 
-        if (isUsernameTaken(userBean.getUsername())) {
+        // Skip duplicate check during initial sync (SyncContext prevents observer loops already)
+        if (!it.uniroma2.hoophub.sync.SyncContext.isSyncing() && isUsernameTaken(userBean.getUsername())) {
             throw new DAOException("Username already exists: " + userBean.getUsername());
         }
 
