@@ -79,8 +79,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     public void validateUser(CredentialsBean credentials) throws DAOException {
         validateCredentialsInput(credentials);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_VALIDATE_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_VALIDATE_USER)) {
 
             stmt.setString(1, credentials.getUsername());
 
@@ -124,8 +124,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
             throw new DAOException(ERR_USERNAME_EXISTS);
         }
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_USER)) {
 
             String hashedPassword = PasswordUtils.hashPassword(userBean.getPassword());
 
@@ -165,8 +165,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     public String[] retrieveUser(String username) throws DAOException {
         validateUsernameInput(username);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_USER)) {
 
             stmt.setString(1, username);
 
@@ -196,8 +196,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     public boolean isUsernameTaken(String username) throws DAOException {
         validateUsernameInput(username);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_USERNAME)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_USERNAME)) {
 
             stmt.setString(1, username);
 
@@ -225,8 +225,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         validateUserInput(user);
         validateUserBeanInput(userBean);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_USER)) {
 
             stmt.setString(1, userBean.getFullName());
             stmt.setString(2, userBean.getGender());
@@ -259,8 +259,8 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     public void deleteUser(User user) throws DAOException {
         validateUserInput(user);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_USER)) {
 
             stmt.setString(1, user.getUsername());
 

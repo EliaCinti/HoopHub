@@ -143,8 +143,7 @@ public abstract class User {
         if (username.length() < 3) {
             throw new IllegalArgumentException("Username must be at least 3 characters");
         }
-        if (!username.matches("^\\p{Alnum}+$"))
-        {
+        if (!username.matches("^[\\p{Alnum}_]+$")) {
             throw new IllegalArgumentException("Username can only contain letters, numbers, and underscores");
         }
     }

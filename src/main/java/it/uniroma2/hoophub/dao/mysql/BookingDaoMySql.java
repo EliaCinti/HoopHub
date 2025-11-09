@@ -116,8 +116,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void saveBooking(BookingBean bookingBean) throws DAOException {
         validateBookingBeanInput(bookingBean);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
                      Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
@@ -152,8 +152,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public Booking retrieveBooking(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKING)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKING)) {
 
             stmt.setInt(1, bookingId);
 
@@ -177,8 +177,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public List<Booking> retrieveAllBookings() throws DAOException {
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_BOOKINGS);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_BOOKINGS);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -203,8 +203,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
 
             stmt.setString(1, fanUsername);
 
@@ -233,8 +233,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
 
             stmt.setInt(1, venueId);
 
@@ -267,8 +267,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
 
             stmt.setString(1, venueManagerUsername);
 
@@ -297,8 +297,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_DATE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_DATE)) {
 
             stmt.setDate(1, Date.valueOf(date));
 
@@ -328,8 +328,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
 
             stmt.setString(1, fanUsername);
             stmt.setString(2, status.name());
@@ -359,8 +359,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
 
             stmt.setString(1, fanUsername);
 
@@ -387,8 +387,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void updateBooking(BookingBean bookingBean) throws DAOException {
         validateBookingBeanInput(bookingBean);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
 
             stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
             stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
@@ -421,8 +421,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void deleteBooking(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
 
             stmt.setInt(1, bookingId);
 
@@ -448,8 +448,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public boolean bookingExists(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
 
             stmt.setInt(1, bookingId);
 
@@ -471,8 +471,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
      */
     @Override
     public int getNextBookingId() throws DAOException {
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next()) {

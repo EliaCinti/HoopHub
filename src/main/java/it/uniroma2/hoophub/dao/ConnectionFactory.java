@@ -102,10 +102,11 @@ public class ConnectionFactory {
         // Extract database name from URL (format: jdbc:mysql://host:port/database)
         String databaseName = extractDatabaseName(connectionUrl);
         if (databaseName != null && !databaseName.isEmpty()) {
-            try (var statement = connection.createStatement()) {
-                statement.execute("USE " + databaseName);
-                logger.info("Database schema '" + databaseName + "' selected successfully");
-            }
+            // Don't use try-with-resources here to avoid closing the shared connection
+            var statement = connection.createStatement();
+            statement.execute("USE " + databaseName);
+            statement.close();
+            logger.info("Database schema '" + databaseName + "' selected successfully");
         }
 
         logger.info("Database connection established successfully");
