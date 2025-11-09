@@ -5,7 +5,7 @@ import java.io.Serial;
 /**
  * Exception thrown when user session operations fail or are invalid.
  * <p>
- * This exception is used throughout the MindHarbor application to indicate
+ * This exception is used throughout the HoopHub application to indicate
  * problems with user session management, such as attempting to perform
  * operations when no user is logged in, trying to log in when a user is
  * already authenticated, or session-related validation failures.
@@ -26,8 +26,6 @@ import java.io.Serial;
  * </p>
  *
  * @see it.uniroma2.hoophub.session.SessionManager for session management
- * @see it.uniroma2.mindharbor.app_controller.LoginController for authentication handling
- * @see it.uniroma2.mindharbor.app_controller.AbstractController for session storage
  */
 public class UserSessionException extends Exception {
 

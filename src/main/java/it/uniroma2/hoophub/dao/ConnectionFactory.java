@@ -38,6 +38,34 @@ public class ConnectionFactory {
     }
 
     /**
+     * Extracts the database name from a JDBC URL.
+     * <p>
+     * Parses URLs in the format: jdbc:mysql://host:port/database
+     * or jdbc:mysql://host:port/database?params
+     * </p>
+     *
+     * @param jdbcUrl The JDBC connection URL
+     * @return The database name, or null if not found
+     */
+    private static String extractDatabaseName(String jdbcUrl) {
+        if (jdbcUrl == null) {
+            return null;
+        }
+
+        // Find the last '/' which precedes the database name
+        int lastSlash = jdbcUrl.lastIndexOf('/');
+        if (lastSlash == -1 || lastSlash == jdbcUrl.length() - 1) {
+            return null;
+        }
+
+        // Extract everything after the last '/', up to '?' (if query params exist)
+        String afterSlash = jdbcUrl.substring(lastSlash + 1);
+        int questionMark = afterSlash.indexOf('?');
+
+        return questionMark == -1 ? afterSlash : afterSlash.substring(0, questionMark);
+    }
+
+    /**
      * Loads database configuration from the properties file
      */
     private static void loadConfiguration() throws IOException {
@@ -61,7 +89,7 @@ public class ConnectionFactory {
     }
 
     /**
-     * Initializes the database connection
+     * Initializes the database connection and explicitly selects the schema
      */
     private static void initializeConnection() throws SQLException {
         if (connectionUrl == null) {
@@ -69,6 +97,17 @@ public class ConnectionFactory {
         }
 
         connection = DriverManager.getConnection(connectionUrl, user, pass);
+
+        // Explicitly select the database schema to avoid MySQL client issues
+        // Extract database name from URL (format: jdbc:mysql://host:port/database)
+        String databaseName = extractDatabaseName(connectionUrl);
+        if (databaseName != null && !databaseName.isEmpty()) {
+            try (var statement = connection.createStatement()) {
+                statement.execute("USE " + databaseName);
+                logger.info("Database schema '" + databaseName + "' selected successfully");
+            }
+        }
+
         logger.info("Database connection established successfully");
     }
 
