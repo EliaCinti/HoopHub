@@ -90,8 +90,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void saveVenue(VenueBean venueBean) throws DAOException {
         validateVenueBeanInput(venueBean);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
                      Statement.RETURN_GENERATED_KEYS)) {
 
             stmt.setString(1, venueBean.getName());
@@ -135,8 +135,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public Venue retrieveVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE)) {
 
             stmt.setInt(1, venueId);
 
@@ -160,8 +160,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public List<Venue> retrieveAllVenues() throws DAOException {
         List<Venue> venues = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUES);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUES);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -186,8 +186,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
         List<Venue> venues = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
 
             stmt.setString(1, venueManagerUsername);
 
@@ -216,8 +216,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
         List<Venue> venues = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_CITY)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_CITY)) {
 
             stmt.setString(1, city);
 
@@ -248,8 +248,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void updateVenue(VenueBean venueBean) throws DAOException {
         validateVenueBeanInput(venueBean);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
 
             stmt.setString(1, venueBean.getName());
             stmt.setString(2, venueBean.getType().name());
@@ -281,8 +281,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void deleteVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
 
             stmt.setInt(1, venueId);
 
@@ -309,8 +309,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public boolean venueExists(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
 
             stmt.setInt(1, venueId);
 
@@ -336,8 +336,8 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
      */
     @Override
     public int getNextVenueId() throws DAOException {
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
              ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next()) {

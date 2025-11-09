@@ -140,8 +140,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     public VenueManager retrieveVenueManager(String username) throws DAOException {
         validateUsernameInput(username);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_MANAGER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_MANAGER)) {
 
             stmt.setString(1, username);
 
@@ -165,8 +165,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     public List<VenueManager> retrieveAllVenueManagers() throws DAOException {
         List<VenueManager> venueManagers = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUE_MANAGERS);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUE_MANAGERS);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -294,8 +294,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         List<it.uniroma2.hoophub.model.Venue> venues = new ArrayList<>();
         VenueDaoMySql venueDao = new VenueDaoMySql();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_MANAGER_VENUES)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_MANAGER_VENUES)) {
 
             stmt.setString(1, venueManager.getUsername());
 

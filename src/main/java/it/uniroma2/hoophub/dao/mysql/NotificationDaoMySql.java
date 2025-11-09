@@ -109,8 +109,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
         }
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
                      Statement.RETURN_GENERATED_KEYS)) {
 
             setNotificationParameters(stmt, notification, 1);
@@ -148,8 +148,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public Optional<Notification> findById(Long id) throws DAOException {
         validateIdInput(id);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_ID)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_ID)) {
 
             stmt.setLong(1, id);
 
@@ -175,8 +175,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -205,8 +205,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -238,8 +238,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER_AND_TYPE)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER_AND_TYPE)) {
 
             stmt.setLong(1, userId);
             stmt.setString(2, type.name());
@@ -269,8 +269,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_BOOKING)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_BOOKING)) {
 
             stmt.setLong(1, bookingId);
 
@@ -297,8 +297,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int countUnreadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -322,8 +322,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public boolean markAsRead(Long notificationId) throws DAOException {
         validateIdInput(notificationId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ)) {
 
             stmt.setLong(1, notificationId);
 
@@ -348,8 +348,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int markAllAsReadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_MARK_ALL_AS_READ_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_ALL_AS_READ_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -374,8 +374,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         validateIdInput(bookingId);
         validateIdInput(userId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ_BY_BOOKING_AND_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ_BY_BOOKING_AND_USER)) {
 
             stmt.setLong(1, bookingId);
             stmt.setLong(2, userId);
@@ -402,8 +402,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
         }
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
 
             setNotificationParameters(stmt, notification, 1);
             stmt.setLong(7, notification.getId());
@@ -429,8 +429,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public boolean deleteById(Long id) throws DAOException {
         validateIdInput(id);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_ID)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_ID)) {
 
             stmt.setLong(1, id);
 
@@ -455,8 +455,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int deleteByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -480,8 +480,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int deleteReadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_READ_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_READ_BY_USER)) {
 
             stmt.setLong(1, userId);
 
@@ -505,8 +505,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public List<Notification> findAll() throws DAOException {
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
@@ -534,8 +534,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_RECENT_BY_USER)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_RECENT_BY_USER)) {
 
             stmt.setLong(1, userId);
             stmt.setInt(2, limit);

@@ -139,8 +139,8 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     public Fan retrieveFan(String username) throws DAOException {
         validateUsernameInput(username);
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_FAN)) {
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_FAN)) {
 
             stmt.setString(1, username);
 
@@ -164,8 +164,8 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     public List<Fan> retrieveAllFans() throws DAOException {
         List<Fan> fans = new ArrayList<>();
 
-        try (Connection conn = ConnectionFactory.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_FANS);
+        Connection conn = ConnectionFactory.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_FANS);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
