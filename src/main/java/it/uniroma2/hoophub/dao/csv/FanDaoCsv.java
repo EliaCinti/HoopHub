@@ -125,11 +125,15 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
         validateNotNullOrEmpty(fanBean.getFavTeam(), "Favorite team");
         validateNotNull(fanBean.getBirthday(), "Birthday");
 
+        logger.log(Level.INFO, ">>> SAVE FAN START: {0}", fanBean.getUsername());
+
         // Set user type to FAN before saving
         fanBean.setType(UserType.FAN.getType());
 
         // Step 1: Save common user data (username, password, full name, gender, type)
+        logger.log(Level.INFO, ">>> About to call userDao.saveUser() for: {0}", fanBean.getUsername());
         userDao.saveUser(fanBean);
+        logger.log(Level.INFO, ">>> userDao.saveUser() completed successfully for: {0}", fanBean.getUsername());
 
         // Step 2: Save fan-specific data
         String[] fanRow = {
@@ -138,10 +142,13 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
                 fanBean.getBirthday().toString()
         };
 
+        logger.log(Level.INFO, ">>> About to write to fans.csv for: {0}", fanBean.getUsername());
         CsvUtilities.writeFile(csvFile, fanRow);
+        logger.log(Level.INFO, ">>> writeFile completed for: {0}", fanBean.getUsername());
 
         logger.log(Level.INFO, "Fan saved successfully: {0}", fanBean.getUsername());
         notifyObservers(DaoOperation.INSERT, "Fan", fanBean.getUsername(), fanBean);
+        logger.log(Level.INFO, ">>> SAVE FAN END: {0}", fanBean.getUsername());
     }
 
     /**
