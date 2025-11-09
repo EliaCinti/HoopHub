@@ -50,27 +50,78 @@ public class InitialSyncManager {
             PersistenceType secondaryType = (primaryType == PersistenceType.MYSQL)
                     ? PersistenceType.CSV : PersistenceType.MYSQL;
 
-            // Try normal synchronization first
-            try {
+            // SIMPLIFIED APPROACH: If secondary is CSV, clear it completely and copy everything from primary
+            if (secondaryType == PersistenceType.CSV) {
+                logger.info("Simple sync strategy: Clear CSV and copy everything from MySQL");
+                clearSecondaryData(secondaryType);
+                copyAllFromPrimaryToSecondary(primaryType, secondaryType);
+            } else {
+                // If secondary is MySQL, use intelligent merge
                 performNormalSync(primaryType, secondaryType);
-                logger.info("Initial synchronization completed successfully.");
-            } catch (DAOException e) {
-                // Check if the error is due to data inconsistency
-                if (isInconsistencyError(e) && secondaryType == PersistenceType.CSV) {
-                    logger.warning("Data inconsistency detected in CSV files. Performing full resynchronization...");
-                    clearSecondaryData(secondaryType);
-                    performNormalSync(primaryType, secondaryType);
-                    logger.info("Full resynchronization completed successfully.");
-                } else {
-                    throw e;  // Re-throw if it's not an inconsistency error
-                }
             }
+
+            logger.info("Initial synchronization completed successfully.");
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Initial synchronization failed.", e);
         } finally {
             SyncContext.endSync();
             logger.info("Real-time synchronization observers reactivated.");
         }
+    }
+
+    /**
+     * Copies ALL data from primary to secondary without any checks.
+     * This is the simplest and most reliable sync strategy.
+     */
+    private void copyAllFromPrimaryToSecondary(PersistenceType primary, PersistenceType secondary) throws DAOException {
+        logger.info("Copying all data from " + primary + " to " + secondary);
+        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+
+        // Get all data from primary
+        factory.setPersistenceType(primary);
+        List<Fan> fans = factory.getFanDao().retrieveAllFans();
+        List<VenueManager> venueManagers = factory.getVenueManagerDao().retrieveAllVenueManagers();
+        List<Venue> venues = factory.getVenueDao().retrieveAllVenues();
+
+        logger.info("Found in primary: " + fans.size() + " fans, " + venueManagers.size() + " venue managers, " + venues.size() + " venues");
+
+        // Copy fans
+        factory.setPersistenceType(secondary);
+        for (Fan fan : fans) {
+            logger.info("Copying fan: " + fan.getUsername());
+            FanBean bean = createFanBeanFromModel(fan, factory, primary);
+            factory.getFanDao().saveFan(bean);
+        }
+
+        // Copy venue managers
+        for (VenueManager vm : venueManagers) {
+            logger.info("Copying venue manager: " + vm.getUsername());
+            VenueManagerBean bean = createVenueManagerBeanFromModel(vm, factory, primary);
+            factory.getVenueManagerDao().saveVenueManager(bean);
+        }
+
+        // Copy venues
+        for (Venue venue : venues) {
+            logger.info("Copying venue: " + venue.getName());
+            VenueBean bean = createVenueBeanFromModel(venue);
+            factory.getVenueDao().saveVenue(bean);
+        }
+
+        // Copy bookings
+        factory.setPersistenceType(primary);
+        List<Fan> allFans = factory.getFanDao().retrieveAllFans();
+        for (Fan fan : allFans) {
+            List<Booking> bookings = factory.getBookingDao().retrieveBookingsByFan(fan.getUsername());
+            factory.setPersistenceType(secondary);
+            for (Booking booking : bookings) {
+                logger.info("Copying booking: " + booking.getId() + " for fan " + fan.getUsername());
+                BookingBean bean = createBookingBeanFromModel(booking);
+                factory.getBookingDao().saveBooking(bean);
+            }
+            factory.setPersistenceType(primary);
+        }
+
+        logger.info("All data copied successfully");
     }
 
     /**
