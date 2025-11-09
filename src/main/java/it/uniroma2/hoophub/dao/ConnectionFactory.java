@@ -98,14 +98,11 @@ public class ConnectionFactory {
 
         connection = DriverManager.getConnection(connectionUrl, user, pass);
 
-        // Explicitly select the database schema to avoid MySQL client issues
-        // Extract database name from URL (format: jdbc:mysql://host:port/database)
+        // Explicitly select the database schema using JDBC's setCatalog method
+        // This is more reliable than executing "USE database" as a SQL statement
         String databaseName = extractDatabaseName(connectionUrl);
         if (databaseName != null && !databaseName.isEmpty()) {
-            // Don't use try-with-resources here to avoid closing the shared connection
-            var statement = connection.createStatement();
-            statement.execute("USE " + databaseName);
-            statement.close();
+            connection.setCatalog(databaseName);
             logger.info("Database schema '" + databaseName + "' selected successfully");
         }
 
