@@ -104,7 +104,6 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         CsvUtilities.writeFile(csvFile, newRow);
 
-        logger.log(Level.INFO, "Booking saved successfully: {0}", id);
         notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), bookingBean);
     }
 
@@ -148,8 +147,6 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} bookings for fan {1}",
-                new Object[]{bookings.size(), fanUsername});
         return bookings;
     }
 

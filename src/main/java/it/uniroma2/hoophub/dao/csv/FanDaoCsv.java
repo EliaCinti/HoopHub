@@ -140,7 +140,6 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
 
         CsvUtilities.writeFile(csvFile, fanRow);
 
-        logger.log(Level.INFO, "Fan saved successfully: {0}", fanBean.getUsername());
         notifyObservers(DaoOperation.INSERT, "Fan", fanBean.getUsername(), fanBean);
     }
 

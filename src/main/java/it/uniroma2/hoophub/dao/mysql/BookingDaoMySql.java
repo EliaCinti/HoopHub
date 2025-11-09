@@ -218,8 +218,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} bookings for fan {1}",
-                        new Object[]{bookings.size(), fanUsername});
                 return bookings;
             }
         } catch (SQLException e) {

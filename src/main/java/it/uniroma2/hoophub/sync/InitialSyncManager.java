@@ -97,7 +97,6 @@ public class InitialSyncManager {
      * This prevents inconsistencies between related CSV files (e.g., users.csv vs fans.csv).
      */
     private void clearCsvFiles() {
-        logger.info("Clearing CSV files to ensure consistency...");
         try {
             java.io.File dataDir = new java.io.File("data");
             if (!dataDir.exists()) {
@@ -116,8 +115,6 @@ public class InitialSyncManager {
                     new String[]{"id", "game_date", "game_time", "home_team", "away_team", "venue_id", "fan_username", "status", "notified"});
             reinitializeCsvFile(new java.io.File(dataDir, "notifications.csv"),
                     new String[]{"id", "user_id", "type", "title", "message", "booking_id", "is_read", "created_at"});
-
-            logger.info("CSV files cleared successfully");
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error clearing CSV files", e);
         }
@@ -167,12 +164,10 @@ public class InitialSyncManager {
             Fan secondaryFan = secondaryMap.get(key);
 
             if (primaryFan != null && secondaryFan == null) {
-                logger.info("Sync: Copying fan " + key + " from " + primary + " to " + secondary);
                 FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan == null && secondaryFan != null) {
-                logger.info("Sync: Copying fan " + key + " from " + secondary + " to " + primary);
                 FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getFanDao().saveFan(beanToSave);
@@ -218,12 +213,10 @@ public class InitialSyncManager {
             VenueManager secondaryVM = secondaryMap.get(key);
 
             if (primaryVM != null && secondaryVM == null) {
-                logger.info("Sync: Copying venue manager " + key + " from " + primary + " to " + secondary);
                 VenueManagerBean bean = createVenueManagerBeanFromModel(primaryVM, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getVenueManagerDao().saveVenueManager(bean);
             } else if (primaryVM == null && secondaryVM != null) {
-                logger.info("Sync: Copying venue manager " + key + " from " + secondary + " to " + primary);
                 VenueManagerBean bean = createVenueManagerBeanFromModel(secondaryVM, factory, secondary);
                 factory.setPersistenceType(primary);
                 factory.getVenueManagerDao().saveVenueManager(bean);
@@ -264,12 +257,10 @@ public class InitialSyncManager {
             Venue secondaryVenue = secondaryMap.get(id);
 
             if (primaryVenue != null && secondaryVenue == null) {
-                logger.info("Sync: Copying venue " + id + " from " + primary + " to " + secondary);
                 VenueBean bean = createVenueBeanFromModel(primaryVenue);
                 factory.setPersistenceType(secondary);
                 factory.getVenueDao().saveVenue(bean);
             } else if (primaryVenue == null && secondaryVenue != null) {
-                logger.info("Sync: Copying venue " + id + " from " + secondary + " to " + primary);
                 VenueBean bean = createVenueBeanFromModel(secondaryVenue);
                 factory.setPersistenceType(primary);
                 factory.getVenueDao().saveVenue(bean);
@@ -317,12 +308,10 @@ public class InitialSyncManager {
                 Booking secondaryBooking = secondaryMap.get(id);
 
                 if (primaryBooking != null && secondaryBooking == null) {
-                    logger.info("Sync: Copying booking " + id + " from " + primary + " to " + secondary);
                     BookingBean beanToSave = createBookingBeanFromModel(primaryBooking);
                     factory.setPersistenceType(secondary);
                     factory.getBookingDao().saveBooking(beanToSave);
                 } else if (primaryBooking == null && secondaryBooking != null) {
-                    logger.info("Sync: Copying booking " + id + " from " + secondary + " to " + primary);
                     BookingBean beanToSave = createBookingBeanFromModel(secondaryBooking);
                     factory.setPersistenceType(primary);
                     factory.getBookingDao().saveBooking(beanToSave);

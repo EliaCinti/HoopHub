@@ -174,7 +174,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     fans.add(mapResultSetToFan(rs));
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} fans", fans.size());
                 return fans;
             }
         } catch (SQLException e) {

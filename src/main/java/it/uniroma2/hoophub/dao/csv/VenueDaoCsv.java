@@ -175,7 +175,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             venues.add(mapRowToVenue(data.get(i)));
         }
 
-        logger.log(Level.INFO, "Retrieved {0} venues", venues.size());
         return venues;
     }
 
