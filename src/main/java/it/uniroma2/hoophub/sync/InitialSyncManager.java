@@ -137,6 +137,16 @@ public class InitialSyncManager {
                     new String[]{"id", "user_id", "type", "title", "message", "booking_id", "is_read", "created_at"});
 
             logger.info("CSV data cleared successfully - all files reinitialized");
+
+            // Verify the files are actually empty by checking users.csv
+            DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+            factory.setPersistenceType(PersistenceType.CSV);
+            try {
+                List<Fan> csvFans = factory.getFanDao().retrieveAllFans();
+                logger.info("Verification after clearing: CSV fans count = " + csvFans.size());
+            } catch (DAOException e) {
+                logger.log(Level.WARNING, "Could not verify CSV clearing", e);
+            }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error during CSV data clearing", e);
             throw new DAOException("Failed to clear CSV data", e);
@@ -377,13 +387,14 @@ public class InitialSyncManager {
 
     private FanBean createFanBeanFromModel(Fan fan, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
         PersistenceType originalType = factory.getPersistenceType();
+        logger.info("Creating FanBean from model: fan.username=" + fan.getUsername() + ", originalType=" + originalType + ", sourcePersistence=" + sourcePersistence);
         try {
             factory.setPersistenceType(sourcePersistence);
             UserDao userDao = factory.getUserDao();
             String[] userInfo = userDao.retrieveUser(fan.getUsername());
             String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            return new FanBean.Builder()
+            FanBean bean = new FanBean.Builder()
                     .username(fan.getUsername())
                     .password(hashedPassword)
                     .fullName(fan.getFullName())
@@ -392,6 +403,8 @@ public class InitialSyncManager {
                     .favTeam(fan.getFavTeam())
                     .type("FAN")
                     .build();
+            logger.info("Created FanBean: username=" + bean.getUsername() + ", fullName=" + bean.getFullName());
+            return bean;
         } finally {
             factory.setPersistenceType(originalType);
         }
