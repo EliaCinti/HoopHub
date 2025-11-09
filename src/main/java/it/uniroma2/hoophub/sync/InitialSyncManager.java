@@ -50,18 +50,98 @@ public class InitialSyncManager {
             PersistenceType secondaryType = (primaryType == PersistenceType.MYSQL)
                     ? PersistenceType.CSV : PersistenceType.MYSQL;
 
-            // Synchronize entities in dependency order
-            List<Fan> syncedFans = syncFans(primaryType, secondaryType);
-            syncVenueManagers(primaryType, secondaryType);
-            syncVenues(primaryType, secondaryType);  // <-- Rimosso "List<Venue> syncedVenues ="
-            syncBookings(syncedFans, primaryType, secondaryType);
-
-            logger.info("Initial synchronization completed successfully.");
+            // Try normal synchronization first
+            try {
+                performNormalSync(primaryType, secondaryType);
+                logger.info("Initial synchronization completed successfully.");
+            } catch (DAOException e) {
+                // Check if the error is due to data inconsistency
+                if (isInconsistencyError(e) && secondaryType == PersistenceType.CSV) {
+                    logger.warning("Data inconsistency detected in CSV files. Performing full resynchronization...");
+                    clearSecondaryData(secondaryType);
+                    performNormalSync(primaryType, secondaryType);
+                    logger.info("Full resynchronization completed successfully.");
+                } else {
+                    throw e;  // Re-throw if it's not an inconsistency error
+                }
+            }
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Initial synchronization failed.", e);
         } finally {
             SyncContext.endSync();
             logger.info("Real-time synchronization observers reactivated.");
+        }
+    }
+
+    /**
+     * Performs the normal synchronization process.
+     *
+     * @param primaryType The primary persistence type
+     * @param secondaryType The secondary persistence type
+     * @throws DAOException if synchronization fails
+     */
+    private void performNormalSync(PersistenceType primaryType, PersistenceType secondaryType) throws DAOException {
+        // Synchronize entities in dependency order
+        List<Fan> syncedFans = syncFans(primaryType, secondaryType);
+        syncVenueManagers(primaryType, secondaryType);
+        syncVenues(primaryType, secondaryType);
+        syncBookings(syncedFans, primaryType, secondaryType);
+    }
+
+    /**
+     * Checks if a DAOException is caused by data inconsistency.
+     *
+     * @param e The exception to check
+     * @return true if the error indicates data inconsistency
+     */
+    private boolean isInconsistencyError(DAOException e) {
+        String message = e.getMessage();
+        return message != null && (
+                message.contains("already exists") ||
+                message.contains("Username already exists") ||
+                message.contains("duplicate")
+        );
+    }
+
+    /**
+     * Clears all data from the secondary persistence storage.
+     * This is only safe to do for CSV storage as it will be repopulated from primary.
+     *
+     * @param secondaryType The secondary persistence type to clear
+     * @throws DAOException if clearing fails
+     */
+    private void clearSecondaryData(PersistenceType secondaryType) throws DAOException {
+        if (secondaryType != PersistenceType.CSV) {
+            logger.warning("Skipping clear operation - only CSV secondary storage can be safely cleared");
+            return;
+        }
+
+        logger.info("Clearing all data from CSV files...");
+        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+        factory.setPersistenceType(secondaryType);
+
+        try {
+            // Clear all CSV data by deleting all users (cascade effect)
+            // Since CSV uses file-based storage, we'll retrieve all users and delete them
+            List<Fan> fans = factory.getFanDao().retrieveAllFans();
+            for (Fan fan : fans) {
+                factory.getFanDao().deleteFan(fan);
+            }
+
+            List<VenueManager> vms = factory.getVenueManagerDao().retrieveAllVenueManagers();
+            for (VenueManager vm : vms) {
+                factory.getVenueManagerDao().deleteVenueManager(vm);
+            }
+
+            List<Venue> venues = factory.getVenueDao().retrieveAllVenues();
+            for (Venue venue : venues) {
+                factory.getVenueDao().deleteVenue(venue.getId());
+            }
+
+            logger.info("CSV data cleared successfully");
+        } catch (DAOException e) {
+            logger.log(Level.WARNING, "Error during CSV data clearing (may be expected if files are already clean)", e);
+            // Continue anyway - we'll repopulate from primary
         }
     }
 
