@@ -61,6 +61,12 @@ public abstract class AbstractObservableDao implements ObservableDao {
      */
     @Override
     public void notifyObservers(DaoOperation operation, String entityType, String entityId, Object entity) {
+        // Skip observer notifications during initial synchronization to prevent circular updates
+        if (it.uniroma2.hoophub.sync.SyncContext.isSyncing()) {
+            logger.fine("Skipping observer notification during sync: " + operation + " " + entityType + " " + entityId);
+            return;
+        }
+
         List<DaoObserver> observersCopy = new ArrayList<>(observers);
 
         for (DaoObserver observer : observersCopy) {
