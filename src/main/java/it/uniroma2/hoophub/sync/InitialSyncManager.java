@@ -67,6 +67,11 @@ public class InitialSyncManager {
             PersistenceType secondaryType = (primaryType == PersistenceType.MYSQL)
                     ? PersistenceType.CSV : PersistenceType.MYSQL;
 
+            // Clear secondary CSV files to prevent inconsistencies (users.csv vs fans.csv mismatch)
+            if (secondaryType == PersistenceType.CSV) {
+                clearCsvFiles();
+            }
+
             // Synchronize entities in dependency order
             List<Fan> syncedFans = syncFans(primaryType, secondaryType);
             syncVenueManagers(primaryType, secondaryType);
@@ -80,6 +85,47 @@ public class InitialSyncManager {
             SyncContext.endSync();
             logger.info("Real-time synchronization observers reactivated.");
         }
+    }
+
+    /**
+     * Clears all CSV files by reinitializing them with only headers.
+     * This prevents inconsistencies between related CSV files (e.g., users.csv vs fans.csv).
+     */
+    private void clearCsvFiles() {
+        logger.info("Clearing CSV files to ensure consistency...");
+        try {
+            java.io.File dataDir = new java.io.File("data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+            }
+
+            reinitializeCsvFile(new java.io.File(dataDir, "users.csv"),
+                    new String[]{"username", "password_hash", "full_name", "gender", "user_type"});
+            reinitializeCsvFile(new java.io.File(dataDir, "fans.csv"),
+                    new String[]{"username", "fav_team", "birthday"});
+            reinitializeCsvFile(new java.io.File(dataDir, "venue_managers.csv"),
+                    new String[]{"username", "company_name", "phone_number"});
+            reinitializeCsvFile(new java.io.File(dataDir, "venues.csv"),
+                    new String[]{"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"});
+            reinitializeCsvFile(new java.io.File(dataDir, "bookings.csv"),
+                    new String[]{"id", "game_date", "game_time", "home_team", "away_team", "venue_id", "fan_username", "status", "notified"});
+            reinitializeCsvFile(new java.io.File(dataDir, "notifications.csv"),
+                    new String[]{"id", "user_id", "type", "title", "message", "booking_id", "is_read", "created_at"});
+
+            logger.info("CSV files cleared successfully");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error clearing CSV files", e);
+        }
+    }
+
+    /**
+     * Reinitializes a CSV file with only its header row.
+     */
+    private void reinitializeCsvFile(java.io.File file, String[] header) throws java.io.IOException {
+        try (com.opencsv.CSVWriter writer = new com.opencsv.CSVWriter(new java.io.FileWriter(file))) {
+            writer.writeNext(header);
+        }
+        logger.log(Level.FINE, "Reinitialized: {0}", file.getName());
     }
 
     /**
