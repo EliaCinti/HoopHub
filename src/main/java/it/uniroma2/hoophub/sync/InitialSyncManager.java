@@ -116,33 +116,44 @@ public class InitialSyncManager {
             return;
         }
 
-        logger.info("Clearing all data from CSV files...");
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
-        factory.setPersistenceType(secondaryType);
+        logger.info("Clearing all data from CSV files by reinitializing them...");
 
         try {
-            // Clear all CSV data by deleting all users (cascade effect)
-            // Since CSV uses file-based storage, we'll retrieve all users and delete them
-            List<Fan> fans = factory.getFanDao().retrieveAllFans();
-            for (Fan fan : fans) {
-                factory.getFanDao().deleteFan(fan);
-            }
+            // Clear CSV files by reinitializing them (keeps headers, removes all data)
+            java.io.File dataDir = new java.io.File("data");
 
-            List<VenueManager> vms = factory.getVenueManagerDao().retrieveAllVenueManagers();
-            for (VenueManager vm : vms) {
-                factory.getVenueManagerDao().deleteVenueManager(vm);
-            }
+            // Reinitialize each CSV file with just its header
+            reinitializeCsvFile(new java.io.File(dataDir, "users.csv"),
+                    new String[]{"username", "password_hash", "full_name", "gender", "user_type"});
+            reinitializeCsvFile(new java.io.File(dataDir, "fans.csv"),
+                    new String[]{"username", "fav_team", "birthday"});
+            reinitializeCsvFile(new java.io.File(dataDir, "venue_managers.csv"),
+                    new String[]{"username", "company_name", "phone_number"});
+            reinitializeCsvFile(new java.io.File(dataDir, "venues.csv"),
+                    new String[]{"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"});
+            reinitializeCsvFile(new java.io.File(dataDir, "bookings.csv"),
+                    new String[]{"id", "game_date", "game_time", "home_team", "away_team", "venue_id", "fan_username", "status", "notified"});
+            reinitializeCsvFile(new java.io.File(dataDir, "notifications.csv"),
+                    new String[]{"id", "user_id", "type", "title", "message", "booking_id", "is_read", "created_at"});
 
-            List<Venue> venues = factory.getVenueDao().retrieveAllVenues();
-            for (Venue venue : venues) {
-                factory.getVenueDao().deleteVenue(venue.getId());
-            }
-
-            logger.info("CSV data cleared successfully");
-        } catch (DAOException e) {
-            logger.log(Level.WARNING, "Error during CSV data clearing (may be expected if files are already clean)", e);
-            // Continue anyway - we'll repopulate from primary
+            logger.info("CSV data cleared successfully - all files reinitialized");
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error during CSV data clearing", e);
+            throw new DAOException("Failed to clear CSV data", e);
         }
+    }
+
+    /**
+     * Reinitializes a CSV file with only its header row.
+     *
+     * @param file The CSV file to reinitialize
+     * @param header The header row
+     */
+    private void reinitializeCsvFile(java.io.File file, String[] header) throws java.io.IOException {
+        try (com.opencsv.CSVWriter writer = new com.opencsv.CSVWriter(new java.io.FileWriter(file))) {
+            writer.writeNext(header);
+        }
+        logger.log(Level.FINE, "Reinitialized CSV file: {0}", file.getName());
     }
 
     /**
