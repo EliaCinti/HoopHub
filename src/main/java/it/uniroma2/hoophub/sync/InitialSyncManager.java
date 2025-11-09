@@ -177,6 +177,9 @@ public class InitialSyncManager {
         Set<String> allKeys = new HashSet<>(primaryMap.keySet());
         allKeys.addAll(secondaryMap.keySet());
 
+        logger.info("Primary fans found: " + primaryMap.keySet());
+        logger.info("Secondary fans found: " + secondaryMap.keySet());
+
         for (String key : allKeys) {
             Fan primaryFan = primaryMap.get(key);
             Fan secondaryFan = secondaryMap.get(key);
@@ -185,7 +188,9 @@ public class InitialSyncManager {
                 logger.info("Sync: Copying fan " + key + SyncConstants.FROM + primary + " to " + secondary);
                 FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
+                logger.info("About to save fan: " + beanToSave.getUsername());
                 factory.getFanDao().saveFan(beanToSave);
+                logger.info("Successfully saved fan: " + beanToSave.getUsername());
             } else if (primaryFan == null && secondaryFan != null) {
                 logger.info("Sync: Copying fan " + key + SyncConstants.FROM + secondary + " to " + primary);
                 FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
