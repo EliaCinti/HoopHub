@@ -90,34 +90,35 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void saveVenue(VenueBean venueBean) throws DAOException {
         validateVenueBeanInput(venueBean);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
-                     Statement.RETURN_GENERATED_KEYS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
+                         Statement.RETURN_GENERATED_KEYS)) {
 
-            stmt.setString(1, venueBean.getName());
-            stmt.setString(2, venueBean.getType().name());
-            stmt.setString(3, venueBean.getAddress());
-            stmt.setString(4, venueBean.getCity());
-            stmt.setInt(5, venueBean.getMaxCapacity());
-            stmt.setString(6, venueBean.getVenueManagerUsername());
+                stmt.setString(1, venueBean.getName());
+                stmt.setString(2, venueBean.getType().name());
+                stmt.setString(3, venueBean.getAddress());
+                stmt.setString(4, venueBean.getCity());
+                stmt.setInt(5, venueBean.getMaxCapacity());
+                stmt.setString(6, venueBean.getVenueManagerUsername());
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                // Get generated ID if not provided
-                if (venueBean.getId() == 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            venueBean.setId(generatedKeys.getInt(1));
+                if (affectedRows > 0) {
+                    // Get generated ID if not provided
+                    if (venueBean.getId() == 0) {
+                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                            if (generatedKeys.next()) {
+                                venueBean.setId(generatedKeys.getInt(1));
+                            }
                         }
                     }
+
+                    logger.log(Level.INFO, "Venue saved successfully: {0} (ID: {1})",
+                            new Object[]{venueBean.getName(), venueBean.getId()});
+                    notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(venueBean.getId()), venueBean);
                 }
-
-                logger.log(Level.INFO, "Venue saved successfully: {0} (ID: {1})",
-                        new Object[]{venueBean.getName(), venueBean.getId()});
-                notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(venueBean.getId()), venueBean);
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue save", e);
             throw new DAOException("Error saving venue", e);
@@ -135,18 +136,19 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public Venue retrieveVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE)) {
 
-            stmt.setInt(1, venueId);
+                stmt.setInt(1, venueId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToVenue(rs);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapResultSetToVenue(rs);
+                    }
+                    return null;
                 }
-                return null;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue retrieval", e);
             throw new DAOException("Error retrieving venue", e);
@@ -160,17 +162,18 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public List<Venue> retrieveAllVenues() throws DAOException {
         List<Venue> venues = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUES);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUES);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                venues.add(mapResultSetToVenue(rs));
+                while (rs.next()) {
+                    venues.add(mapResultSetToVenue(rs));
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} venues", venues.size());
+                return venues;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} venues", venues.size());
-            return venues;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venues retrieval", e);
             throw new DAOException("Error retrieving all venues", e);
@@ -186,21 +189,22 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
         List<Venue> venues = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
 
-            stmt.setString(1, venueManagerUsername);
+                stmt.setString(1, venueManagerUsername);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    venues.add(mapResultSetToVenue(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        venues.add(mapResultSetToVenue(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
+                        new Object[]{venues.size(), venueManagerUsername});
+                return venues;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
-                    new Object[]{venues.size(), venueManagerUsername});
-            return venues;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venues retrieval by manager", e);
             throw new DAOException("Error retrieving venues by manager", e);
@@ -216,21 +220,22 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
         List<Venue> venues = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_CITY)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_CITY)) {
 
-            stmt.setString(1, city);
+                stmt.setString(1, city);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    venues.add(mapResultSetToVenue(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        venues.add(mapResultSetToVenue(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} venues in city {1}",
+                        new Object[]{venues.size(), city});
+                return venues;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} venues in city {1}",
-                    new Object[]{venues.size(), city});
-            return venues;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venues retrieval by city", e);
             throw new DAOException("Error retrieving venues by city", e);
@@ -248,26 +253,27 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void updateVenue(VenueBean venueBean) throws DAOException {
         validateVenueBeanInput(venueBean);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
 
-            stmt.setString(1, venueBean.getName());
-            stmt.setString(2, venueBean.getType().name());
-            stmt.setString(3, venueBean.getAddress());
-            stmt.setString(4, venueBean.getCity());
-            stmt.setInt(5, venueBean.getMaxCapacity());
-            stmt.setInt(6, venueBean.getId());
+                stmt.setString(1, venueBean.getName());
+                stmt.setString(2, venueBean.getType().name());
+                stmt.setString(3, venueBean.getAddress());
+                stmt.setString(4, venueBean.getCity());
+                stmt.setInt(5, venueBean.getMaxCapacity());
+                stmt.setInt(6, venueBean.getId());
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
-                notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
-            } else {
-                logger.log(Level.WARNING, "Venue not found for update: {0}", venueBean.getId());
-                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
+                    notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
+                } else {
+                    logger.log(Level.WARNING, "Venue not found for update: {0}", venueBean.getId());
+                    throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
+                }
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue update", e);
             throw new DAOException("Error updating venue", e);
@@ -281,21 +287,22 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public void deleteVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
 
-            stmt.setInt(1, venueId);
+                stmt.setInt(1, venueId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
-                notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
-            } else {
-                logger.log(Level.WARNING, "Venue not found for deletion: {0}", venueId);
-                throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
+                    notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
+                } else {
+                    logger.log(Level.WARNING, "Venue not found for deletion: {0}", venueId);
+                    throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
+                }
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue deletion", e);
             throw new DAOException("Error deleting venue", e);
@@ -309,18 +316,19 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     public boolean venueExists(int venueId) throws DAOException {
         validateIdInput(venueId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
 
-            stmt.setInt(1, venueId);
+                stmt.setInt(1, venueId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt(1) > 0;
+                    }
+                    return false;
                 }
-                return false;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue existence check", e);
             throw new DAOException("Error checking venue existence", e);
@@ -336,15 +344,16 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
      */
     @Override
     public int getNextVenueId() throws DAOException {
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            if (rs.next()) {
-                return rs.getInt(1) + 1;
+                if (rs.next()) {
+                    return rs.getInt(1) + 1;
+                }
+                return 1;
             }
-            return 1;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during next venue ID retrieval", e);
             throw new DAOException("Error getting next venue ID", e);

@@ -140,18 +140,19 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     public VenueManager retrieveVenueManager(String username) throws DAOException {
         validateUsernameInput(username);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_MANAGER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_MANAGER)) {
 
-            stmt.setString(1, username);
+                stmt.setString(1, username);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToVenueManager(rs);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapResultSetToVenueManager(rs);
+                    }
+                    return null;
                 }
-                return null;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue manager retrieval", e);
             throw new DAOException("Error retrieving venue manager", e);
@@ -165,17 +166,18 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     public List<VenueManager> retrieveAllVenueManagers() throws DAOException {
         List<VenueManager> venueManagers = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUE_MANAGERS);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUE_MANAGERS);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                venueManagers.add(mapResultSetToVenueManager(rs));
+                while (rs.next()) {
+                    venueManagers.add(mapResultSetToVenueManager(rs));
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} venue managers", venueManagers.size());
+                return venueManagers;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} venue managers", venueManagers.size());
-            return venueManagers;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venue managers retrieval", e);
             throw new DAOException("Error retrieving all venue managers", e);
@@ -294,25 +296,26 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         List<it.uniroma2.hoophub.model.Venue> venues = new ArrayList<>();
         VenueDaoMySql venueDao = new VenueDaoMySql();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_MANAGER_VENUES)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_MANAGER_VENUES)) {
 
-            stmt.setString(1, venueManager.getUsername());
+                stmt.setString(1, venueManager.getUsername());
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    int venueId = rs.getInt("id");
-                    it.uniroma2.hoophub.model.Venue venue = venueDao.retrieveVenue(venueId);
-                    if (venue != null) {
-                        venues.add(venue);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        int venueId = rs.getInt("id");
+                        it.uniroma2.hoophub.model.Venue venue = venueDao.retrieveVenue(venueId);
+                        if (venue != null) {
+                            venues.add(venue);
+                        }
                     }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
+                        new Object[]{venues.size(), venueManager.getUsername()});
+                return venues;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
-                    new Object[]{venues.size(), venueManager.getUsername()});
-            return venues;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during venues retrieval for manager", e);
             throw new DAOException("Error retrieving venues for venue manager", e);
