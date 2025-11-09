@@ -72,56 +72,96 @@ public class InitialSyncManager {
     /**
      * Copies ALL data from primary to secondary without any checks.
      * This is the simplest and most reliable sync strategy.
+     *
+     * IMPORTANT: We create DAO instances directly WITHOUT using the factory
+     * to avoid having observers registered during initial sync. This prevents
+     * any observer notifications during the synchronization process.
      */
     private void copyAllFromPrimaryToSecondary(PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Copying all data from " + primary + " to " + secondary);
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+
+        // Create DAOs directly without factory to avoid observer registration
+        it.uniroma2.hoophub.dao.FanDao primaryFanDao = createDaoWithoutObservers(primary, "fan");
+        it.uniroma2.hoophub.dao.VenueManagerDao primaryVmDao = createDaoWithoutObservers(primary, "venuemanager");
+        it.uniroma2.hoophub.dao.VenueDao primaryVenueDao = createDaoWithoutObservers(primary, "venue");
+        it.uniroma2.hoophub.dao.BookingDao primaryBookingDao = createDaoWithoutObservers(primary, "booking");
+
+        it.uniroma2.hoophub.dao.FanDao secondaryFanDao = createDaoWithoutObservers(secondary, "fan");
+        it.uniroma2.hoophub.dao.VenueManagerDao secondaryVmDao = createDaoWithoutObservers(secondary, "venuemanager");
+        it.uniroma2.hoophub.dao.VenueDao secondaryVenueDao = createDaoWithoutObservers(secondary, "venue");
+        it.uniroma2.hoophub.dao.BookingDao secondaryBookingDao = createDaoWithoutObservers(secondary, "booking");
+        it.uniroma2.hoophub.dao.UserDao primaryUserDao = createDaoWithoutObservers(primary, "user");
 
         // Get all data from primary
-        factory.setPersistenceType(primary);
-        List<Fan> fans = factory.getFanDao().retrieveAllFans();
-        List<VenueManager> venueManagers = factory.getVenueManagerDao().retrieveAllVenueManagers();
-        List<Venue> venues = factory.getVenueDao().retrieveAllVenues();
+        List<Fan> fans = primaryFanDao.retrieveAllFans();
+        List<VenueManager> venueManagers = primaryVmDao.retrieveAllVenueManagers();
+        List<Venue> venues = primaryVenueDao.retrieveAllVenues();
 
         logger.info("Found in primary: " + fans.size() + " fans, " + venueManagers.size() + " venue managers, " + venues.size() + " venues");
 
         // Copy fans
-        factory.setPersistenceType(secondary);
         for (Fan fan : fans) {
             logger.info("Copying fan: " + fan.getUsername());
-            FanBean bean = createFanBeanFromModel(fan, factory, primary);
-            factory.getFanDao().saveFan(bean);
+            FanBean bean = createFanBeanFromModel(fan, primaryUserDao);
+            secondaryFanDao.saveFan(bean);
         }
 
         // Copy venue managers
         for (VenueManager vm : venueManagers) {
             logger.info("Copying venue manager: " + vm.getUsername());
-            VenueManagerBean bean = createVenueManagerBeanFromModel(vm, factory, primary);
-            factory.getVenueManagerDao().saveVenueManager(bean);
+            VenueManagerBean bean = createVenueManagerBeanFromModel(vm, primaryUserDao);
+            secondaryVmDao.saveVenueManager(bean);
         }
 
         // Copy venues
         for (Venue venue : venues) {
             logger.info("Copying venue: " + venue.getName());
             VenueBean bean = createVenueBeanFromModel(venue);
-            factory.getVenueDao().saveVenue(bean);
+            secondaryVenueDao.saveVenue(bean);
         }
 
         // Copy bookings
-        factory.setPersistenceType(primary);
-        List<Fan> allFans = factory.getFanDao().retrieveAllFans();
-        for (Fan fan : allFans) {
-            List<Booking> bookings = factory.getBookingDao().retrieveBookingsByFan(fan.getUsername());
-            factory.setPersistenceType(secondary);
+        for (Fan fan : fans) {
+            List<Booking> bookings = primaryBookingDao.retrieveBookingsByFan(fan.getUsername());
             for (Booking booking : bookings) {
                 logger.info("Copying booking: " + booking.getId() + " for fan " + fan.getUsername());
                 BookingBean bean = createBookingBeanFromModel(booking);
-                factory.getBookingDao().saveBooking(bean);
+                secondaryBookingDao.saveBooking(bean);
             }
-            factory.setPersistenceType(primary);
         }
 
         logger.info("All data copied successfully");
+    }
+
+    /**
+     * Creates a DAO instance directly without using the factory,
+     * ensuring no observers are registered.
+     *
+     * @param type The persistence type (MYSQL or CSV)
+     * @param daoType The type of DAO to create
+     * @return A DAO instance without observers
+     */
+    @SuppressWarnings("unchecked")
+    private <T> T createDaoWithoutObservers(PersistenceType type, String daoType) {
+        if (type == PersistenceType.MYSQL) {
+            return switch (daoType.toLowerCase()) {
+                case "fan" -> (T) new it.uniroma2.hoophub.dao.mysql.FanDaoMySql();
+                case "venuemanager" -> (T) new it.uniroma2.hoophub.dao.mysql.VenueManagerDaoMySql();
+                case "venue" -> (T) new it.uniroma2.hoophub.dao.mysql.VenueDaoMySql();
+                case "booking" -> (T) new it.uniroma2.hoophub.dao.mysql.BookingDaoMySql();
+                case "user" -> (T) new it.uniroma2.hoophub.dao.mysql.UserDaoMySql();
+                default -> throw new IllegalArgumentException("Unknown DAO type: " + daoType);
+            };
+        } else {
+            return switch (daoType.toLowerCase()) {
+                case "fan" -> (T) new it.uniroma2.hoophub.dao.csv.FanDaoCsv();
+                case "venuemanager" -> (T) new it.uniroma2.hoophub.dao.csv.VenueManagerDaoCsv();
+                case "venue" -> (T) new it.uniroma2.hoophub.dao.csv.VenueDaoCsv();
+                case "booking" -> (T) new it.uniroma2.hoophub.dao.csv.BookingDaoCsv();
+                case "user" -> (T) new it.uniroma2.hoophub.dao.csv.UserDaoCsv();
+                default -> throw new IllegalArgumentException("Unknown DAO type: " + daoType);
+            };
+        }
     }
 
     /**
@@ -219,6 +259,7 @@ public class InitialSyncManager {
 
     /**
      * Synchronizes fan data between primary and secondary persistence types.
+     * Uses DAOs without observers to avoid circular notifications.
      *
      * @param primary The primary persistence type
      * @param secondary The secondary persistence type
@@ -227,76 +268,44 @@ public class InitialSyncManager {
      */
     private List<Fan> syncFans(PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Synchronizing fans...");
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
-        factory.setPersistenceType(primary);
-        Map<String, Fan> primaryMap = listToMap(factory.getFanDao().retrieveAllFans());
+        // Create DAOs without observers
+        it.uniroma2.hoophub.dao.FanDao primaryFanDao = createDaoWithoutObservers(primary, "fan");
+        it.uniroma2.hoophub.dao.FanDao secondaryFanDao = createDaoWithoutObservers(secondary, "fan");
+        it.uniroma2.hoophub.dao.UserDao primaryUserDao = createDaoWithoutObservers(primary, "user");
+        it.uniroma2.hoophub.dao.UserDao secondaryUserDao = createDaoWithoutObservers(secondary, "user");
 
-        factory.setPersistenceType(secondary);
-        Map<String, Fan> secondaryMap = listToMap(factory.getFanDao().retrieveAllFans());
+        Map<String, Fan> primaryMap = listToMap(primaryFanDao.retrieveAllFans());
+        Map<String, Fan> secondaryMap = listToMap(secondaryFanDao.retrieveAllFans());
 
         Set<String> allKeys = new HashSet<>(primaryMap.keySet());
         allKeys.addAll(secondaryMap.keySet());
 
-        logger.info("===== SYNC FANS DEBUG START =====");
-        logger.info("Primary fans found: " + primaryMap.keySet());
-        logger.info("Secondary fans found: " + secondaryMap.keySet());
-        logger.info("All keys to process: " + allKeys);
-
-        int iteration = 0;
         for (String key : allKeys) {
-            iteration++;
-            logger.info(">>> Iteration " + iteration + ": Processing key '" + key + "'");
-
             Fan primaryFan = primaryMap.get(key);
             Fan secondaryFan = secondaryMap.get(key);
 
-            logger.info("    primaryFan: " + (primaryFan != null ? primaryFan.getUsername() : "null"));
-            logger.info("    secondaryFan: " + (secondaryFan != null ? secondaryFan.getUsername() : "null"));
-
             if (primaryFan != null && secondaryFan == null) {
-                logger.info(">>> CASE: Copy from primary to secondary");
-                logger.info("    Current factory persistence: " + factory.getPersistenceType());
-
-                FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
-
-                logger.info("    After createFanBeanFromModel, factory persistence: " + factory.getPersistenceType());
-                logger.info("    Bean username: " + beanToSave.getUsername());
-                logger.info("    Bean fullName: " + beanToSave.getFullName());
-
-                factory.setPersistenceType(secondary);
-                logger.info("    Set factory to secondary (" + secondary + ")");
-                logger.info(">>> About to call saveFan() for: " + beanToSave.getUsername());
-
-                factory.getFanDao().saveFan(beanToSave);
-
-                logger.info(">>> Successfully saved fan: " + beanToSave.getUsername());
+                logger.info("Sync: Copying fan " + key + " from " + primary + " to " + secondary);
+                FanBean beanToSave = createFanBeanFromModel(primaryFan, primaryUserDao);
+                secondaryFanDao.saveFan(beanToSave);
             } else if (primaryFan == null && secondaryFan != null) {
-                logger.info("Sync: Copying fan " + key + SyncConstants.FROM + secondary + " to " + primary);
-                FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
-                factory.setPersistenceType(primary);
-                factory.getFanDao().saveFan(beanToSave);
+                logger.info("Sync: Copying fan " + key + " from " + secondary + " to " + primary);
+                FanBean beanToSave = createFanBeanFromModel(secondaryFan, secondaryUserDao);
+                primaryFanDao.saveFan(beanToSave);
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
-                logger.info(">>> CASE: Update conflict");
-                logger.info("Sync Conflict: Different data for fan " + key + SyncConstants.FROM + primary + SyncConstants.TAKES_PRECEDENCE);
-                FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
-                factory.setPersistenceType(secondary);
-                factory.getFanDao().updateFan(primaryFan, beanToUpdate);
-            } else {
-                logger.info(">>> CASE: Already in sync, skipping");
+                logger.info("Sync Conflict: Different data for fan " + key + ". Primary takes precedence.");
+                FanBean beanToUpdate = createFanBeanFromModel(primaryFan, primaryUserDao);
+                secondaryFanDao.updateFan(primaryFan, beanToUpdate);
             }
-
-            logger.info("<<< Iteration " + iteration + " completed\n");
         }
 
-        logger.info("===== SYNC FANS DEBUG END =====");
-
-        factory.setPersistenceType(primary);
-        return factory.getFanDao().retrieveAllFans();
+        return primaryFanDao.retrieveAllFans();
     }
 
     /**
      * Synchronizes venue manager data between primary and secondary persistence types.
+     * Uses DAOs without observers to avoid circular notifications.
      *
      * @param primary The primary persistence type
      * @param secondary The secondary persistence type
@@ -304,13 +313,15 @@ public class InitialSyncManager {
      */
     private void syncVenueManagers(PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Synchronizing venue managers...");
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
-        factory.setPersistenceType(primary);
-        Map<String, VenueManager> primaryMap = listToMapVenueManager(factory.getVenueManagerDao().retrieveAllVenueManagers());
+        // Create DAOs without observers
+        it.uniroma2.hoophub.dao.VenueManagerDao primaryVmDao = createDaoWithoutObservers(primary, "venuemanager");
+        it.uniroma2.hoophub.dao.VenueManagerDao secondaryVmDao = createDaoWithoutObservers(secondary, "venuemanager");
+        it.uniroma2.hoophub.dao.UserDao primaryUserDao = createDaoWithoutObservers(primary, "user");
+        it.uniroma2.hoophub.dao.UserDao secondaryUserDao = createDaoWithoutObservers(secondary, "user");
 
-        factory.setPersistenceType(secondary);
-        Map<String, VenueManager> secondaryMap = listToMapVenueManager(factory.getVenueManagerDao().retrieveAllVenueManagers());
+        Map<String, VenueManager> primaryMap = listToMapVenueManager(primaryVmDao.retrieveAllVenueManagers());
+        Map<String, VenueManager> secondaryMap = listToMapVenueManager(secondaryVmDao.retrieveAllVenueManagers());
 
         Set<String> allKeys = new HashSet<>(primaryMap.keySet());
         allKeys.addAll(secondaryMap.keySet());
@@ -320,26 +331,24 @@ public class InitialSyncManager {
             VenueManager secondaryVM = secondaryMap.get(key);
 
             if (primaryVM != null && secondaryVM == null) {
-                logger.info("Sync: Copying venue manager " + key + SyncConstants.FROM + primary + " to " + secondary);
-                VenueManagerBean bean = createVenueManagerBeanFromModel(primaryVM, factory, primary);
-                factory.setPersistenceType(secondary);
-                factory.getVenueManagerDao().saveVenueManager(bean);
+                logger.info("Sync: Copying venue manager " + key + " from " + primary + " to " + secondary);
+                VenueManagerBean bean = createVenueManagerBeanFromModel(primaryVM, primaryUserDao);
+                secondaryVmDao.saveVenueManager(bean);
             } else if (primaryVM == null && secondaryVM != null) {
-                logger.info("Sync: Copying venue manager " + key + SyncConstants.FROM + secondary + " to " + primary);
-                VenueManagerBean bean = createVenueManagerBeanFromModel(secondaryVM, factory, secondary);
-                factory.setPersistenceType(primary);
-                factory.getVenueManagerDao().saveVenueManager(bean);
+                logger.info("Sync: Copying venue manager " + key + " from " + secondary + " to " + primary);
+                VenueManagerBean bean = createVenueManagerBeanFromModel(secondaryVM, secondaryUserDao);
+                primaryVmDao.saveVenueManager(bean);
             } else if (primaryVM != null && !primaryVM.isDataEquivalent(secondaryVM)) {
-                logger.info("Sync Conflict: Different data for venue manager " + key + SyncConstants.PRIMARY_SOURCE + primary + SyncConstants.TAKES_PRECEDENCE);
-                VenueManagerBean beanToUpdate = createVenueManagerBeanFromModel(primaryVM, factory, primary);
-                factory.setPersistenceType(secondary);
-                factory.getVenueManagerDao().updateVenueManager(primaryVM, beanToUpdate);
+                logger.info("Sync Conflict: Different data for venue manager " + key + ". Primary takes precedence.");
+                VenueManagerBean beanToUpdate = createVenueManagerBeanFromModel(primaryVM, primaryUserDao);
+                secondaryVmDao.updateVenueManager(primaryVM, beanToUpdate);
             }
         }
     }
 
     /**
      * Synchronizes venue data between primary and secondary persistence types.
+     * Uses DAOs without observers to avoid circular notifications.
      *
      * @param primary The primary persistence type
      * @param secondary The secondary persistence type
@@ -347,13 +356,13 @@ public class InitialSyncManager {
      */
     private void syncVenues(PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Synchronizing venues...");
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
-        factory.setPersistenceType(primary);
-        Map<Integer, Venue> primaryMap = listToMapVenues(factory.getVenueDao().retrieveAllVenues());
+        // Create DAOs without observers
+        it.uniroma2.hoophub.dao.VenueDao primaryVenueDao = createDaoWithoutObservers(primary, "venue");
+        it.uniroma2.hoophub.dao.VenueDao secondaryVenueDao = createDaoWithoutObservers(secondary, "venue");
 
-        factory.setPersistenceType(secondary);
-        Map<Integer, Venue> secondaryMap = listToMapVenues(factory.getVenueDao().retrieveAllVenues());
+        Map<Integer, Venue> primaryMap = listToMapVenues(primaryVenueDao.retrieveAllVenues());
+        Map<Integer, Venue> secondaryMap = listToMapVenues(secondaryVenueDao.retrieveAllVenues());
 
         Set<Integer> allIds = new HashSet<>(primaryMap.keySet());
         allIds.addAll(secondaryMap.keySet());
@@ -363,27 +372,24 @@ public class InitialSyncManager {
             Venue secondaryVenue = secondaryMap.get(id);
 
             if (primaryVenue != null && secondaryVenue == null) {
-                logger.info("Sync: Copying venue " + id + SyncConstants.FROM + primary + " to " + secondary);
+                logger.info("Sync: Copying venue " + id + " from " + primary + " to " + secondary);
                 VenueBean bean = createVenueBeanFromModel(primaryVenue);
-                factory.setPersistenceType(secondary);
-                factory.getVenueDao().saveVenue(bean);
+                secondaryVenueDao.saveVenue(bean);
             } else if (primaryVenue == null && secondaryVenue != null) {
-                logger.info("Sync: Copying venue " + id + SyncConstants.FROM + secondary + " to " + primary);
+                logger.info("Sync: Copying venue " + id + " from " + secondary + " to " + primary);
                 VenueBean bean = createVenueBeanFromModel(secondaryVenue);
-                factory.setPersistenceType(primary);
-                factory.getVenueDao().saveVenue(bean);
+                primaryVenueDao.saveVenue(bean);
             } else if (primaryVenue != null && !primaryVenue.equals(secondaryVenue)) {
-                logger.info("Sync Conflict: Different data for venue " + id + ". Primary source " + primary + " takes precedence.");
+                logger.info("Sync Conflict: Different data for venue " + id + ". Primary takes precedence.");
                 VenueBean beanToUpdate = createVenueBeanFromModel(primaryVenue);
-                factory.setPersistenceType(secondary);
-                factory.getVenueDao().updateVenue(beanToUpdate);
+                secondaryVenueDao.updateVenue(beanToUpdate);
             }
         }
-        // Rimosso il return
     }
 
     /**
      * Synchronizes booking data for all fans between persistence types.
+     * Uses DAOs without observers to avoid circular notifications.
      *
      * @param syncedFans List of fans whose bookings should be synchronized
      * @param primary The primary persistence type
@@ -392,14 +398,14 @@ public class InitialSyncManager {
      */
     private void syncBookings(List<Fan> syncedFans, PersistenceType primary, PersistenceType secondary) throws DAOException {
         logger.info("Synchronizing bookings...");
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+
+        // Create DAOs without observers
+        it.uniroma2.hoophub.dao.BookingDao primaryBookingDao = createDaoWithoutObservers(primary, "booking");
+        it.uniroma2.hoophub.dao.BookingDao secondaryBookingDao = createDaoWithoutObservers(secondary, "booking");
 
         for (Fan fan : syncedFans) {
-            factory.setPersistenceType(primary);
-            Map<Integer, Booking> primaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan.getUsername()));
-
-            factory.setPersistenceType(secondary);
-            Map<Integer, Booking> secondaryMap = listToMapBookings(factory.getBookingDao().retrieveBookingsByFan(fan.getUsername()));
+            Map<Integer, Booking> primaryMap = listToMapBookings(primaryBookingDao.retrieveBookingsByFan(fan.getUsername()));
+            Map<Integer, Booking> secondaryMap = listToMapBookings(secondaryBookingDao.retrieveBookingsByFan(fan.getUsername()));
 
             Set<Integer> allIds = new HashSet<>(primaryMap.keySet());
             allIds.addAll(secondaryMap.keySet());
@@ -409,20 +415,17 @@ public class InitialSyncManager {
                 Booking secondaryBooking = secondaryMap.get(id);
 
                 if (primaryBooking != null && secondaryBooking == null) {
-                    logger.info("Sync: Copying booking " + id + SyncConstants.FROM + primary + " to " + secondary);
+                    logger.info("Sync: Copying booking " + id + " from " + primary + " to " + secondary);
                     BookingBean beanToSave = createBookingBeanFromModel(primaryBooking);
-                    factory.setPersistenceType(secondary);
-                    factory.getBookingDao().saveBooking(beanToSave);
+                    secondaryBookingDao.saveBooking(beanToSave);
                 } else if (primaryBooking == null && secondaryBooking != null) {
-                    logger.info("Sync: Copying booking " + id + SyncConstants.FROM + secondary + " to " + primary);
+                    logger.info("Sync: Copying booking " + id + " from " + secondary + " to " + primary);
                     BookingBean beanToSave = createBookingBeanFromModel(secondaryBooking);
-                    factory.setPersistenceType(primary);
-                    factory.getBookingDao().saveBooking(beanToSave);
+                    primaryBookingDao.saveBooking(beanToSave);
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
-                    logger.info("Sync Conflict: Different data for booking " + id + SyncConstants.PRIMARY_SOURCE + primary + SyncConstants.TAKES_PRECEDENCE);
+                    logger.info("Sync Conflict: Different data for booking " + id + ". Primary takes precedence.");
                     BookingBean beanToUpdate = createBookingBeanFromModel(primaryBooking);
-                    factory.setPersistenceType(secondary);
-                    factory.getBookingDao().updateBooking(beanToUpdate);
+                    secondaryBookingDao.updateBooking(beanToUpdate);
                 }
             }
         }
@@ -462,51 +465,37 @@ public class InitialSyncManager {
         return map;
     }
 
-    private FanBean createFanBeanFromModel(Fan fan, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
-        PersistenceType originalType = factory.getPersistenceType();
-        logger.info("Creating FanBean from model: fan.username=" + fan.getUsername() + ", originalType=" + originalType + ", sourcePersistence=" + sourcePersistence);
-        try {
-            factory.setPersistenceType(sourcePersistence);
-            UserDao userDao = factory.getUserDao();
-            String[] userInfo = userDao.retrieveUser(fan.getUsername());
-            String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
+    private FanBean createFanBeanFromModel(Fan fan, UserDao userDao) throws DAOException {
+        logger.info("Creating FanBean from model: fan.username=" + fan.getUsername());
+        String[] userInfo = userDao.retrieveUser(fan.getUsername());
+        String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            FanBean bean = new FanBean.Builder()
-                    .username(fan.getUsername())
-                    .password(hashedPassword)
-                    .fullName(fan.getFullName())
-                    .gender(fan.getGender())
-                    .birthday(fan.getBirthday())
-                    .favTeam(fan.getFavTeam())
-                    .type("FAN")
-                    .build();
-            logger.info("Created FanBean: username=" + bean.getUsername() + ", fullName=" + bean.getFullName());
-            return bean;
-        } finally {
-            factory.setPersistenceType(originalType);
-        }
+        FanBean bean = new FanBean.Builder()
+                .username(fan.getUsername())
+                .password(hashedPassword)
+                .fullName(fan.getFullName())
+                .gender(fan.getGender())
+                .birthday(fan.getBirthday())
+                .favTeam(fan.getFavTeam())
+                .type("FAN")
+                .build();
+        logger.info("Created FanBean: username=" + bean.getUsername() + ", fullName=" + bean.getFullName());
+        return bean;
     }
 
-    private VenueManagerBean createVenueManagerBeanFromModel(VenueManager vm, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
-        PersistenceType originalType = factory.getPersistenceType();
-        try {
-            factory.setPersistenceType(sourcePersistence);
-            UserDao userDao = factory.getUserDao();
-            String[] userInfo = userDao.retrieveUser(vm.getUsername());
-            String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
+    private VenueManagerBean createVenueManagerBeanFromModel(VenueManager vm, UserDao userDao) throws DAOException {
+        String[] userInfo = userDao.retrieveUser(vm.getUsername());
+        String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            return new VenueManagerBean.Builder()
-                    .username(vm.getUsername())
-                    .password(hashedPassword)
-                    .fullName(vm.getFullName())
-                    .gender(vm.getGender())
-                    .companyName(vm.getCompanyName())
-                    .phoneNumber(vm.getPhoneNumber())
-                    .type(UserType.VENUE_MANAGER.toString())
-                    .build();
-        } finally {
-            factory.setPersistenceType(originalType);
-        }
+        return new VenueManagerBean.Builder()
+                .username(vm.getUsername())
+                .password(hashedPassword)
+                .fullName(vm.getFullName())
+                .gender(vm.getGender())
+                .companyName(vm.getCompanyName())
+                .phoneNumber(vm.getPhoneNumber())
+                .type(UserType.VENUE_MANAGER.toString())
+                .build();
     }
 
     private VenueBean createVenueBeanFromModel(Venue venue) {
