@@ -4,7 +4,7 @@ import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 
 /**
- * AbstractController serves as a base class for controllers within the MindHarbor application.
+ * AbstractController serves as a base class for controllers within the HoopHub application.
  * This class defines a common framework for session management across different types of controllers.
  */
 public abstract class AbstractController {

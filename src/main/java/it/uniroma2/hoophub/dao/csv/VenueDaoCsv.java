@@ -134,7 +134,8 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
         CsvUtilities.writeFile(csvFile, newRow);
 
-        logger.log(Level.INFO, "Venue saved successfully: ID={0}, name={1}", new Object[]{id, venueBean.getName()});
+        logger.log(Level.INFO, () ->
+                "Venue saved successfully: ID=" + id + ", name=" + venueBean.getName());
         notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(id), venueBean);
     }
 
@@ -227,7 +228,8 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} venues in city: {1}", new Object[]{venues.size(), city});
+        logger.log(Level.INFO, () ->
+                "Retrieved " + venues.size() + " venues in city: " + city);
         return venues;
     }
 

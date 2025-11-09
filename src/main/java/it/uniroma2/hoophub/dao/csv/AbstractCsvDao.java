@@ -139,7 +139,9 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
                     maxId = id;
                 }
             } catch (NumberFormatException e) {
-                logger.log(Level.WARNING, "Invalid ID format in row {0}: {1}", new Object[]{i, data.get(i)[idColumnIndex]});
+                int finalI = i;
+                logger.log(Level.WARNING, () ->
+                        "Invalid ID format in row " + finalI + ": " + data.get(finalI)[idColumnIndex]);
             }
         }
 

@@ -99,7 +99,8 @@ public class Main {
             LOGGER.info("Using CSV persistence as specified");
             return PersistenceType.CSV;
         } else {
-            LOGGER.warning("Unknown persistence type: " + persistenceType + ". Defaulting to MySql.");
+            LOGGER.log(Level.WARNING,
+                    () -> "Unknown persistence type: " + persistenceType + ". Defaulting to MySql.");
             return PersistenceType.MYSQL;
         }
     }
@@ -130,7 +131,8 @@ public class Main {
             LOGGER.info("Launching CLI interface");
             new CliApplication().start();
         } else {
-            LOGGER.warning("Unknown interface type: " + interfaceType + ". Defaulting to GUI.");
+            LOGGER.log(Level.WARNING,
+                    () -> "Unknown interface type: " + interfaceType + ". Defaulting to GUI.");
             Application.launch(GuiApplication.class, args);
         }
     }

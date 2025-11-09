@@ -201,7 +201,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} bookings for date {1}", new Object[]{bookings.size(), date});
+        logger.log(Level.INFO, () ->
+                "Retrieved " + bookings.size() + " bookings for date " + date);
         return bookings;
     }
 

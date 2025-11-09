@@ -1,7 +1,7 @@
 package it.uniroma2.hoophub.patterns.facade;
 
 /**
- * Enumeration representing the available persistence mechanisms in MindHarbor.
+ * Enumeration representing the available persistence mechanisms in HoopHub.
  * <p>
  * This enum defines the supported data storage strategies that the application
  * can use. The system supports dual persistence with automatic synchronization

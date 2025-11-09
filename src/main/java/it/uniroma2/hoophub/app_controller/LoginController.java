@@ -10,7 +10,7 @@ import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.UserType;
 
 /**
- * LoginController manages the authentication process for users trying to log in to the MindHarbor application.
+ * LoginController manages the authentication process for users trying to log in to the HoopHub application.
  * This class interacts with various data access objects (DAOs)
  * to validate user credentials and retrieve user information.
  * <p>

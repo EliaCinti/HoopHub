@@ -45,7 +45,7 @@ public class ConnectionFactory {
             if (input == null) {
                 logger.warning("Unable to find config.properties, using default configurations");
                 // Default configuration for development
-                connectionUrl = "jdbc:mysql://localhost:3306/mindharbor";
+                connectionUrl = "jdbc:mysql://localhost:3306/hoophub";
                 user = "root";
                 pass = "";
                 return;
