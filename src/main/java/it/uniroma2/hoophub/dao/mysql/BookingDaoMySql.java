@@ -116,26 +116,27 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void saveBooking(BookingBean bookingBean) throws DAOException {
         validateBookingBeanInput(bookingBean);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
-                     Statement.RETURN_GENERATED_KEYS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
+                         Statement.RETURN_GENERATED_KEYS)) {
 
-            stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
-            stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-            stmt.setString(3, bookingBean.getHomeTeam());
-            stmt.setString(4, bookingBean.getAwayTeam());
-            stmt.setInt(5, bookingBean.getVenueId());
-            stmt.setString(6, bookingBean.getFanUsername());
-            stmt.setString(7, bookingBean.getStatus().name());
-            stmt.setBoolean(8, bookingBean.isNotified());
+                stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
+                stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
+                stmt.setString(3, bookingBean.getHomeTeam());
+                stmt.setString(4, bookingBean.getAwayTeam());
+                stmt.setInt(5, bookingBean.getVenueId());
+                stmt.setString(6, bookingBean.getFanUsername());
+                stmt.setString(7, bookingBean.getStatus().name());
+                stmt.setBoolean(8, bookingBean.isNotified());
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking saved successfully: {0}", bookingBean.getId());
-                notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Booking saved successfully: {0}", bookingBean.getId());
+                    notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
+                }
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during booking save", e);
             throw new DAOException("Error saving booking", e);
@@ -152,18 +153,19 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public Booking retrieveBooking(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKING)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKING)) {
 
-            stmt.setInt(1, bookingId);
+                stmt.setInt(1, bookingId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToBooking(rs);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapResultSetToBooking(rs);
+                    }
+                    return null;
                 }
-                return null;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during booking retrieval", e);
             throw new DAOException("Error retrieving booking", e);
@@ -177,17 +179,18 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public List<Booking> retrieveAllBookings() throws DAOException {
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_BOOKINGS);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_BOOKINGS);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                bookings.add(mapResultSetToBooking(rs));
+                while (rs.next()) {
+                    bookings.add(mapResultSetToBooking(rs));
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} bookings", bookings.size());
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} bookings", bookings.size());
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval", e);
             throw new DAOException("Error retrieving all bookings", e);
@@ -203,21 +206,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
 
-            stmt.setString(1, fanUsername);
+                stmt.setString(1, fanUsername);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} bookings for fan {1}",
+                        new Object[]{bookings.size(), fanUsername});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} bookings for fan {1}",
-                    new Object[]{bookings.size(), fanUsername});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval by fan", e);
             throw new DAOException("Error retrieving bookings by fan", e);
@@ -233,21 +237,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
 
-            stmt.setInt(1, venueId);
+                stmt.setInt(1, venueId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
+                        new Object[]{bookings.size(), venueId});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
-                    new Object[]{bookings.size(), venueId});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval by venue", e);
             throw new DAOException("Error retrieving bookings by venue", e);
@@ -267,21 +272,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
 
-            stmt.setString(1, venueManagerUsername);
+                stmt.setString(1, venueManagerUsername);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} bookings for venue manager {1}",
+                        new Object[]{bookings.size(), venueManagerUsername});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} bookings for venue manager {1}",
-                    new Object[]{bookings.size(), venueManagerUsername});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval by venue manager", e);
             throw new DAOException("Error retrieving bookings by venue manager", e);
@@ -297,21 +303,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_DATE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_DATE)) {
 
-            stmt.setDate(1, Date.valueOf(date));
+                stmt.setDate(1, Date.valueOf(date));
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} bookings for date {1}",
+                        new Object[]{bookings.size(), date});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} bookings for date {1}",
-                    new Object[]{bookings.size(), date});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval by date", e);
             throw new DAOException("Error retrieving bookings by date", e);
@@ -328,22 +335,23 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
 
-            stmt.setString(1, fanUsername);
-            stmt.setString(2, status.name());
+                stmt.setString(1, fanUsername);
+                stmt.setString(2, status.name());
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} {1} bookings for fan {2}",
+                        new Object[]{bookings.size(), status, fanUsername});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} {1} bookings for fan {2}",
-                    new Object[]{bookings.size(), status, fanUsername});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during bookings retrieval by status", e);
             throw new DAOException("Error retrieving bookings by status", e);
@@ -359,21 +367,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         List<Booking> bookings = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
 
-            stmt.setString(1, fanUsername);
+                stmt.setString(1, fanUsername);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    bookings.add(mapResultSetToBooking(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        bookings.add(mapResultSetToBooking(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} unnotified bookings for fan {1}",
+                        new Object[]{bookings.size(), fanUsername});
+                return bookings;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} unnotified bookings for fan {1}",
-                    new Object[]{bookings.size(), fanUsername});
-            return bookings;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during unnotified bookings retrieval", e);
             throw new DAOException("Error retrieving unnotified bookings", e);
@@ -387,27 +396,28 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void updateBooking(BookingBean bookingBean) throws DAOException {
         validateBookingBeanInput(bookingBean);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
 
-            stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
-            stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-            stmt.setString(3, bookingBean.getHomeTeam());
-            stmt.setString(4, bookingBean.getAwayTeam());
-            stmt.setInt(5, bookingBean.getVenueId());
-            stmt.setString(6, bookingBean.getStatus().name());
-            stmt.setBoolean(7, bookingBean.isNotified());
-            stmt.setInt(8, bookingBean.getId());
+                stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
+                stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
+                stmt.setString(3, bookingBean.getHomeTeam());
+                stmt.setString(4, bookingBean.getAwayTeam());
+                stmt.setInt(5, bookingBean.getVenueId());
+                stmt.setString(6, bookingBean.getStatus().name());
+                stmt.setBoolean(7, bookingBean.isNotified());
+                stmt.setInt(8, bookingBean.getId());
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
-                notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
-            } else {
-                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingBean.getId());
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
+                    notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
+                } else {
+                    throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingBean.getId());
+                }
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during booking update", e);
             throw new DAOException("Error updating booking", e);
@@ -421,20 +431,21 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void deleteBooking(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
 
-            stmt.setInt(1, bookingId);
+                stmt.setInt(1, bookingId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
-                notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
-            } else {
-                throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingId);
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
+                    notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
+                } else {
+                    throw new DAOException(ERR_BOOKING_NOT_FOUND + ": " + bookingId);
+                }
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during booking deletion", e);
             throw new DAOException("Error deleting booking", e);
@@ -448,18 +459,19 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public boolean bookingExists(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
 
-            stmt.setInt(1, bookingId);
+                stmt.setInt(1, bookingId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt(1) > 0;
+                    }
+                    return false;
                 }
-                return false;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during booking existence check", e);
             throw new DAOException("Error checking booking existence", e);
@@ -471,15 +483,16 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
      */
     @Override
     public int getNextBookingId() throws DAOException {
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            if (rs.next()) {
-                return rs.getInt(1) + 1;
+                if (rs.next()) {
+                    return rs.getInt(1) + 1;
+                }
+                return 1;
             }
-            return 1;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during next booking ID retrieval", e);
             throw new DAOException("Error getting next booking ID", e);

@@ -109,32 +109,33 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
         }
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
-                     Statement.RETURN_GENERATED_KEYS)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
+                         Statement.RETURN_GENERATED_KEYS)) {
 
-            setNotificationParameters(stmt, notification, 1);
-            stmt.setTimestamp(7, Timestamp.valueOf(notification.getCreatedAt()));
+                setNotificationParameters(stmt, notification, 1);
+                stmt.setTimestamp(7, Timestamp.valueOf(notification.getCreatedAt()));
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        long generatedId = generatedKeys.getLong(1);
-                        logger.log(Level.INFO, "Notification saved successfully with ID: {0}", generatedId);
+                if (affectedRows > 0) {
+                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            long generatedId = generatedKeys.getLong(1);
+                            logger.log(Level.INFO, "Notification saved successfully with ID: {0}", generatedId);
 
-                        // Return new notification with generated ID
-                        return new Notification.Builder()
-                                .from(notification)
-                                .id(generatedId)
-                                .build();
+                            // Return new notification with generated ID
+                            return new Notification.Builder()
+                                    .from(notification)
+                                    .id(generatedId)
+                                    .build();
+                        }
                     }
                 }
+
+                throw new DAOException("Failed to save notification");
             }
-
-            throw new DAOException("Failed to save notification");
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification save", e);
             throw new DAOException("Error saving notification", e);
@@ -148,18 +149,19 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public Optional<Notification> findById(Long id) throws DAOException {
         validateIdInput(id);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_ID)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_ID)) {
 
-            stmt.setLong(1, id);
+                stmt.setLong(1, id);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return Optional.of(mapResultSetToNotification(rs));
+                    }
+                    return Optional.empty();
                 }
-                return Optional.empty();
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification retrieval", e);
             throw new DAOException("Error retrieving notification", e);
@@ -175,21 +177,22 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        notifications.add(mapResultSetToNotification(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} notifications for user {1}",
+                        new Object[]{notifications.size(), userId});
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} notifications for user {1}",
-                    new Object[]{notifications.size(), userId});
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notifications retrieval by user", e);
             throw new DAOException("Error retrieving notifications by user", e);
@@ -205,21 +208,22 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        notifications.add(mapResultSetToNotification(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} unread notifications for user {1}",
+                        new Object[]{notifications.size(), userId});
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} unread notifications for user {1}",
-                    new Object[]{notifications.size(), userId});
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during unread notifications retrieval", e);
             throw new DAOException("Error retrieving unread notifications", e);
@@ -238,22 +242,23 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER_AND_TYPE)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER_AND_TYPE)) {
 
-            stmt.setLong(1, userId);
-            stmt.setString(2, type.name());
+                stmt.setLong(1, userId);
+                stmt.setString(2, type.name());
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        notifications.add(mapResultSetToNotification(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} {1} notifications for user {2}",
+                        new Object[]{notifications.size(), type, userId});
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} {1} notifications for user {2}",
-                    new Object[]{notifications.size(), type, userId});
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notifications retrieval by type", e);
             throw new DAOException("Error retrieving notifications by type", e);
@@ -269,21 +274,22 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_BOOKING)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_BOOKING)) {
 
-            stmt.setLong(1, bookingId);
+                stmt.setLong(1, bookingId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        notifications.add(mapResultSetToNotification(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} notifications for booking {1}",
+                        new Object[]{notifications.size(), bookingId});
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} notifications for booking {1}",
-                    new Object[]{notifications.size(), bookingId});
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notifications retrieval by booking", e);
             throw new DAOException("Error retrieving notifications by booking", e);
@@ -297,18 +303,19 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int countUnreadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getInt(1);
+                    }
+                    return 0;
                 }
-                return 0;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during unread count", e);
             throw new DAOException("Error counting unread notifications", e);
@@ -322,19 +329,20 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public boolean markAsRead(Long notificationId) throws DAOException {
         validateIdInput(notificationId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ)) {
 
-            stmt.setLong(1, notificationId);
+                stmt.setLong(1, notificationId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
+                }
+
+                return affectedRows > 0;
             }
-
-            return affectedRows > 0;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during mark as read", e);
             throw new DAOException("Error marking notification as read", e);
@@ -348,18 +356,19 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int markAllAsReadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_ALL_AS_READ_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_ALL_AS_READ_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            logger.log(Level.INFO, "Marked {0} notifications as read for user {1}",
-                    new Object[]{affectedRows, userId});
+                logger.log(Level.INFO, "Marked {0} notifications as read for user {1}",
+                        new Object[]{affectedRows, userId});
 
-            return affectedRows;
-
+                return affectedRows;
+            }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during mark all as read", e);
             throw new DAOException("Error marking all notifications as read", e);
@@ -374,19 +383,20 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         validateIdInput(bookingId);
         validateIdInput(userId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ_BY_BOOKING_AND_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ_BY_BOOKING_AND_USER)) {
 
-            stmt.setLong(1, bookingId);
-            stmt.setLong(2, userId);
+                stmt.setLong(1, bookingId);
+                stmt.setLong(2, userId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            logger.log(Level.INFO, "Marked {0} notifications as read for booking {1} and user {2}",
-                    new Object[]{affectedRows, bookingId, userId});
+                logger.log(Level.INFO, "Marked {0} notifications as read for booking {1} and user {2}",
+                        new Object[]{affectedRows, bookingId, userId});
 
-            return affectedRows;
-
+                return affectedRows;
+            }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during mark as read by booking", e);
             throw new DAOException("Error marking notifications as read by booking", e);
@@ -402,20 +412,21 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
         }
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
 
-            setNotificationParameters(stmt, notification, 1);
-            stmt.setLong(7, notification.getId());
+                setNotificationParameters(stmt, notification, 1);
+                stmt.setLong(7, notification.getId());
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Notification updated successfully: {0}", notification.getId());
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Notification updated successfully: {0}", notification.getId());
+                }
+
+                return affectedRows > 0;
             }
-
-            return affectedRows > 0;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification update", e);
             throw new DAOException("Error updating notification", e);
@@ -429,19 +440,20 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public boolean deleteById(Long id) throws DAOException {
         validateIdInput(id);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_ID)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_ID)) {
 
-            stmt.setLong(1, id);
+                stmt.setLong(1, id);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
-                logger.log(Level.INFO, "Notification deleted successfully: {0}", id);
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Notification deleted successfully: {0}", id);
+                }
+
+                return affectedRows > 0;
             }
-
-            return affectedRows > 0;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification deletion", e);
             throw new DAOException("Error deleting notification", e);
@@ -455,18 +467,19 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int deleteByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            logger.log(Level.INFO, "Deleted {0} notifications for user {1}",
-                    new Object[]{affectedRows, userId});
+                logger.log(Level.INFO, "Deleted {0} notifications for user {1}",
+                        new Object[]{affectedRows, userId});
 
-            return affectedRows;
-
+                return affectedRows;
+            }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notifications deletion by user", e);
             throw new DAOException("Error deleting notifications by user", e);
@@ -480,18 +493,19 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public int deleteReadByUserId(Long userId) throws DAOException {
         validateIdInput(userId);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_READ_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_READ_BY_USER)) {
 
-            stmt.setLong(1, userId);
+                stmt.setLong(1, userId);
 
-            int affectedRows = stmt.executeUpdate();
+                int affectedRows = stmt.executeUpdate();
 
-            logger.log(Level.INFO, "Deleted {0} read notifications for user {1}",
-                    new Object[]{affectedRows, userId});
+                logger.log(Level.INFO, "Deleted {0} read notifications for user {1}",
+                        new Object[]{affectedRows, userId});
 
-            return affectedRows;
-
+                return affectedRows;
+            }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during read notifications deletion", e);
             throw new DAOException("Error deleting read notifications", e);
@@ -505,17 +519,18 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public List<Notification> findAll() throws DAOException {
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                notifications.add(mapResultSetToNotification(rs));
+                while (rs.next()) {
+                    notifications.add(mapResultSetToNotification(rs));
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} notifications", notifications.size());
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} notifications", notifications.size());
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during all notifications retrieval", e);
             throw new DAOException("Error retrieving all notifications", e);
@@ -534,22 +549,23 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
         List<Notification> notifications = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_RECENT_BY_USER)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_RECENT_BY_USER)) {
 
-            stmt.setLong(1, userId);
-            stmt.setInt(2, limit);
+                stmt.setLong(1, userId);
+                stmt.setInt(2, limit);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        notifications.add(mapResultSetToNotification(rs));
+                    }
                 }
+
+                logger.log(Level.INFO, "Retrieved {0} recent notifications for user {1}",
+                        new Object[]{notifications.size(), userId});
+                return notifications;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} recent notifications for user {1}",
-                    new Object[]{notifications.size(), userId});
-            return notifications;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during recent notifications retrieval", e);
             throw new DAOException("Error retrieving recent notifications", e);

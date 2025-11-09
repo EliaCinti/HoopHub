@@ -139,18 +139,19 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     public Fan retrieveFan(String username) throws DAOException {
         validateUsernameInput(username);
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_FAN)) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_FAN)) {
 
-            stmt.setString(1, username);
+                stmt.setString(1, username);
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return mapResultSetToFan(rs);
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        return mapResultSetToFan(rs);
+                    }
+                    return null;
                 }
-                return null;
             }
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during fan retrieval", e);
             throw new DAOException("Error retrieving fan", e);
@@ -164,17 +165,18 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     public List<Fan> retrieveAllFans() throws DAOException {
         List<Fan> fans = new ArrayList<>();
 
-        Connection conn = ConnectionFactory.getConnection();
-        try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_FANS);
-             ResultSet rs = stmt.executeQuery()) {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_FANS);
+                 ResultSet rs = stmt.executeQuery()) {
 
-            while (rs.next()) {
-                fans.add(mapResultSetToFan(rs));
+                while (rs.next()) {
+                    fans.add(mapResultSetToFan(rs));
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} fans", fans.size());
+                return fans;
             }
-
-            logger.log(Level.INFO, "Retrieved {0} fans", fans.size());
-            return fans;
-
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during fans retrieval", e);
             throw new DAOException("Error retrieving all fans", e);
