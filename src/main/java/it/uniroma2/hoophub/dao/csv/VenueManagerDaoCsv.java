@@ -139,7 +139,6 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
 
         CsvUtilities.writeFile(csvFile, managerRow);
 
-        logger.log(Level.INFO, "VenueManager saved successfully: {0}", venueManagerBean.getUsername());
         notifyObservers(DaoOperation.INSERT, "VenueManager", venueManagerBean.getUsername(), venueManagerBean);
     }
 
@@ -205,7 +204,6 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} venue managers", venueManagers.size());
         return venueManagers;
     }
 

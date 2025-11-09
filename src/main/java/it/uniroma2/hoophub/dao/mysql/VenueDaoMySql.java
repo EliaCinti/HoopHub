@@ -171,7 +171,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                     venues.add(mapResultSetToVenue(rs));
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} venues", venues.size());
                 return venues;
             }
         } catch (SQLException e) {

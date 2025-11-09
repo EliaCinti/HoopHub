@@ -122,8 +122,6 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
         CsvUtilities.writeFile(csvFile, newRow);
 
-        logger.log(Level.INFO, "Notification saved successfully with ID: {0}", id);
-
         // Return notification with generated ID
         return new Notification.Builder()
                 .from(notification)

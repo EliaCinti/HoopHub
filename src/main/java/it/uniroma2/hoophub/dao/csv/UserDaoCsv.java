@@ -160,7 +160,6 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
 
         CsvUtilities.writeFile(csvFile, newRow);
 
-        logger.log(Level.INFO, "User saved successfully: {0}", userBean.getUsername());
         notifyObservers(DaoOperation.INSERT, "User", userBean.getUsername(), userBean);
     }
 

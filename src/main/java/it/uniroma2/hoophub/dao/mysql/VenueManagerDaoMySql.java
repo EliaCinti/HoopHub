@@ -175,7 +175,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                     venueManagers.add(mapResultSetToVenueManager(rs));
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} venue managers", venueManagers.size());
                 return venueManagers;
             }
         } catch (SQLException e) {
