@@ -53,6 +53,11 @@ public abstract class AbstractObservableDao implements ObservableDao {
      * {@code ConcurrentModificationException} and calls the appropriate
      * observer method based on the operation type.
      * </p>
+     * <p>
+     * Note: This method always notifies observers regardless of sync state.
+     * Observers are responsible for checking {@link it.uniroma2.hoophub.sync.SyncContext}
+     * themselves to prevent circular updates during synchronization.
+     * </p>
      *
      * @param operation The type of operation that was performed
      * @param entityType The type of entity that was affected
@@ -61,12 +66,6 @@ public abstract class AbstractObservableDao implements ObservableDao {
      */
     @Override
     public void notifyObservers(DaoOperation operation, String entityType, String entityId, Object entity) {
-        // Skip observer notifications during initial synchronization to prevent circular updates
-        if (it.uniroma2.hoophub.sync.SyncContext.isSyncing()) {
-            logger.fine("Skipping observer notification during sync: " + operation + " " + entityType + " " + entityId);
-            return;
-        }
-
         List<DaoObserver> observersCopy = new ArrayList<>(observers);
 
         for (DaoObserver observer : observersCopy) {

@@ -143,16 +143,9 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
         validateNotNullOrEmpty(userBean.getGender(), "Gender");
         validateNotNullOrEmpty(userBean.getType(), "User type");
 
-        logger.log(Level.INFO, ">>> SAVE USER: checking if username exists: {0}", userBean.getUsername());
-        boolean taken = isUsernameTaken(userBean.getUsername());
-        logger.log(Level.INFO, ">>> SAVE USER: isUsernameTaken() returned: {0}", taken);
-
-        if (taken) {
-            logger.log(Level.SEVERE, ">>> SAVE USER: THROWING EXCEPTION - Username already exists: {0}", userBean.getUsername());
+        if (isUsernameTaken(userBean.getUsername())) {
             throw new DAOException("Username already exists: " + userBean.getUsername());
         }
-
-        logger.log(Level.INFO, ">>> SAVE USER: proceeding with save for: {0}", userBean.getUsername());
 
         String hashedPassword = PasswordUtils.hashPassword(userBean.getPassword());
 
@@ -164,9 +157,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
                 userBean.getType()
         };
 
-        logger.log(Level.INFO, ">>> SAVE USER: about to write to users.csv");
         CsvUtilities.writeFile(csvFile, newRow);
-        logger.log(Level.INFO, ">>> SAVE USER: writeFile completed");
 
         logger.log(Level.INFO, "User saved successfully: {0}", userBean.getUsername());
         notifyObservers(DaoOperation.INSERT, "User", userBean.getUsername(), userBean);
