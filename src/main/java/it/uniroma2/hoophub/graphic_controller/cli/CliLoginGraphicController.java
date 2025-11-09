@@ -7,56 +7,49 @@ import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.CliView;
+import it.uniroma2.hoophub.utilities.UserType;
 
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * CliLoginGraphicController is the CLI graphic controller for the login use case.
- * <p>
- * This is a graphic controller for the Command Line Interface (CLI),
- * parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController}
- * for GUI. It follows the MVC pattern by:
- * <ul>
- *   <li><strong>Model:</strong> User, CredentialsBean (domain objects)</li>
- *   <li><strong>View:</strong> CliView (handles formatted console I/O)</li>
- *   <li><strong>Graphic Controller:</strong> This class (CLI presentation logic)</li>
- *   <li><strong>Application Controller:</strong> LoginController (business logic)</li>
- * </ul>
- * </p>
- * <p>
- * <strong>Naming Convention:</strong>
- * <ul>
- *   <li>GUI Graphic Controller: LoginGraphicController</li>
- *   <li>CLI Graphic Controller: CliLoginGraphicController (this class)</li>
- *   <li>Application Controller: LoginController (shared by both GUI and CLI)</li>
- * </ul>
- * </p>
- * <p>
- * <strong>Controller Lifecycle:</strong> This controller is instantiated ONCE in CliApplication
- * and reused for all login operations. It manages the entire login use case from start to finish,
- * including post-login navigation and eventual logout.
- * </p>
- *
- * @see LoginController
- * @see CliView
- * @see it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController
+ * CLI graphic controller for the login use case.
+ * Parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController} for GUI.
+ * Uses POLYMORPHISM to navigate to appropriate home screen based on user type.
  */
 public class CliLoginGraphicController {
 
+    private static final Logger LOGGER = Logger.getLogger(CliLoginGraphicController.class.getName());
+
+    // Constants for commands and limits
+    private static final String EXIT_COMMAND = "exit";
+    private static final String QUIT_COMMAND = "quit";
+    private static final int MAX_LOGIN_ATTEMPTS = 3;
+
+    // Message constants
+    private static final String TITLE = "HOOPHUB - LOGIN";
+    private static final String USERNAME_PROMPT = "Username: ";
+    private static final String PASSWORD_PROMPT = "Password: ";
+    private static final String EMPTY_USERNAME_MSG = "Username cannot be empty";
+    private static final String EMPTY_PASSWORD_MSG = "Password cannot be empty";
+    private static final String LOGIN_CANCELLED_MSG = "Login cancelled";
+    private static final String LOGIN_SUCCESS_MSG = "Login successful! Welcome, %s";
+    private static final String USER_TYPE_MSG = "User type: %s";
+    private static final String LOGIN_FAILED_MSG = "Login failed: %s";
+    private static final String RETRY_MSG = "Please try again or type 'exit' to quit";
+    private static final String USER_ALREADY_LOGGED_MSG = "This user is already logged in";
+    private static final String LOGOUT_FIRST_MSG = "Please logout first or try another account";
+    private static final String MAX_ATTEMPTS_MSG = "Maximum login attempts reached. Please try again later.";
+    private static final String LOADING_DASHBOARD_MSG = "Loading %s dashboard...";
+    private static final String DASHBOARD_NOT_IMPLEMENTED_MSG = "Note: Dashboard graphic controllers not yet implemented";
+    private static final String LOGGING_OUT_MSG = "Logging out...";
+    private static final String LOGOUT_SUCCESS_MSG = "Logged out successfully";
+    private static final String LOGOUT_ERROR_MSG = "Error during logout: %s";
+
     private final CliView view;
     private final LoginController loginController;
-    private static final Logger logger = Logger.getLogger(CliLoginGraphicController.class.getName());
 
-    /**
-     * Constructs a new CliLoginGraphicController with the specified view.
-     * <p>
-     * This constructor is called ONCE by CliApplication. The same instance
-     * is reused for all login operations (no new instances created per login).
-     * </p>
-     *
-     * @param view The CliView instance for formatted console I/O
-     */
     public CliLoginGraphicController(CliView view) {
         this.view = view;
         this.loginController = new LoginController();
@@ -64,134 +57,242 @@ public class CliLoginGraphicController {
 
     /**
      * Executes the complete login use case.
-     * <p>
-     * This method manages the entire login flow:
-     * <ol>
-     *   <li>Shows the login screen</li>
-     *   <li>Prompts for username and password</li>
-     *   <li>Delegates authentication to LoginController</li>
-     *   <li>Handles post-login navigation (dashboard loading)</li>
-     *   <li>Manages logout when dashboard is not yet implemented</li>
-     * </ol>
-     * </p>
-     * <p>
-     * This is the main entry point for the login use case, called by CliApplication.
-     * </p>
      */
     public void execute() {
-        User loggedUser = performLogin();
-
-        if (loggedUser != null) {
-            handlePostLogin(loggedUser);
-        }
+        Optional<User> loggedUser = performLogin();
+        loggedUser.ifPresent(this::navigateToHomepage);
     }
 
     /**
-     * Performs the login operation with user input loop.
+     * Performs the login operation with attempt limiting and improved input validation.
      *
-     * @return The authenticated User object, or null if login is cancelled
+     * @return Optional containing the authenticated User, or empty if login is cancelled or max attempts reached
      */
-    private User performLogin() {
-        view.showTitle("HOOPHUB - LOGIN");
+    private Optional<User> performLogin() {
+        view.showTitle(TITLE);
 
-        while (true) {
-            // Read credentials from user
+        int attemptCount = 0;
+
+        while (attemptCount < MAX_LOGIN_ATTEMPTS) {
             view.newLine();
-            String username = view.readInput("Username: ");
 
+            Optional<String> username = readUsername();
             if (username.isEmpty()) {
-                view.showWarning("Username cannot be empty");
-                continue;
+                return Optional.empty(); // User cancelled
             }
 
-            // Check for exit command
-            if (username.equalsIgnoreCase("exit") || username.equalsIgnoreCase("quit")) {
-                view.showInfo("Login cancelled");
-                return null;
-            }
-
-            String password = view.readPassword("Password: ");
-
+            Optional<String> password = readPassword();
             if (password.isEmpty()) {
-                view.showWarning("Password cannot be empty");
-                continue;
+                continue; // Retry with new username
             }
 
-            // Attempt login
-            try {
-                CredentialsBean credentials = new CredentialsBean.Builder<>()
-                        .username(username)
-                        .password(password)
-                        .build();
+            Optional<User> loginResult = attemptLogin(username.get(), password.get());
+            if (loginResult.isPresent()) {
+                return loginResult;
+            }
 
-                User loggedUser = loginController.login(credentials);
+            attemptCount++;
 
-                // Login successful
-                view.newLine();
-                view.showSuccess("Login successful! Welcome, " + loggedUser.getFullName());
-                view.showInfo("User type: " + loggedUser.getUserType());
-                view.newLine();
-
-                logger.log(Level.INFO, "User logged in via CLI: {0} ({1})",
-                    new Object[]{username, loggedUser.getUserType()});
-
-                return loggedUser;
-
-            } catch (DAOException e) {
-                logger.log(Level.WARNING, "Login failed for user: " + username, e);
-                view.showError("Login failed: " + e.getMessage());
-                view.showInfo("Please try again or type 'exit' to quit");
-                view.newLine();
-
-            } catch (UserSessionException e) {
-                logger.log(Level.INFO, "User already logged in: " + username, e);
-                view.showError("This user is already logged in");
-                view.showInfo("Please logout first or try another account");
+            if (attemptCount < MAX_LOGIN_ATTEMPTS) {
+                view.showInfo(RETRY_MSG);
                 view.newLine();
             }
         }
+
+        view.showError(MAX_ATTEMPTS_MSG);
+        return Optional.empty();
     }
 
     /**
-     * Handles post-login navigation and actions.
-     * <p>
-     * This method determines what happens after successful login based on user type.
-     * Currently shows a placeholder message and logs out the user since
-     * dashboard graphic controllers are not yet implemented.
-     * </p>
-     * <p>
-     * In a complete implementation, this would delegate to CliFanHomeGraphicController
-     * or CliVenueManagerHomeGraphicController based on user type.
-     * </p>
+     * Reads and validates username input.
+     *
+     * @return Optional containing the username, or empty if user wants to exit
+     */
+    private Optional<String> readUsername() {
+        String username = view.readInput(USERNAME_PROMPT);
+
+        if (isExitCommand(username)) {
+            view.showInfo(LOGIN_CANCELLED_MSG);
+            return Optional.empty();
+        }
+
+        if (username.isEmpty()) {
+            view.showWarning(EMPTY_USERNAME_MSG);
+            return Optional.empty();
+        }
+
+        return Optional.of(username);
+    }
+
+    /**
+     * Reads and validates password input.
+     *
+     * @return Optional containing the password, or empty if validation fails
+     */
+    private Optional<String> readPassword() {
+        String password = view.readPassword(PASSWORD_PROMPT);
+
+        if (password.isEmpty()) {
+            view.showWarning(EMPTY_PASSWORD_MSG);
+            return Optional.empty();
+        }
+
+        return Optional.of(password);
+    }
+
+    /**
+     * Attempts to authenticate user with given credentials.
+     *
+     * @param username The username
+     * @param password The password
+     * @return Optional containing the authenticated User, or empty if authentication fails
+     */
+    private Optional<User> attemptLogin(String username, String password) {
+        try {
+            CredentialsBean credentials = buildCredentials(username, password);
+            User loggedUser = loginController.login(credentials);
+
+            displayLoginSuccess(loggedUser);
+            logSuccessfulLogin(username, loggedUser);
+
+            return Optional.of(loggedUser);
+
+        } catch (DAOException e) {
+            handleDAOException(username, e);
+        } catch (UserSessionException e) {
+            handleSessionException(username, e);
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Builds credentials bean from username and password.
+     */
+    private CredentialsBean buildCredentials(String username, String password) {
+        return new CredentialsBean.Builder<>()
+                .username(username)
+                .password(password)
+                .build();
+    }
+
+    /**
+     * Displays success message after login.
+     */
+    private void displayLoginSuccess(User user) {
+        view.newLine();
+        view.showSuccess(String.format(LOGIN_SUCCESS_MSG, user.getFullName()));
+        view.showInfo(String.format(USER_TYPE_MSG, user.getUserType()));
+        view.newLine();
+    }
+
+    /**
+     * Logs successful login attempt.
+     */
+    private void logSuccessfulLogin(String username, User user) {
+        LOGGER.log(Level.INFO, "User logged in via CLI: {0} ({1})",
+                new Object[]{username, user.getUserType()});
+    }
+
+    /**
+     * Handles DAO exceptions during login.
+     */
+    private void handleDAOException(String username, DAOException e) {
+        LOGGER.log(Level.WARNING, "Login failed for user: " + username, e);
+        view.showError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
+    }
+
+    /**
+     * Handles session exceptions during login.
+     */
+    private void handleSessionException(String username, UserSessionException e) {
+        LOGGER.log(Level.INFO, "User already logged in: " + username, e);
+        view.showError(USER_ALREADY_LOGGED_MSG);
+        view.showInfo(LOGOUT_FIRST_MSG);
+        view.newLine();
+    }
+
+    /**
+     * Navigates to the appropriate homepage based on user type WITHOUT using instanceof.
+     * This method calls the abstract getUserType() method, which is implemented differently
+     * by Fan and VenueManager classes. The decision of which implementation to call is made
+     * at RUNTIME (late binding) - this is POLYMORPHISM in action.
      *
      * @param user The authenticated user
      */
-    private void handlePostLogin(User user) {
+    private void navigateToHomepage(User user) {
         view.newLine();
-        view.showInfo("Loading " + user.getUserType() + " dashboard...");
-        view.showWarning("Note: Dashboard graphic controllers not yet implemented");
-
-        // TODO: Implement navigation to dashboard graphic controllers
-        // switch (user.getUserType()) {
-        //     case FAN:
-        //         cliFanHomeGraphicController.execute();
-        //         break;
-        //     case VENUE_MANAGER:
-        //         cliVenueManagerHomeGraphicController.execute();
-        //         break;
-        // }
-
-        // For now, just logout
-        view.showInfo("Logging out...");
-        view.newLine();
+        view.showInfo(String.format(LOADING_DASHBOARD_MSG, user.getUserType()));
 
         try {
+            UserType userType = user.getUserType();
+
+            // Navigate based on user type using polymorphism
+            if (userType == UserType.FAN) {
+                navigateToFanHomepage();
+            } else if (userType == UserType.VENUE_MANAGER) {
+                navigateToVenueManagerHomepage();
+            }
+
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error during post-login navigation", e);
+            view.showError("An unexpected error occurred during navigation");
+            performLogout();
+        }
+    }
+
+    /**
+     * Navigates to Fan homepage.
+     * TODO: Implement CliFanHomeGraphicController
+     */
+    private void navigateToFanHomepage() {
+        view.showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        view.showInfo(LOGGING_OUT_MSG);
+        view.newLine();
+        performLogout();
+
+        // Future implementation:
+        // CliFanHomeGraphicController fanController = new CliFanHomeGraphicController(view);
+        // fanController.execute();
+    }
+
+    /**
+     * Navigates to VenueManager homepage.
+     * TODO: Implement CliVenueManagerHomeGraphicController
+     */
+    private void navigateToVenueManagerHomepage() {
+        view.showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        view.showInfo(LOGGING_OUT_MSG);
+        view.newLine();
+        performLogout();
+
+        // Future implementation:
+        // CliVenueManagerHomeGraphicController vmController = new CliVenueManagerHomeGraphicController(view);
+        // vmController.execute();
+    }
+
+    /**
+     * Performs logout operation with proper error handling.
+     */
+    private void performLogout() {
+        try {
             SessionManager.INSTANCE.logout();
-            view.showSuccess("Logged out successfully");
+            view.showSuccess(LOGOUT_SUCCESS_MSG);
             view.newLine();
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error during logout", e);
-            view.showWarning("Error during logout: " + e.getMessage());
+            LOGGER.log(Level.SEVERE, "Critical error during logout", e);
+            view.showWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
         }
+    }
+
+    /**
+     * Checks if input is an exit command.
+     *
+     * @param input The user input
+     * @return true if input is an exit command, false otherwise
+     */
+    private boolean isExitCommand(String input) {
+        return EXIT_COMMAND.equalsIgnoreCase(input) ||
+                QUIT_COMMAND.equalsIgnoreCase(input);
     }
 }

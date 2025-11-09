@@ -56,6 +56,10 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venues.csv";
     private static final String[] CSV_HEADER = {"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"};
 
+    // ========== CONSTANTS ==========
+
+    private static final String VENUE = "Venue";
+
     // ========== COLUMN INDICES ==========
 
     private static final int COL_ID = 0;
@@ -131,7 +135,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         CsvUtilities.writeFile(csvFile, newRow);
 
         logger.log(Level.INFO, "Venue saved successfully: ID={0}, name={1}", new Object[]{id, venueBean.getName()});
-        notifyObservers(DaoOperation.INSERT, "Venue", String.valueOf(id), venueBean);
+        notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(id), venueBean);
     }
 
     /**
@@ -267,13 +271,13 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "Venue", "update", venueBean.getId()));
+                    VENUE, "update", venueBean.getId()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
-        notifyObservers(DaoOperation.UPDATE, "Venue", String.valueOf(venueBean.getId()), venueBean);
+        notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
     }
 
     /**
@@ -290,11 +294,11 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "Venue", "deletion", venueId));
+                    VENUE, "deletion", venueId));
         }
 
         logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
-        notifyObservers(DaoOperation.DELETE, "Venue", String.valueOf(venueId), null);
+        notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
     }
 
     /**

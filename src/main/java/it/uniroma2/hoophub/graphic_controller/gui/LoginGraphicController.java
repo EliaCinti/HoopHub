@@ -89,7 +89,7 @@ public class LoginGraphicController {
                 navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/VenueManagerHomepage.fxml");
             }
 
-            // close current login window
+            // close the current login window
             Stage currentStage = (Stage) loginButton.getScene().getWindow();
             currentStage.close();
 
@@ -106,7 +106,7 @@ public class LoginGraphicController {
             // Open sign up page FIRST
             navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/SignUp.fxml");
 
-            // Close login page AFTER
+            // Close the login page AFTER
             Stage stage = (Stage) loginButton.getScene().getWindow();
             stage.close();
         } catch (IOException e) {

@@ -5,7 +5,7 @@ import it.uniroma2.hoophub.utilities.UserType;
 import java.util.Objects;
 
 /**
- * Base abstarct class for users.
+ * Base abstract class for users.
  * This class encapsulates the state and behavior common to all users.
  * State modification is restricted to public business operations.
  * @author Elia Cinti
@@ -143,7 +143,8 @@ public abstract class User {
         if (username.length() < 3) {
             throw new IllegalArgumentException("Username must be at least 3 characters");
         }
-        if (!username.matches("^[a-zA-Z0-9_]+$")) {
+        if (!username.matches("^\\p{Alnum}+$"))
+        {
             throw new IllegalArgumentException("Username can only contain letters, numbers, and underscores");
         }
     }

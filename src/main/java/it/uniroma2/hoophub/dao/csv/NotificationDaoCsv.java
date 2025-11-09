@@ -422,7 +422,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
     public synchronized boolean deleteById(Long id) throws DAOException {
         validatePositiveId(id);
 
-        boolean found = deleteById(id.longValue(), COL_ID);
+        boolean found = deleteById(id, COL_ID);
 
         if (found) {
             logger.log(Level.INFO, "Notification deleted successfully: {0}", id);

@@ -4,150 +4,134 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
-import it.uniroma2.hoophub.utilities.FontLoader;
-import it.uniroma2.hoophub.utilities.NavigatorSingleton;
-import it.uniroma2.hoophub.view.CliApplication;
+import it.uniroma2.hoophub.launcher.CliApplication;
+import it.uniroma2.hoophub.launcher.GuiApplication;
 import javafx.application.Application;
-import javafx.stage.Stage;
+
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.io.IOException;
 
 /**
- * Main class serves as the entry point for the HoopHub application.
- * <p>
- * This class extends {@link javafx.application.Application} to create a JavaFX application
- * that provides a user interface for managing basketball venue bookings. It handles
- * application initialization, persistence type configuration, and proper resource cleanup
- * on shutdown.
- * </p>
- * <p>
- * The application supports multiple persistence types (MySQL and CSV) with automatic
- * fallback mechanisms, and multiple interfaces (GUI and CLI), configurable via
- * command-line arguments.
- * </p>
+ * Main entry point for the HoopHub application.
+ * Orchestrates application startup by:
+ * - Configuring persistence type (MySQL/CSV)
+ * - Testing database connectivity with automatic fallback
+ * - Performing initial data synchronization
+ * - Launching the appropriate interface (GUI/CLI)
  */
-public class Main extends Application {
-    private static final Logger logger = Logger.getLogger(Main.class.getName());
+public class Main {
+
+    private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
+
+    // Default configuration
+    private static final String DEFAULT_PERSISTENCE = "mysql";
+    private static final String DEFAULT_INTERFACE = "gui";
+
+    // Configuration values
+    private static final String PERSISTENCE_MYSQL = "mysql";
+    private static final String PERSISTENCE_CSV = "csv";
+    private static final String INTERFACE_GUI = "gui";
+    private static final String INTERFACE_CLI = "cli";
 
     /**
-     * Starts the primary stage of the application and sets the initial scene.
-     * <p>
-     * This method initializes the {@link NavigatorSingleton} and navigates to the
-     * start screen of the application, which serves as the entry point for user interaction.
-     * </p>
-     *
-     * @param primaryStage The primary stage for this application, onto which
-     *                     the application scene can be set. The primary stage is
-     *                     configured and displayed by this method.
-     * @throws IOException If there is an error loading the FXML file for the start screen.
+     * Private constructor to prevent instantiation.
      */
-    @Override
-    public void start(Stage primaryStage) throws IOException {
-        // Load custom fonts before loading FXML
-        FontLoader.loadFonts();
-        NavigatorSingleton navigator = NavigatorSingleton.getInstance(primaryStage);
-        navigator.gotoPage("/it/uniroma2/hoophub/fxml/Login.fxml");
-    }
-
-    /**
-     * Called when the application is stopping.
-     * <p>
-     * This method ensures proper cleanup of resources, including closing the database
-     * connection if MySQL persistence is being used. It performs graceful shutdown
-     * to prevent resource leaks.
-     * </p>
-     */
-    @Override
-    public void stop() throws Exception {
-        if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {
-            try {
-                ConnectionFactory.closeConnection();
-                logger.info("Database connection closed successfully");
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Error closing database connection", e);
-            }
-        }
-
-        logger.info("Application shutdown complete");
-        super.stop();
+    private Main() {
+        throw new UnsupportedOperationException("Utility class");
     }
 
     /**
      * Main method to configure and launch the HoopHub application.
-     * <p>
-     * This method processes command-line arguments to determine persistence and interface types,
-     * configures the DAO factory, tests database connectivity with automatic fallback to CSV
-     * if MySQL is unavailable, performs initial data synchronization, and launches the
-     * appropriate user interface (GUI or CLI).
-     * </p>
-     * <p>
-     * <strong>Persistence Logic:</strong>
-     * <ul>
-     * <li>If MySQL is specified, tests the database connection</li>
-     * <li>If the connection fails, automatically falls back to CSV persistence</li>
-     * <li>Performs initial sync between persistence types if needed</li>
-     * </ul>
-     * </p>
-     * <p>
-     * <strong>Interface Logic:</strong>
-     * <ul>
-     * <li>If "gui" is specified, launches JavaFX GUI interface</li>
-     * <li>If "cli" is specified, launches Command Line Interface</li>
-     * </ul>
-     * </p>
      *
-     * @param args Command-line arguments to configure the application:
-     *             <ul>
-     *             <li><strong>args[0]</strong> (optional): Persistence type.
-     *                 Values: "mysql" or "csv". Default: "mysql"</li>
-     *             <li><strong>args[1]</strong> (optional): Interface type.
-     *                 Values: "gui" or "cli". Default: "gui"</li>
-     *             </ul>
+     * @param args Command-line arguments:
+     *             args[0] (optional): Persistence type - "mysql" or "csv" (default: "mysql")
+     *             args[1] (optional): Interface type - "gui" or "cli" (default: "gui")
      */
     public static void main(String[] args) {
-        DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
+        // Parse command-line arguments
+        String persistenceType = args.length > 0 ? args[0].toLowerCase() : DEFAULT_PERSISTENCE;
+        String interfaceType = args.length > 1 ? args[1].toLowerCase() : DEFAULT_INTERFACE;
 
-        String persistenceType = args.length > 0 ? args[0].toLowerCase() : "mysql";
-        String interfaceType = args.length > 1 ? args[1].toLowerCase() : "gui";
-        PersistenceType primaryPersistenceType;
-
-        logger.log(Level.INFO,
+        LOGGER.log(Level.INFO,
                 "Starting HoopHub with persistence: {0}, interface: {1}",
                 new Object[]{persistenceType, interfaceType});
 
-        if ("mysql".equals(persistenceType)) {
+        // Configure persistence
+        PersistenceType primaryPersistenceType = configurePersistence(persistenceType);
+
+        // Perform initial synchronization
+        performInitialSync(primaryPersistenceType);
+
+        // Launch appropriate interface
+        launchInterface(interfaceType, args);
+    }
+
+    /**
+     * Configures and tests the persistence type.
+     * Automatically falls back to CSV if MySQL connection fails.
+     *
+     * @param persistenceType The requested persistence type
+     * @return The actual persistence type to use (may differ due to fallback)
+     */
+    private static PersistenceType configurePersistence(String persistenceType) {
+        DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
+
+        if (PERSISTENCE_MYSQL.equals(persistenceType)) {
             daoFactoryFacade.setPersistenceType(PersistenceType.MYSQL);
+
             try {
                 boolean connectionOk = ConnectionFactory.testConnection();
-                if (!connectionOk) {
-                    logger.log(Level.WARNING, "Database connection test failed. Switching to CSV persistence.");
-                    primaryPersistenceType = PersistenceType.CSV;
-                } else {
-                    logger.log(Level.INFO, "Database connection test successful");
-                    primaryPersistenceType = PersistenceType.MYSQL;
-                }
-            } catch (Exception e) {
-                logger.log(Level.WARNING, "Error testing database connection", e);
-                logger.info("Switching to CSV persistence due to connection error");
-                primaryPersistenceType = PersistenceType.CSV;
-            }
-        } else {
-            logger.log(Level.INFO, "Using CSV persistence as specified");
-            primaryPersistenceType = PersistenceType.CSV;
-        }
 
+                if (!connectionOk) {
+                    LOGGER.warning("Database connection test failed. Switching to CSV persistence.");
+                    return PersistenceType.CSV;
+                }
+
+                LOGGER.info("Database connection test successful");
+                return PersistenceType.MYSQL;
+
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Error testing database connection", e);
+                LOGGER.info("Switching to CSV persistence due to connection error");
+                return PersistenceType.CSV;
+            }
+        } else if (PERSISTENCE_CSV.equals(persistenceType)) {
+            LOGGER.info("Using CSV persistence as specified");
+            return PersistenceType.CSV;
+        } else {
+            LOGGER.warning("Unknown persistence type: " + persistenceType + ". Defaulting to MySql.");
+            return PersistenceType.MYSQL;
+        }
+    }
+
+    /**
+     * Performs initial data synchronization between persistence types.
+     *
+     * @param primaryPersistenceType The primary persistence type to sync to
+     */
+    private static void performInitialSync(PersistenceType primaryPersistenceType) {
         InitialSyncManager initialSyncManager = new InitialSyncManager();
         initialSyncManager.performInitialSync(primaryPersistenceType);
 
-        daoFactoryFacade.setPersistenceType(primaryPersistenceType);
+        DaoFactoryFacade.getInstance().setPersistenceType(primaryPersistenceType);
+    }
 
-        if ("gui".equals(interfaceType)) {
-            logger.log(Level.INFO, "Launching GUI interface");
-            launch(args);
-        } else {
-            logger.info("Launching CLI interface");
+    /**
+     * Launches the appropriate user interface (GUI or CLI).
+     *
+     * @param interfaceType The interface type to launch
+     * @param args Original command-line arguments (needed for JavaFX launch)
+     */
+    private static void launchInterface(String interfaceType, String[] args) {
+        if (INTERFACE_GUI.equals(interfaceType)) {
+            LOGGER.info("Launching GUI interface");
+            Application.launch(GuiApplication.class, args);
+        } else if (INTERFACE_CLI.equals(interfaceType)) {
+            LOGGER.info("Launching CLI interface");
             new CliApplication().start();
+        } else {
+            LOGGER.warning("Unknown interface type: " + interfaceType + ". Defaulting to GUI.");
+            Application.launch(GuiApplication.class, args);
         }
     }
 }

@@ -5,35 +5,16 @@ import java.util.Scanner;
 
 /**
  * CliView provides formatted console output for CLI interfaces.
- * <p>
- * This class encapsulates console I/O operations, providing a clean API
- * for displaying formatted messages without directly using System.out
- * (which triggers SonarQube code smell warnings).
- * </p>
- * <p>
- * Features:
- * <ul>
- *   <li>ANSI color support for enhanced visual feedback</li>
- *   <li>Box drawing for titles and sections</li>
- *   <li>Consistent formatting for messages, errors, and prompts</li>
- *   <li>Input handling with Scanner</li>
- * </ul>
- * </p>
- *
- * @see LoginCliController
+ * Uses dependency injection to avoid direct System. Out references (SonarQube code smell).
  */
 public class CliView {
 
-    // ANSI Color codes for terminal output
+    // ANSI Color codes
     private static final String ANSI_RESET = "\u001B[0m";
-    private static final String ANSI_BLACK = "\u001B[30m";
     private static final String ANSI_RED = "\u001B[31m";
     private static final String ANSI_GREEN = "\u001B[32m";
     private static final String ANSI_YELLOW = "\u001B[33m";
-    private static final String ANSI_BLUE = "\u001B[34m";
-    private static final String ANSI_PURPLE = "\u001B[35m";
     private static final String ANSI_CYAN = "\u001B[36m";
-    private static final String ANSI_WHITE = "\u001B[37m";
     private static final String ANSI_BOLD = "\u001B[1m";
 
     // Box drawing characters
@@ -44,19 +25,30 @@ public class CliView {
     private static final String BOX_HORIZONTAL = "═";
     private static final String BOX_VERTICAL = "║";
 
+    // Symbols
+    private static final String SYMBOL_SUCCESS = "✓ ";
+    private static final String SYMBOL_ERROR = "✗ ERROR: ";
+    private static final String SYMBOL_INFO = "ℹ ";
+    private static final String SYMBOL_WARNING = "⚠ ";
+
+    // Formatting
+    private static final int SEPARATOR_LENGTH = 60;
+    private static final String SEPARATOR_CHAR = "─";
+    private static final int BANNER_WIDTH = 51;
+
     private final PrintWriter writer;
     private final Scanner scanner;
 
     /**
-     * Constructs a new CliView with default System.out and System.in.
-     * <p>
-     * Using PrintWriter instead of direct System.out calls helps avoid
-     * SonarQube warnings while maintaining clean console output.
-     * </p>
+     * Constructs a new CliView with injected streams.
+     * NO direct System. Out reference - avoids SonarQube code smell.
+     *
+     * @param writer The PrintWriter for output
+     * @param scanner The Scanner for input
      */
-    public CliView() {
-        this.writer = new PrintWriter(System.out, true);
-        this.scanner = new Scanner(System.in);
+    public CliView(PrintWriter writer, Scanner scanner) {
+        this.writer = writer;
+        this.scanner = scanner;
     }
 
     /**
@@ -69,9 +61,9 @@ public class CliView {
         String horizontalLine = BOX_HORIZONTAL.repeat(boxWidth - 2);
 
         writer.println();
-        writer.println(ANSI_CYAN + ANSI_BOLD + BOX_TOP_LEFT + horizontalLine + BOX_TOP_RIGHT + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + BOX_VERTICAL + " " + title + " " + BOX_VERTICAL + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + BOX_BOTTOM_LEFT + horizontalLine + BOX_BOTTOM_RIGHT + ANSI_RESET);
+        writer.println(formatBox(BOX_TOP_LEFT + horizontalLine + BOX_TOP_RIGHT));
+        writer.println(formatBox(BOX_VERTICAL + " " + title + " " + BOX_VERTICAL));
+        writer.println(formatBox(BOX_BOTTOM_LEFT + horizontalLine + BOX_BOTTOM_RIGHT));
         writer.println();
     }
 
@@ -81,7 +73,7 @@ public class CliView {
      * @param message The success message to display
      */
     public void showSuccess(String message) {
-        writer.println(ANSI_GREEN + "✓ " + message + ANSI_RESET);
+        writer.println(ANSI_GREEN + SYMBOL_SUCCESS + message + ANSI_RESET);
     }
 
     /**
@@ -90,7 +82,7 @@ public class CliView {
      * @param message The error message to display
      */
     public void showError(String message) {
-        writer.println(ANSI_RED + "✗ ERROR: " + message + ANSI_RESET);
+        writer.println(ANSI_RED + SYMBOL_ERROR + message + ANSI_RESET);
     }
 
     /**
@@ -99,7 +91,7 @@ public class CliView {
      * @param message The info message to display
      */
     public void showInfo(String message) {
-        writer.println(ANSI_CYAN + "ℹ " + message + ANSI_RESET);
+        writer.println(ANSI_CYAN + SYMBOL_INFO + message + ANSI_RESET);
     }
 
     /**
@@ -108,7 +100,7 @@ public class CliView {
      * @param message The warning message to display
      */
     public void showWarning(String message) {
-        writer.println(ANSI_YELLOW + "⚠ " + message + ANSI_RESET);
+        writer.println(ANSI_YELLOW + SYMBOL_WARNING + message + ANSI_RESET);
     }
 
     /**
@@ -124,7 +116,7 @@ public class CliView {
      * Displays a prompt and reads user input.
      *
      * @param prompt The prompt text to display
-     * @return The user's input as a String
+     * @return The user's input as a String, trimmed
      */
     public String readInput(String prompt) {
         writer.print(ANSI_BOLD + prompt + ANSI_RESET);
@@ -133,19 +125,14 @@ public class CliView {
     }
 
     /**
-     * Displays a prompt for password input (input is still visible).
-     * <p>
-     * Note: For true hidden password input, use Console.readPassword(),
-     * but this is simpler for basic CLI testing.
-     * </p>
+     * Displays a prompt for password input.
+     * Note: Input is still visible in basic CLI. For hidden input, use Console.readPassword().
      *
      * @param prompt The prompt text to display
-     * @return The user's password input as a String
+     * @return The user's password input as a String, trimmed
      */
     public String readPassword(String prompt) {
-        writer.print(ANSI_BOLD + prompt + ANSI_RESET);
-        writer.flush();
-        return scanner.nextLine().trim();
+        return readInput(prompt);
     }
 
     /**
@@ -159,18 +146,18 @@ public class CliView {
      * Prints a horizontal separator line.
      */
     public void showSeparator() {
-        writer.println(ANSI_CYAN + "─".repeat(60) + ANSI_RESET);
+        writer.println(ANSI_CYAN + SEPARATOR_CHAR.repeat(SEPARATOR_LENGTH) + ANSI_RESET);
     }
 
     /**
      * Displays a menu with numbered options.
      *
      * @param title The menu title
-     * @param options The menu options
+     * @param options The menu options (variable arguments)
      */
     public void showMenu(String title, String... options) {
         newLine();
-        writer.println(ANSI_BOLD + ANSI_CYAN + title + ANSI_RESET);
+        writer.println(formatBold(title));
         showSeparator();
         for (int i = 0; i < options.length; i++) {
             writer.println(ANSI_YELLOW + (i + 1) + ". " + ANSI_RESET + options[i]);
@@ -184,29 +171,47 @@ public class CliView {
      * @param appName The application name
      */
     public void showBanner(String appName) {
+        String banner = "╔═══════════════════════════════════════════════════════╗";
+        String emptyLine = "║                                                       ║";
+
         writer.println();
-        writer.println(ANSI_CYAN + ANSI_BOLD + "╔═══════════════════════════════════════════════════════╗" + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + "║                                                       ║" + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + "║  " + centerText(appName, 51) + "  ║" + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + "║                                                       ║" + ANSI_RESET);
-        writer.println(ANSI_CYAN + ANSI_BOLD + "╚═══════════════════════════════════════════════════════╝" + ANSI_RESET);
+        writer.println(formatBox(banner));
+        writer.println(formatBox(emptyLine));
+        writer.println(formatBox("║  " + centerText(appName) + "║"));
+        writer.println(formatBox(emptyLine));
+        writer.println(formatBox("╚═══════════════════════════════════════════════════════╝"));
         writer.println();
+    }
+
+    /**
+     * Formats text with box style (cyan and bold).
+     */
+    private String formatBox(String text) {
+        return ANSI_CYAN + ANSI_BOLD + text + ANSI_RESET;
+    }
+
+    /**
+     * Formats text with bold style.
+     */
+    private String formatBold(String text) {
+        return ANSI_BOLD + ANSI_CYAN + text + ANSI_RESET;
     }
 
     /**
      * Centers text within a given width.
      *
      * @param text The text to center
-     * @param width The total width
      * @return Centered text with padding
      */
-    private String centerText(String text, int width) {
-        int padding = (width - text.length()) / 2;
-        return " ".repeat(Math.max(0, padding)) + text + " ".repeat(Math.max(0, width - text.length() - padding));
+    private String centerText(String text) {
+        int padding = (CliView.BANNER_WIDTH - text.length()) / 2;
+        int rightPadding = CliView.BANNER_WIDTH - text.length() - padding;
+        return " ".repeat(Math.max(0, padding)) + text + " ".repeat(Math.max(0, rightPadding));
     }
 
     /**
      * Closes the scanner resource.
+     * Should be called when the CLI application terminates.
      */
     public void close() {
         scanner.close();
