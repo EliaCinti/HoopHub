@@ -70,6 +70,11 @@ public class InitialSyncManager {
             // Clear secondary CSV files to prevent inconsistencies (users.csv vs fans.csv mismatch)
             if (secondaryType == PersistenceType.CSV) {
                 clearCsvFiles();
+                // Force factory to clear its DAO cache after clearing CSV files
+                // This prevents using stale DAO instances that might have cached file references
+                DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+                factory.setPersistenceType(PersistenceType.MYSQL);
+                factory.setPersistenceType(primaryType);
             }
 
             // Synchronize entities in dependency order
