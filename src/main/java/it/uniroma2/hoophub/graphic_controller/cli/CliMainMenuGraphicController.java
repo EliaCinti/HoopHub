@@ -53,15 +53,15 @@ public class CliMainMenuGraphicController extends CliGraphicController {
      * This is presentation logic, so it belongs HERE in the graphic controller.
      */
     private void showWelcome() {
-        newLine();
-        showMessage("    _   _  ___   ___  ____  _   _ _   _ ____ ");
-        showMessage("   | | | |/ _ \\ / _ \\|  _ \\| | | | | | | __ )");
-        showMessage("   | |_| | | | | | | | |_) | |_| | | | |  _ \\");
-        showMessage("   |  _  | |_| | |_| |  __/|  _  | |_| | |_) |");
-        showMessage("   |_| |_|\\___/ \\___/|_|   |_| |_|\\___/|____/");
-        newLine();
-        showInfo(WELCOME_MSG);
-        showSeparator();
+        CliUtils.printNewLine();
+        CliUtils.print("    _   _  ___   ___  ____  _   _ _   _ ____ ");
+        CliUtils.print("   | | | |/ _ \\ / _ \\|  _ \\| | | | | | | __ )");
+        CliUtils.print("   | |_| | | | | | | | |_) | |_| | | | |  _ \\");
+        CliUtils.print("   |  _  | |_| | |_| |  __/|  _  | |_| | |_) |");
+        CliUtils.print("   |_| |_|\\___/ \\___/|_|   |_| |_|\\___/|____/");
+        CliUtils.printNewLine();
+        CliUtils.printInfo(WELCOME_MSG);
+        CliUtils.printSeparator();
     }
 
     /**
@@ -72,7 +72,7 @@ public class CliMainMenuGraphicController extends CliGraphicController {
 
         while (running) {
             displayMenu();
-            String choice = readInput(SELECT_PROMPT);
+            String choice = CliUtils.readInput(SELECT_PROMPT);
 
             switch (choice) {
                 case OPTION_LOGIN:
@@ -86,8 +86,8 @@ public class CliMainMenuGraphicController extends CliGraphicController {
                     showGoodbye();
                     break;
                 default:
-                    showWarning(INVALID_OPTION_MSG);
-                    newLine();
+                    CliUtils.printWarning(INVALID_OPTION_MSG);
+                    CliUtils.printNewLine();
             }
         }
     }
@@ -96,7 +96,7 @@ public class CliMainMenuGraphicController extends CliGraphicController {
      * Displays the main menu.
      */
     private void displayMenu() {
-        showMenu(MENU_TITLE,
+        CliUtils.printMenu(MENU_TITLE,
                 OPTION_LOGIN_TEXT,
                 OPTION_SIGNUP_TEXT,
                 OPTION_EXIT_TEXT);
@@ -110,8 +110,8 @@ public class CliMainMenuGraphicController extends CliGraphicController {
             loginController.execute();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during login flow", e);
-            showError("An error occurred during login. Please try again.");
-            newLine();
+            CliUtils.printError("An error occurred during login. Please try again.");
+            CliUtils.printNewLine();
         }
     }
 
@@ -119,17 +119,17 @@ public class CliMainMenuGraphicController extends CliGraphicController {
      * Handles sign up by delegating to CliSignUpGraphicController.
      */
     private void handleSignUp() {
-        showWarning("Sign up feature not yet implemented");
-        showInfo("Please use the Login option if you already have an account");
-        newLine();
+        CliUtils.printWarning("Sign up feature not yet implemented");
+        CliUtils.printInfo("Please use the Login option if you already have an account");
+        CliUtils.printNewLine();
 
         // TODO: Implement when CliSignUpGraphicController is ready
         // try {
         //     signUpController.execute();
         // } catch (Exception e) {
         //     LOGGER.log(Level.SEVERE, "Error during sign up flow", e);
-        //     showError("An error occurred during sign up. Please try again.");
-        //     newLine();
+        //     CliUtils.printError("An error occurred during sign up. Please try again.");
+        //     CliUtils.printNewLine();
         // }
     }
 
@@ -137,9 +137,9 @@ public class CliMainMenuGraphicController extends CliGraphicController {
      * Displays goodbye message when user exits.
      */
     private void showGoodbye() {
-        newLine();
-        showInfo(GOODBYE_MSG);
-        showSuccess(GOODBYE_SUCCESS_MSG);
-        newLine();
+        CliUtils.printNewLine();
+        CliUtils.printInfo(GOODBYE_MSG);
+        CliUtils.printSuccess(GOODBYE_SUCCESS_MSG);
+        CliUtils.printNewLine();
     }
 }
