@@ -2,9 +2,9 @@ package it.uniroma2.hoophub.graphic_controller.cli;
 
 import it.uniroma2.hoophub.app_controller.LoginController;
 import it.uniroma2.hoophub.beans.CredentialsBean;
+import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
-import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.CliView;
 import it.uniroma2.hoophub.utilities.UserType;
@@ -59,16 +59,20 @@ public class CliLoginGraphicController {
      * Executes the complete login use case.
      */
     public void execute() {
-        Optional<User> loggedUser = performLogin();
+        Optional<UserBean> loggedUser = performLogin();
         loggedUser.ifPresent(this::navigateToHomepage);
     }
 
     /**
      * Performs the login operation with attempt limiting and improved input validation.
+     * <p>
+     * <strong>Bean Pattern:</strong> Returns UserBean (not Model) to prevent CLI boundary
+     * from accessing business logic methods.
+     * </p>
      *
-     * @return Optional containing the authenticated User, or empty if login is cancelled or max attempts reached
+     * @return Optional containing the authenticated UserBean, or empty if login is cancelled or max attempts reached
      */
-    private Optional<User> performLogin() {
+    private Optional<UserBean> performLogin() {
         view.showTitle(TITLE);
 
         int attemptCount = 0;
@@ -86,7 +90,7 @@ public class CliLoginGraphicController {
                 continue; // Retry with new username
             }
 
-            Optional<User> loginResult = attemptLogin(username.get(), password.get());
+            Optional<UserBean> loginResult = attemptLogin(username.get(), password.get());
             if (loginResult.isPresent()) {
                 return loginResult;
             }
@@ -145,12 +149,12 @@ public class CliLoginGraphicController {
      *
      * @param username The username
      * @param password The password
-     * @return Optional containing the authenticated User, or empty if authentication fails
+     * @return Optional containing the authenticated UserBean, or empty if authentication fails
      */
-    private Optional<User> attemptLogin(String username, String password) {
+    private Optional<UserBean> attemptLogin(String username, String password) {
         try {
             CredentialsBean credentials = buildCredentials(username, password);
-            User loggedUser = loginController.login(credentials);
+            UserBean loggedUser = loginController.login(credentials);
 
             displayLoginSuccess(loggedUser);
             logSuccessfulLogin(username, loggedUser);
@@ -179,19 +183,19 @@ public class CliLoginGraphicController {
     /**
      * Displays success message after login.
      */
-    private void displayLoginSuccess(User user) {
+    private void displayLoginSuccess(UserBean userBean) {
         view.newLine();
-        view.showSuccess(String.format(LOGIN_SUCCESS_MSG, user.getFullName()));
-        view.showInfo(String.format(USER_TYPE_MSG, user.getUserType()));
+        view.showSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
+        view.showInfo(String.format(USER_TYPE_MSG, userBean.getType()));
         view.newLine();
     }
 
     /**
      * Logs successful login attempt.
      */
-    private void logSuccessfulLogin(String username, User user) {
+    private void logSuccessfulLogin(String username, UserBean userBean) {
         LOGGER.log(Level.INFO, "User logged in via CLI: {0} ({1})",
-                new Object[]{username, user.getUserType()});
+                new Object[]{username, userBean.getType()});
     }
 
     /**
@@ -213,21 +217,22 @@ public class CliLoginGraphicController {
     }
 
     /**
-     * Navigates to the appropriate homepage based on user type WITHOUT using instanceof.
-     * This method calls the abstract getUserType() method, which is implemented differently
-     * by Fan and VenueManager classes. The decision of which implementation to call is made
-     * at RUNTIME (late binding) - this is POLYMORPHISM in action.
+     * Navigates to the appropriate homepage based on user type.
+     * <p>
+     * <strong>Bean Pattern:</strong> This method works with UserBean (data only),
+     * accessing only the 'type' field without any business logic methods.
+     * </p>
      *
-     * @param user The authenticated user
+     * @param userBean The authenticated user data (Bean, not Model)
      */
-    private void navigateToHomepage(User user) {
+    private void navigateToHomepage(UserBean userBean) {
         view.newLine();
-        view.showInfo(String.format(LOADING_DASHBOARD_MSG, user.getUserType()));
+        view.showInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
 
         try {
-            UserType userType = user.getUserType();
+            UserType userType = UserType.valueOf(userBean.getType());
 
-            // Navigate based on user type using polymorphism
+            // Navigate based on user type
             if (userType == UserType.FAN) {
                 navigateToFanHomepage();
             } else if (userType == UserType.VENUE_MANAGER) {

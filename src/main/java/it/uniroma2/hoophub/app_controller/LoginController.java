@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.app_controller;
 
 import it.uniroma2.hoophub.beans.CredentialsBean;
+import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
@@ -53,13 +54,18 @@ public class LoginController extends AbstractController {
      * Attempts to log in a user using the provided credentials.
      * It determines the user type, validates the credentials, retrieves the corresponding user data,
      * and initiates a session for the user if authentication is successful.
+     * <p>
+     * <strong>Bean Pattern:</strong> This method accepts a CredentialsBean (input) and returns
+     * a UserBean (output), ensuring the boundary layer never accesses business logic from Model objects.
+     * Internally, the controller works with Model objects and converts them to Beans for the boundary.
+     * </p>
      *
      * @param credentials The credentials provided by the user, containing username, password, and user type.
-     * @return A User object representing the logged-in user, or null if authentication fails.
+     * @return A UserBean containing user data without business logic, for boundary layer use.
      * @throws DAOException         If there is an issue with data access, such as invalid user type or database errors.
      * @throws UserSessionException If the user is already logged in elsewhere, preventing a new session start.
      */
-    public User login(CredentialsBean credentials) throws DAOException, UserSessionException {
+    public UserBean login(CredentialsBean credentials) throws DAOException, UserSessionException {
 
         DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
         UserDao userDao = daoFactoryFacade.getUserDao();
@@ -71,8 +77,12 @@ public class LoginController extends AbstractController {
             // inconsistenza in persistenza
             throw new DAOException("CRITICAL: User validated but not found in specific table. Inconsistency!");
         }
+
+        // Store the Model in session (internal to controller)
         storeUserSession(user);
-        return user;
+
+        // Convert Model → Bean for boundary layer
+        return convertUserToBean(user);
     }
 
     /**
@@ -112,5 +122,24 @@ public class LoginController extends AbstractController {
     @Override
     protected void storeUserSession(User user) throws UserSessionException {
         SessionManager.INSTANCE.login(user);
+    }
+
+    /**
+     * Converts a User Model object to a UserBean for boundary layer consumption.
+     * <p>
+     * This method extracts only the necessary data from the Model and packages it
+     * into a Bean, preventing the boundary layer from accessing business logic methods.
+     * </p>
+     *
+     * @param user The User Model object to convert
+     * @return A UserBean containing only data (no business logic)
+     */
+    private UserBean convertUserToBean(User user) {
+        return new UserBean.Builder<>()
+                .username(user.getUsername())
+                .fullName(user.getFullName())
+                .gender(user.getGender())
+                .type(user.getUserType().toString())
+                .build();
     }
 }
