@@ -52,7 +52,7 @@ public class CliLoginGraphicController {
 
     public CliLoginGraphicController(CliView view) {
         this.view = view;
-        this.loginController = new LoginController();
+        this.loginController = LoginController.getInstance();
     }
 
     /**

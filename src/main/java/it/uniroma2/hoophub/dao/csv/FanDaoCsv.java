@@ -75,20 +75,11 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     // ========== CONSTRUCTORS ==========
 
     /**
-     * Default constructor that creates a UserDaoCsv instance.
-     * <p>
-     * This constructor is convenient for standalone usage without dependency injection.
-     * </p>
-     */
-    public FanDaoCsv() {
-        this(new UserDaoCsv());
-    }
-
-    /**
      * Constructor with dependency injection for UserDao.
      * <p>
-     * This constructor allows injecting a different UserDao implementation
-     * (e.g., for testing or using MySQL instead of CSV).
+     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
+     * by the FanDaoFactory, ensuring proper use of the Factory pattern and avoiding
+     * direct instantiation with "new" inside DAOs.
      * </p>
      *
      * @param userDao The UserDao implementation to use for common user operations

@@ -16,8 +16,38 @@ import it.uniroma2.hoophub.utilities.UserType;
  * <p>
  * Uses polymorphism to handle different user types (Fan, VenueManager) uniformly.
  * </p>
+ * <p>
+ * <strong>Singleton Pattern:</strong> This controller is a singleton because it manages application-level
+ * use case logic without any UI-specific or session-specific state. All boundary classes should use
+ * the same instance via {@link #getInstance()}.
+ * </p>
  */
 public class LoginController extends AbstractController {
+
+    private static LoginController instance;
+
+    /**
+     * Private constructor to enforce Singleton pattern.
+     */
+    private LoginController() {
+        // Private constructor
+    }
+
+    /**
+     * Returns the singleton instance of LoginController.
+     * <p>
+     * This method ensures that only one instance of the controller exists
+     * throughout the application lifecycle.
+     * </p>
+     *
+     * @return The singleton LoginController instance
+     */
+    public static synchronized LoginController getInstance() {
+        if (instance == null) {
+            instance = new LoginController();
+        }
+        return instance;
+    }
 
     /**
      * Attempts to log in a user using the provided credentials.
