@@ -2,12 +2,10 @@ package it.uniroma2.hoophub.launcher;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.graphic_controller.cli.CliMainMenuGraphicController;
+import it.uniroma2.hoophub.graphic_controller.cli.CliUtils;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.utilities.CliView;
 
-import java.io.PrintWriter;
-import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,25 +22,16 @@ public class CliApplication {
      * Starts the CLI application.
      * Initializes resources, launches the first graphic controller, and handles cleanup.
      */
-    @SuppressWarnings("java:S106") // System.out/in are necessary for CLI application
     public void start() {
-        CliView view = null;
-
         try {
-            // Initialize view with System.out and System.in
-            view = new CliView(new PrintWriter(System.out, true), new Scanner(System.in));
-
             // Launch first graphic controller (main menu)
-            CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController(view);
+            CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController();
             mainMenuController.execute();
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error in CLI application", e);
-            if (view != null) {
-                view.showError("An unexpected error occurred: " + e.getMessage());
-            }
         } finally {
-            cleanup(view);
+            cleanup();
         }
     }
 
@@ -50,11 +39,9 @@ public class CliApplication {
      * Performs cleanup operations.
      * Closes resources and database connections.
      */
-    private void cleanup(CliView view) {
-        // Close view resources
-        if (view != null) {
-            view.close();
-        }
+    private void cleanup() {
+        // Close CLI scanner
+        CliUtils.closeScanner();
 
         // Close database connection if using MySQL
         if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {

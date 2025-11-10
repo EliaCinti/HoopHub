@@ -1,7 +1,5 @@
 package it.uniroma2.hoophub.graphic_controller.cli;
 
-import it.uniroma2.hoophub.utilities.CliView;
-
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -10,7 +8,7 @@ import java.util.logging.Logger;
  * Handles the welcome screen with Login/SignUp/Exit options.
  * Parallel to MainGraphicController (GUI).
  */
-public class CliMainMenuGraphicController {
+public class CliMainMenuGraphicController extends CliGraphicController {
 
     private static final Logger LOGGER = Logger.getLogger(CliMainMenuGraphicController.class.getName());
 
@@ -32,20 +30,19 @@ public class CliMainMenuGraphicController {
     private static final String OPTION_EXIT = "3";
 
     // ==========   ==========
-    private final CliView view;
     private final CliLoginGraphicController loginController;
     // TODO: private final CliSignUpGraphicController signUpController;
 
-    public CliMainMenuGraphicController(CliView view) {
-        this.view = view;
-        this.loginController = new CliLoginGraphicController(view);
-        // TODO: this.signUpController = new CliSignUpGraphicController(view);
+    public CliMainMenuGraphicController() {
+        this.loginController = new CliLoginGraphicController();
+        // TODO: this.signUpController = new CliSignUpGraphicController();
     }
 
     /**
      * Executes the main menu graphic controller.
      * Shows welcome banner and runs the menu loop.
      */
+    @Override
     public void execute() {
         showWelcome();
         runMenuLoop();
@@ -56,15 +53,15 @@ public class CliMainMenuGraphicController {
      * This is presentation logic, so it belongs HERE in the graphic controller.
      */
     private void showWelcome() {
-        view.newLine();
-        view.showMessage("    _   _  ___   ___  ____  _   _ _   _ ____ ");
-        view.showMessage("   | | | |/ _ \\ / _ \\|  _ \\| | | | | | | __ )");
-        view.showMessage("   | |_| | | | | | | | |_) | |_| | | | |  _ \\");
-        view.showMessage("   |  _  | |_| | |_| |  __/|  _  | |_| | |_) |");
-        view.showMessage("   |_| |_|\\___/ \\___/|_|   |_| |_|\\___/|____/");
-        view.newLine();
-        view.showInfo(WELCOME_MSG);
-        view.showSeparator();
+        newLine();
+        showMessage("    _   _  ___   ___  ____  _   _ _   _ ____ ");
+        showMessage("   | | | |/ _ \\ / _ \\|  _ \\| | | | | | | __ )");
+        showMessage("   | |_| | | | | | | | |_) | |_| | | | |  _ \\");
+        showMessage("   |  _  | |_| | |_| |  __/|  _  | |_| | |_) |");
+        showMessage("   |_| |_|\\___/ \\___/|_|   |_| |_|\\___/|____/");
+        newLine();
+        showInfo(WELCOME_MSG);
+        showSeparator();
     }
 
     /**
@@ -75,7 +72,7 @@ public class CliMainMenuGraphicController {
 
         while (running) {
             displayMenu();
-            String choice = view.readInput(SELECT_PROMPT);
+            String choice = readInput(SELECT_PROMPT);
 
             switch (choice) {
                 case OPTION_LOGIN:
@@ -89,8 +86,8 @@ public class CliMainMenuGraphicController {
                     showGoodbye();
                     break;
                 default:
-                    view.showWarning(INVALID_OPTION_MSG);
-                    view.newLine();
+                    showWarning(INVALID_OPTION_MSG);
+                    newLine();
             }
         }
     }
@@ -99,7 +96,7 @@ public class CliMainMenuGraphicController {
      * Displays the main menu.
      */
     private void displayMenu() {
-        view.showMenu(MENU_TITLE,
+        showMenu(MENU_TITLE,
                 OPTION_LOGIN_TEXT,
                 OPTION_SIGNUP_TEXT,
                 OPTION_EXIT_TEXT);
@@ -113,8 +110,8 @@ public class CliMainMenuGraphicController {
             loginController.execute();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during login flow", e);
-            view.showError("An error occurred during login. Please try again.");
-            view.newLine();
+            showError("An error occurred during login. Please try again.");
+            newLine();
         }
     }
 
@@ -122,17 +119,17 @@ public class CliMainMenuGraphicController {
      * Handles sign up by delegating to CliSignUpGraphicController.
      */
     private void handleSignUp() {
-        view.showWarning("Sign up feature not yet implemented");
-        view.showInfo("Please use the Login option if you already have an account");
-        view.newLine();
+        showWarning("Sign up feature not yet implemented");
+        showInfo("Please use the Login option if you already have an account");
+        newLine();
 
         // TODO: Implement when CliSignUpGraphicController is ready
         // try {
         //     signUpController.execute();
         // } catch (Exception e) {
         //     LOGGER.log(Level.SEVERE, "Error during sign up flow", e);
-        //     view.showError("An error occurred during sign up. Please try again.");
-        //     view.newLine();
+        //     showError("An error occurred during sign up. Please try again.");
+        //     newLine();
         // }
     }
 
@@ -140,9 +137,9 @@ public class CliMainMenuGraphicController {
      * Displays goodbye message when user exits.
      */
     private void showGoodbye() {
-        view.newLine();
-        view.showInfo(GOODBYE_MSG);
-        view.showSuccess(GOODBYE_SUCCESS_MSG);
-        view.newLine();
+        newLine();
+        showInfo(GOODBYE_MSG);
+        showSuccess(GOODBYE_SUCCESS_MSG);
+        newLine();
     }
 }

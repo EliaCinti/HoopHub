@@ -6,7 +6,6 @@ import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.session.SessionManager;
-import it.uniroma2.hoophub.utilities.CliView;
 import it.uniroma2.hoophub.utilities.UserType;
 
 import java.util.Optional;
@@ -18,7 +17,7 @@ import java.util.logging.Logger;
  * Parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController} for GUI.
  * Uses POLYMORPHISM to navigate to appropriate home screen based on user type.
  */
-public class CliLoginGraphicController {
+public class CliLoginGraphicController extends CliGraphicController {
 
     private static final Logger LOGGER = Logger.getLogger(CliLoginGraphicController.class.getName());
 
@@ -47,17 +46,16 @@ public class CliLoginGraphicController {
     private static final String LOGOUT_SUCCESS_MSG = "Logged out successfully";
     private static final String LOGOUT_ERROR_MSG = "Error during logout: %s";
 
-    private final CliView view;
     private final LoginController loginController;
 
-    public CliLoginGraphicController(CliView view) {
-        this.view = view;
+    public CliLoginGraphicController() {
         this.loginController = LoginController.getInstance();
     }
 
     /**
      * Executes the complete login use case.
      */
+    @Override
     public void execute() {
         Optional<UserBean> loggedUser = performLogin();
         loggedUser.ifPresent(this::navigateToHomepage);
@@ -73,12 +71,12 @@ public class CliLoginGraphicController {
      * @return Optional containing the authenticated UserBean, or empty if login is cancelled or max attempts reached
      */
     private Optional<UserBean> performLogin() {
-        view.showTitle(TITLE);
+        showTitle(TITLE);
 
         int attemptCount = 0;
 
         while (attemptCount < MAX_LOGIN_ATTEMPTS) {
-            view.newLine();
+            newLine();
 
             Optional<String> username = readUsername();
             if (username.isEmpty()) {
@@ -98,12 +96,12 @@ public class CliLoginGraphicController {
             attemptCount++;
 
             if (attemptCount < MAX_LOGIN_ATTEMPTS) {
-                view.showInfo(RETRY_MSG);
-                view.newLine();
+                showInfo(RETRY_MSG);
+                newLine();
             }
         }
 
-        view.showError(MAX_ATTEMPTS_MSG);
+        showError(MAX_ATTEMPTS_MSG);
         return Optional.empty();
     }
 
@@ -113,15 +111,15 @@ public class CliLoginGraphicController {
      * @return Optional containing the username, or empty if user wants to exit
      */
     private Optional<String> readUsername() {
-        String username = view.readInput(USERNAME_PROMPT);
+        String username = readInput(USERNAME_PROMPT);
 
         if (isExitCommand(username)) {
-            view.showInfo(LOGIN_CANCELLED_MSG);
+            showInfo(LOGIN_CANCELLED_MSG);
             return Optional.empty();
         }
 
         if (username.isEmpty()) {
-            view.showWarning(EMPTY_USERNAME_MSG);
+            showWarning(EMPTY_USERNAME_MSG);
             return Optional.empty();
         }
 
@@ -134,10 +132,10 @@ public class CliLoginGraphicController {
      * @return Optional containing the password, or empty if validation fails
      */
     private Optional<String> readPassword() {
-        String password = view.readPassword(PASSWORD_PROMPT);
+        String password = readPassword(PASSWORD_PROMPT);
 
         if (password.isEmpty()) {
-            view.showWarning(EMPTY_PASSWORD_MSG);
+            showWarning(EMPTY_PASSWORD_MSG);
             return Optional.empty();
         }
 
@@ -184,10 +182,10 @@ public class CliLoginGraphicController {
      * Displays success message after login.
      */
     private void displayLoginSuccess(UserBean userBean) {
-        view.newLine();
-        view.showSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
-        view.showInfo(String.format(USER_TYPE_MSG, userBean.getType()));
-        view.newLine();
+        newLine();
+        showSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
+        showInfo(String.format(USER_TYPE_MSG, userBean.getType()));
+        newLine();
     }
 
     /**
@@ -203,7 +201,7 @@ public class CliLoginGraphicController {
      */
     private void handleDAOException(String username, DAOException e) {
         LOGGER.log(Level.WARNING, "Login failed for user: " + username, e);
-        view.showError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
+        showError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
     }
 
     /**
@@ -211,9 +209,9 @@ public class CliLoginGraphicController {
      */
     private void handleSessionException(String username, UserSessionException e) {
         LOGGER.log(Level.INFO, "User already logged in: " + username, e);
-        view.showError(USER_ALREADY_LOGGED_MSG);
-        view.showInfo(LOGOUT_FIRST_MSG);
-        view.newLine();
+        showError(USER_ALREADY_LOGGED_MSG);
+        showInfo(LOGOUT_FIRST_MSG);
+        newLine();
     }
 
     /**
@@ -226,8 +224,8 @@ public class CliLoginGraphicController {
      * @param userBean The authenticated user data (Bean, not Model)
      */
     private void navigateToHomepage(UserBean userBean) {
-        view.newLine();
-        view.showInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
+        newLine();
+        showInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
 
         try {
             UserType userType = UserType.valueOf(userBean.getType());
@@ -241,7 +239,7 @@ public class CliLoginGraphicController {
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during post-login navigation", e);
-            view.showError("An unexpected error occurred during navigation");
+            showError("An unexpected error occurred during navigation");
             performLogout();
         }
     }
@@ -251,9 +249,9 @@ public class CliLoginGraphicController {
      * TODO: Implement CliFanHomeGraphicController
      */
     private void navigateToFanHomepage() {
-        view.showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
-        view.showInfo(LOGGING_OUT_MSG);
-        view.newLine();
+        showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        showInfo(LOGGING_OUT_MSG);
+        newLine();
         performLogout();
 
         // Future implementation:
@@ -266,9 +264,9 @@ public class CliLoginGraphicController {
      * TODO: Implement CliVenueManagerHomeGraphicController
      */
     private void navigateToVenueManagerHomepage() {
-        view.showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
-        view.showInfo(LOGGING_OUT_MSG);
-        view.newLine();
+        showWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        showInfo(LOGGING_OUT_MSG);
+        newLine();
         performLogout();
 
         // Future implementation:
@@ -282,11 +280,11 @@ public class CliLoginGraphicController {
     private void performLogout() {
         try {
             SessionManager.INSTANCE.logout();
-            view.showSuccess(LOGOUT_SUCCESS_MSG);
-            view.newLine();
+            showSuccess(LOGOUT_SUCCESS_MSG);
+            newLine();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Critical error during logout", e);
-            view.showWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
+            showWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
         }
     }
 
