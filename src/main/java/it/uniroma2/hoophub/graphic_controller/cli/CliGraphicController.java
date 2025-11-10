@@ -122,6 +122,10 @@ public abstract class CliGraphicController {
      * It is intentionally private to ensure complete encapsulation - only the outer
      * CliGraphicController class can access these methods.
      * </p>
+     * <p>
+     * <strong>Design:</strong> Only two methods contain direct System.out references:
+     * {@code output()} and {@code outputNoNewline()}. All other methods use these base methods.
+     * </p>
      */
     private static final class CliUtils {
 
@@ -166,89 +170,103 @@ public abstract class CliGraphicController {
             throw new UnsupportedOperationException("Utility class cannot be instantiated");
         }
 
-        // ========== Output Methods ==========
+        // ========== Base Output Methods (ONLY System.out references) ==========
+
+        /**
+         * Base output method with newline.
+         * This is the ONLY method that uses System.out.println.
+         * All other output methods must use this method.
+         */
+        @SuppressWarnings("java:S106") // System.out is intentional for CLI output
+        private static void output(String message) {
+            System.out.println(message);
+        }
+
+        /**
+         * Base output method without newline.
+         * This is the ONLY method that uses System.out.print.
+         * Used for prompts and partial output.
+         */
+        @SuppressWarnings("java:S106") // System.out is intentional for CLI output
+        private static void outputNoNewline(String message) {
+            System.out.print(message);
+            System.out.flush();
+        }
+
+        // ========== Public Output Methods (use base methods) ==========
 
         /**
          * Prints a regular message.
          */
-        @SuppressWarnings("java:S106") // System.out is intentional for CLI output
         static void print(String message) {
-            System.out.println(message);
+            output(message);
         }
 
         /**
          * Prints a success message in green.
          */
-        @SuppressWarnings("java:S106")
         static void printSuccess(String message) {
-            System.out.println(ANSI_GREEN + SYMBOL_SUCCESS + message + ANSI_RESET);
+            output(ANSI_GREEN + SYMBOL_SUCCESS + message + ANSI_RESET);
         }
 
         /**
          * Prints an error message in red.
          */
-        @SuppressWarnings("java:S106")
         static void printError(String message) {
-            System.out.println(ANSI_RED + SYMBOL_ERROR + message + ANSI_RESET);
+            output(ANSI_RED + SYMBOL_ERROR + message + ANSI_RESET);
         }
 
         /**
          * Prints an info message in cyan.
          */
-        @SuppressWarnings("java:S106")
         static void printInfo(String message) {
-            System.out.println(ANSI_CYAN + SYMBOL_INFO + message + ANSI_RESET);
+            output(ANSI_CYAN + SYMBOL_INFO + message + ANSI_RESET);
         }
 
         /**
          * Prints a warning message in yellow.
          */
-        @SuppressWarnings("java:S106")
         static void printWarning(String message) {
-            System.out.println(ANSI_YELLOW + SYMBOL_WARNING + message + ANSI_RESET);
+            output(ANSI_YELLOW + SYMBOL_WARNING + message + ANSI_RESET);
         }
 
         /**
          * Prints a blank line.
          */
-        @SuppressWarnings("java:S106")
         static void printNewLine() {
-            System.out.println();
+            output("");
         }
 
         /**
          * Prints a horizontal separator line.
          */
-        @SuppressWarnings("java:S106")
         static void printSeparator() {
-            System.out.println(ANSI_CYAN + SEPARATOR_CHAR.repeat(SEPARATOR_LENGTH) + ANSI_RESET);
+            output(ANSI_CYAN + SEPARATOR_CHAR.repeat(SEPARATOR_LENGTH) + ANSI_RESET);
         }
 
         /**
          * Prints a title with decorative box border.
          */
-        @SuppressWarnings("java:S106")
         static void printTitle(String title) {
             int boxWidth = title.length() + 4;
             String horizontalLine = BOX_HORIZONTAL.repeat(boxWidth - 2);
 
-            System.out.println();
-            System.out.println(formatBox(BOX_TOP_LEFT + horizontalLine + BOX_TOP_RIGHT));
-            System.out.println(formatBox(BOX_VERTICAL + " " + title + " " + BOX_VERTICAL));
-            System.out.println(formatBox(BOX_BOTTOM_LEFT + horizontalLine + BOX_BOTTOM_RIGHT));
-            System.out.println();
+            output("");
+            output(formatBox(BOX_TOP_LEFT + horizontalLine + BOX_TOP_RIGHT));
+            output(formatBox(BOX_VERTICAL + " " + title + " " + BOX_VERTICAL));
+            output(formatBox(BOX_BOTTOM_LEFT + horizontalLine + BOX_BOTTOM_RIGHT));
+            output("");
         }
 
         /**
          * Prints a menu with numbered options.
          */
-        @SuppressWarnings("java:S106")
         static void printMenu(String title, String... options) {
-            System.out.println();
-            System.out.println(formatBold(title));
+            output("");
+            output(formatBold(title));
             printSeparator();
             for (int i = 0; i < options.length; i++) {
-                System.out.println(ANSI_YELLOW + (i + 1) + ". " + ANSI_RESET + options[i]);
+                output(ANSI_YELLOW + (i + 1) + ". " + ANSI_RESET + options[i]);
             }
             printSeparator();
         }
@@ -258,10 +276,8 @@ public abstract class CliGraphicController {
         /**
          * Reads user input with a prompt.
          */
-        @SuppressWarnings("java:S106")
         static String readInput(String prompt) {
-            System.out.print(ANSI_BOLD + prompt + ANSI_RESET);
-            System.out.flush();
+            outputNoNewline(ANSI_BOLD + prompt + ANSI_RESET);
             return SCANNER.nextLine().trim();
         }
 
