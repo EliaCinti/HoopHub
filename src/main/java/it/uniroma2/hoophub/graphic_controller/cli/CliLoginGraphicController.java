@@ -71,12 +71,12 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @return Optional containing the authenticated UserBean, or empty if login is cancelled or max attempts reached
      */
     private Optional<UserBean> performLogin() {
-        CliUtils.printTitle(TITLE);
+        printTitle(TITLE);
 
         int attemptCount = 0;
 
         while (attemptCount < MAX_LOGIN_ATTEMPTS) {
-            CliUtils.printNewLine();
+            printNewLine();
 
             Optional<String> username = readUsername();
             if (username.isEmpty()) {
@@ -96,12 +96,12 @@ public class CliLoginGraphicController extends CliGraphicController {
             attemptCount++;
 
             if (attemptCount < MAX_LOGIN_ATTEMPTS) {
-                CliUtils.printInfo(RETRY_MSG);
-                CliUtils.printNewLine();
+                printInfo(RETRY_MSG);
+                printNewLine();
             }
         }
 
-        CliUtils.printError(MAX_ATTEMPTS_MSG);
+        printError(MAX_ATTEMPTS_MSG);
         return Optional.empty();
     }
 
@@ -111,15 +111,15 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @return Optional containing the username, or empty if user wants to exit
      */
     private Optional<String> readUsername() {
-        String username = CliUtils.readInput(USERNAME_PROMPT);
+        String username = readInput(USERNAME_PROMPT);
 
         if (isExitCommand(username)) {
-            CliUtils.printInfo(LOGIN_CANCELLED_MSG);
+            printInfo(LOGIN_CANCELLED_MSG);
             return Optional.empty();
         }
 
         if (username.isEmpty()) {
-            CliUtils.printWarning(EMPTY_USERNAME_MSG);
+            printWarning(EMPTY_USERNAME_MSG);
             return Optional.empty();
         }
 
@@ -132,10 +132,10 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @return Optional containing the password, or empty if validation fails
      */
     private Optional<String> readPassword() {
-        String password = CliUtils.readPassword(PASSWORD_PROMPT);
+        String password = readPassword(PASSWORD_PROMPT);
 
         if (password.isEmpty()) {
-            CliUtils.printWarning(EMPTY_PASSWORD_MSG);
+            printWarning(EMPTY_PASSWORD_MSG);
             return Optional.empty();
         }
 
@@ -182,10 +182,10 @@ public class CliLoginGraphicController extends CliGraphicController {
      * Displays success message after login.
      */
     private void displayLoginSuccess(UserBean userBean) {
-        CliUtils.printNewLine();
-        CliUtils.printSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
-        CliUtils.printInfo(String.format(USER_TYPE_MSG, userBean.getType()));
-        CliUtils.printNewLine();
+        printNewLine();
+        printSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
+        printInfo(String.format(USER_TYPE_MSG, userBean.getType()));
+        printNewLine();
     }
 
     /**
@@ -201,7 +201,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      */
     private void handleDAOException(String username, DAOException e) {
         LOGGER.log(Level.WARNING, "Login failed for user: " + username, e);
-        CliUtils.printError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
+        printError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
     }
 
     /**
@@ -209,9 +209,9 @@ public class CliLoginGraphicController extends CliGraphicController {
      */
     private void handleSessionException(String username, UserSessionException e) {
         LOGGER.log(Level.INFO, "User already logged in: " + username, e);
-        CliUtils.printError(USER_ALREADY_LOGGED_MSG);
-        CliUtils.printInfo(LOGOUT_FIRST_MSG);
-        CliUtils.printNewLine();
+        printError(USER_ALREADY_LOGGED_MSG);
+        printInfo(LOGOUT_FIRST_MSG);
+        printNewLine();
     }
 
     /**
@@ -224,8 +224,8 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @param userBean The authenticated user data (Bean, not Model)
      */
     private void navigateToHomepage(UserBean userBean) {
-        CliUtils.printNewLine();
-        CliUtils.printInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
+        printNewLine();
+        printInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
 
         try {
             UserType userType = UserType.valueOf(userBean.getType());
@@ -239,7 +239,7 @@ public class CliLoginGraphicController extends CliGraphicController {
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during post-login navigation", e);
-            CliUtils.printError("An unexpected error occurred during navigation");
+            printError("An unexpected error occurred during navigation");
             performLogout();
         }
     }
@@ -249,9 +249,9 @@ public class CliLoginGraphicController extends CliGraphicController {
      * TODO: Implement CliFanHomeGraphicController
      */
     private void navigateToFanHomepage() {
-        CliUtils.printWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
-        CliUtils.printInfo(LOGGING_OUT_MSG);
-        CliUtils.printNewLine();
+        printWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        printInfo(LOGGING_OUT_MSG);
+        printNewLine();
         performLogout();
 
         // Future implementation:
@@ -264,9 +264,9 @@ public class CliLoginGraphicController extends CliGraphicController {
      * TODO: Implement CliVenueManagerHomeGraphicController
      */
     private void navigateToVenueManagerHomepage() {
-        CliUtils.printWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
-        CliUtils.printInfo(LOGGING_OUT_MSG);
-        CliUtils.printNewLine();
+        printWarning(DASHBOARD_NOT_IMPLEMENTED_MSG);
+        printInfo(LOGGING_OUT_MSG);
+        printNewLine();
         performLogout();
 
         // Future implementation:
@@ -280,11 +280,11 @@ public class CliLoginGraphicController extends CliGraphicController {
     private void performLogout() {
         try {
             SessionManager.INSTANCE.logout();
-            CliUtils.printSuccess(LOGOUT_SUCCESS_MSG);
-            CliUtils.printNewLine();
+            printSuccess(LOGOUT_SUCCESS_MSG);
+            printNewLine();
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Critical error during logout", e);
-            CliUtils.printWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
+            printWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
         }
     }
 

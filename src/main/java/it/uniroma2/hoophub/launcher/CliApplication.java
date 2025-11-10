@@ -1,8 +1,8 @@
 package it.uniroma2.hoophub.launcher;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
+import it.uniroma2.hoophub.graphic_controller.cli.CliGraphicController;
 import it.uniroma2.hoophub.graphic_controller.cli.CliMainMenuGraphicController;
-import it.uniroma2.hoophub.graphic_controller.cli.CliUtils;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -41,7 +41,7 @@ public class CliApplication {
      */
     private void cleanup() {
         // Close CLI scanner
-        CliUtils.closeScanner();
+        CliGraphicController.closeScanner();
 
         // Close database connection if using MySQL
         if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {
