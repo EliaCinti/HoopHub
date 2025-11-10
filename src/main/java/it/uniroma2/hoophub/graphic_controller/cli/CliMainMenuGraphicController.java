@@ -56,7 +56,13 @@ public class CliMainMenuGraphicController {
      * This is presentation logic, so it belongs HERE in the graphic controller.
      */
     private void showWelcome() {
-        view.showBanner(APP_NAME);
+        view.newLine();
+        view.showMessage("    _   _  ___   ___  ____  _   _ _   _ ____ ");
+        view.showMessage("   | | | |/ _ \\ / _ \\|  _ \\| | | | | | | __ )");
+        view.showMessage("   | |_| | | | | | | | |_) | |_| | | | |  _ \\");
+        view.showMessage("   |  _  | |_| | |_| |  __/|  _  | |_| | |_) |");
+        view.showMessage("   |_| |_|\\___/ \\___/|_|   |_| |_|\\___/|____/");
+        view.newLine();
         view.showInfo(WELCOME_MSG);
         view.showSeparator();
     }
