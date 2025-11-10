@@ -4,7 +4,6 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.graphic_controller.cli.CliMainMenuGraphicController;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.utilities.CliUtils;
 import it.uniroma2.hoophub.utilities.CliView;
 
 import java.util.logging.Level;
@@ -28,7 +27,7 @@ public class CliApplication {
 
         try {
             // Initialize view
-            view = CliUtils.createStandardCliView();
+            view = CliView.createStandardCliView();
 
             // Launch first graphic controller (main menu)
             CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController(view);

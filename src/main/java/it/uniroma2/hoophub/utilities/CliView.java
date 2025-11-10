@@ -4,44 +4,110 @@ import java.io.PrintWriter;
 import java.util.Scanner;
 
 /**
- * CliView provides formatted console output for CLI interfaces.
- * Uses dependency injection to avoid direct System. Out references (SonarQube code smell).
+ * Unified utility class for CLI interfaces providing formatted console output and helper methods.
+ * <p>
+ * This class centralizes System.out/in usage to a single point for SonarQube compliance,
+ * and provides ANSI color codes, formatting utilities, and view methods for boundary classes.
+ * Uses dependency injection to avoid direct System.out references throughout the codebase.
+ * </p>
  */
 public class CliView {
 
-    // ANSI Color codes
-    private static final String ANSI_RESET = "\u001B[0m";
-    private static final String ANSI_RED = "\u001B[31m";
-    private static final String ANSI_GREEN = "\u001B[32m";
-    private static final String ANSI_YELLOW = "\u001B[33m";
-    private static final String ANSI_CYAN = "\u001B[36m";
-    private static final String ANSI_BOLD = "\u001B[1m";
+    // ========== ANSI Color Codes (Public for CLI boundaries) ==========
 
-    // Box drawing characters
-    private static final String BOX_TOP_LEFT = "╔";
-    private static final String BOX_TOP_RIGHT = "╗";
-    private static final String BOX_BOTTOM_LEFT = "╚";
-    private static final String BOX_BOTTOM_RIGHT = "╝";
-    private static final String BOX_HORIZONTAL = "═";
-    private static final String BOX_VERTICAL = "║";
+    /** ANSI reset code - resets all formatting */
+    public static final String ANSI_RESET = "\u001B[0m";
 
-    // Symbols
-    private static final String SYMBOL_SUCCESS = "✓ ";
-    private static final String SYMBOL_ERROR = "✗ ERROR: ";
-    private static final String SYMBOL_INFO = "ℹ ";
-    private static final String SYMBOL_WARNING = "⚠ ";
+    /** ANSI red color */
+    public static final String ANSI_RED = "\u001B[31m";
 
-    // Formatting
-    private static final int SEPARATOR_LENGTH = 60;
-    private static final String SEPARATOR_CHAR = "─";
-    private static final int BANNER_WIDTH = 51;
+    /** ANSI green color */
+    public static final String ANSI_GREEN = "\u001B[32m";
+
+    /** ANSI yellow color */
+    public static final String ANSI_YELLOW = "\u001B[33m";
+
+    /** ANSI blue color */
+    public static final String ANSI_BLUE = "\u001B[34m";
+
+    /** ANSI magenta color */
+    public static final String ANSI_MAGENTA = "\u001B[35m";
+
+    /** ANSI cyan color */
+    public static final String ANSI_CYAN = "\u001B[36m";
+
+    /** ANSI white color */
+    public static final String ANSI_WHITE = "\u001B[37m";
+
+    /** ANSI bold style */
+    public static final String ANSI_BOLD = "\u001B[1m";
+
+    /** ANSI underline style */
+    public static final String ANSI_UNDERLINE = "\u001B[4m";
+
+    // ========== Box Drawing Characters ==========
+
+    /** Box drawing: top-left corner */
+    public static final String BOX_TOP_LEFT = "╔";
+
+    /** Box drawing: top-right corner */
+    public static final String BOX_TOP_RIGHT = "╗";
+
+    /** Box drawing: bottom-left corner */
+    public static final String BOX_BOTTOM_LEFT = "╚";
+
+    /** Box drawing: bottom-right corner */
+    public static final String BOX_BOTTOM_RIGHT = "╝";
+
+    /** Box drawing: horizontal line */
+    public static final String BOX_HORIZONTAL = "═";
+
+    /** Box drawing: vertical line */
+    public static final String BOX_VERTICAL = "║";
+
+    // ========== Unicode Symbols ==========
+
+    /** Checkmark symbol */
+    public static final String SYMBOL_CHECK = "✓";
+
+    /** Success symbol with space */
+    public static final String SYMBOL_SUCCESS = "✓ ";
+
+    /** Cross/X symbol */
+    public static final String SYMBOL_CROSS = "✗";
+
+    /** Error symbol with text */
+    public static final String SYMBOL_ERROR = "✗ ERROR: ";
+
+    /** Info symbol */
+    public static final String SYMBOL_INFO = "ℹ ";
+
+    /** Warning symbol */
+    public static final String SYMBOL_WARNING = "⚠ ";
+
+    /** Arrow right symbol */
+    public static final String SYMBOL_ARROW_RIGHT = "→";
+
+    /** Bullet point symbol */
+    public static final String SYMBOL_BULLET = "•";
+
+    // ========== Formatting Constants ==========
+
+    /** Default separator length */
+    public static final int SEPARATOR_LENGTH = 60;
+
+    /** Default separator character */
+    public static final String SEPARATOR_CHAR = "─";
+
+    /** Default banner width */
+    public static final int BANNER_WIDTH = 51;
 
     private final PrintWriter writer;
     private final Scanner scanner;
 
     /**
      * Constructs a new CliView with injected streams.
-     * NO direct System. Out reference - avoids SonarQube code smell.
+     * NO direct System.out reference - avoids SonarQube code smell.
      *
      * @param writer The PrintWriter for output
      * @param scanner The Scanner for input
@@ -49,6 +115,24 @@ public class CliView {
     public CliView(PrintWriter writer, Scanner scanner) {
         this.writer = writer;
         this.scanner = scanner;
+    }
+
+    // ========== Factory Method ==========
+
+    /**
+     * Creates a standard CliView instance using System.out and System.in.
+     * <p>
+     * This is the ONLY place in the application where System.out is referenced directly,
+     * centralizing console I/O for better testability and SonarQube compliance.
+     * </p>
+     *
+     * @return A new CliView instance for console I/O
+     */
+    @SuppressWarnings("java:S106") // System.out is intentional and necessary for CLI output
+    public static CliView createStandardCliView() {
+        PrintWriter writer = new PrintWriter(System.out, true);
+        Scanner scanner = new Scanner(System.in);
+        return new CliView(writer, scanner);
     }
 
     /**
@@ -215,5 +299,62 @@ public class CliView {
      */
     public void close() {
         scanner.close();
+    }
+
+    // ========== Static Helper Methods ==========
+
+    /**
+     * Clears the console screen using ANSI escape codes.
+     * Works on most Unix/Linux terminals and Windows 10+ with ANSI support.
+     * Uses the writer to avoid direct System.out references.
+     */
+    public void clearScreen() {
+        writer.print("\033[H\033[2J");
+        writer.flush();
+    }
+
+    /**
+     * Colorizes text with the specified ANSI color code.
+     *
+     * @param text The text to colorize
+     * @param colorCode The ANSI color code
+     * @return The colorized text with reset appended
+     */
+    public static String colorize(String text, String colorCode) {
+        return colorCode + text + ANSI_RESET;
+    }
+
+    /**
+     * Makes text bold using ANSI formatting.
+     *
+     * @param text The text to make bold
+     * @return The bold text with reset appended
+     */
+    public static String bold(String text) {
+        return ANSI_BOLD + text + ANSI_RESET;
+    }
+
+    /**
+     * Centers text within a given width by adding padding.
+     *
+     * @param text The text to center
+     * @param width The total width
+     * @return The centered text with padding
+     */
+    public static String centerText(String text, int width) {
+        int padding = (width - text.length()) / 2;
+        int rightPadding = width - text.length() - padding;
+        return " ".repeat(Math.max(0, padding)) + text + " ".repeat(Math.max(0, rightPadding));
+    }
+
+    /**
+     * Creates a horizontal line separator of the specified length.
+     *
+     * @param length The length of the separator
+     * @param character The character to use for the separator
+     * @return The separator string
+     */
+    public static String createSeparator(int length, String character) {
+        return character.repeat(length);
     }
 }
