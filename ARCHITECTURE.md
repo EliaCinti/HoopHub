@@ -129,9 +129,7 @@ public FanDao getFanDao(PersistenceType type) {
 - **File**: `src/main/java/it/uniroma2/hoophub/patterns/factory/BookingDaoFactory.java`
 - **Prodotto**: `BookingDao` → `BookingDaoCsv` | `BookingDaoMySql`
 
-**F. CliViewFactory**
-- **File**: `src/main/java/it/uniroma2/hoophub/utilities/CliViewFactory.java`
-- **Prodotto**: Diversi tipi di view CLI
+**Nota**: Il progetto include anche `CliUtils` (precedentemente `CliViewFactory`), che NON è un Factory Pattern GoF ma una utility class con un static factory method pattern (Effective Java). È stata rinominata per riflettere meglio il suo scopo di fornire utility CLI.
 
 ---
 
