@@ -2,9 +2,9 @@ package it.uniroma2.hoophub.graphic_controller.gui;
 
 import it.uniroma2.hoophub.app_controller.LoginController;
 import it.uniroma2.hoophub.beans.CredentialsBean;
+import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
-import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import it.uniroma2.hoophub.utilities.UIHelper;
 import it.uniroma2.hoophub.utilities.UserType;
@@ -39,8 +39,12 @@ public class LoginGraphicController {
 
     /**
      * Handles the login button click event.
-     * Validates user input, authenticates credentials, and uses POLYMORPHISM
-     * to navigate to the appropriate home screen based on user type.
+     * Validates user input, authenticates credentials, and navigates to the appropriate
+     * home screen based on user type.
+     * <p>
+     * <strong>Bean Pattern:</strong> This boundary method receives a UserBean (not Model)
+     * from the controller, ensuring it has no access to business logic methods.
+     * </p>
      */
     @FXML
     private void onLoginClick() {
@@ -58,9 +62,9 @@ public class LoginGraphicController {
                     .password(passwordText)
                     .build();
 
-            User loggedUser = loginController.login(credentialsBean);
+            UserBean userBean = loginController.login(credentialsBean);
 
-            navigateToHomepage(loggedUser);
+            navigateToHomepage(userBean);
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Error while logging in: " + usernameText, e);
             UIHelper.showError(msgLabel, "Login failed: " + e.getMessage());
@@ -71,16 +75,17 @@ public class LoginGraphicController {
     }
 
     /**
-     * Navigates to the appropriate homepage based on user type WITHOUT using instanceof.
-     * This method calls the abstract getUserType() method, which is implemented differently
-     * by Fan and VenueManager classes. The decision of which implementation to call is made
-     * at RUNTIME (late binding).
+     * Navigates to the appropriate homepage based on user type.
+     * <p>
+     * <strong>Bean Pattern:</strong> This method works with UserBean (data only),
+     * accessing only the 'type' field without any business logic methods.
+     * </p>
      *
-     * @param user The authenticated user
+     * @param userBean The authenticated user data (Bean, not Model)
      */
-    private void navigateToHomepage(User user) {
+    private void navigateToHomepage(UserBean userBean) {
         try {
-            UserType userType = user.getUserType();
+            UserType userType = UserType.valueOf(userBean.getType());
 
             // Navigate based on user type
             if (userType == UserType.FAN) {
