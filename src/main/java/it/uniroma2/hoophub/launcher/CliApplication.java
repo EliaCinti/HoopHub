@@ -6,6 +6,8 @@ import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.utilities.CliView;
 
+import java.io.PrintWriter;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,12 +24,13 @@ public class CliApplication {
      * Starts the CLI application.
      * Initializes resources, launches the first graphic controller, and handles cleanup.
      */
+    @SuppressWarnings("java:S106") // System.out/in are necessary for CLI application
     public void start() {
         CliView view = null;
 
         try {
-            // Initialize view
-            view = CliView.createStandardCliView();
+            // Initialize view with System.out and System.in
+            view = new CliView(new PrintWriter(System.out, true), new Scanner(System.in));
 
             // Launch first graphic controller (main menu)
             CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController(view);

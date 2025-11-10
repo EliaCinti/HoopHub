@@ -107,7 +107,8 @@ public class CliView {
 
     /**
      * Constructs a new CliView with injected streams.
-     * NO direct System.out reference - avoids SonarQube code smell.
+     * Uses dependency injection to avoid direct System.out references in this class.
+     * This makes the class testable and avoids SonarQube code smells.
      *
      * @param writer The PrintWriter for output
      * @param scanner The Scanner for input
@@ -115,24 +116,6 @@ public class CliView {
     public CliView(PrintWriter writer, Scanner scanner) {
         this.writer = writer;
         this.scanner = scanner;
-    }
-
-    // ========== Factory Method ==========
-
-    /**
-     * Creates a standard CliView instance using System.out and System.in.
-     * <p>
-     * This is the ONLY place in the application where System.out is referenced directly,
-     * centralizing console I/O for better testability and SonarQube compliance.
-     * </p>
-     *
-     * @return A new CliView instance for console I/O
-     */
-    @SuppressWarnings("java:S106") // System.out is intentional and necessary for CLI output
-    public static CliView createStandardCliView() {
-        PrintWriter writer = new PrintWriter(System.out, true);
-        Scanner scanner = new Scanner(System.in);
-        return new CliView(writer, scanner);
     }
 
     /**
