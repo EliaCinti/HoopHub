@@ -3,10 +3,13 @@ package it.uniroma2.hoophub.dao.mysql;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
+import it.uniroma2.hoophub.dao.FanDao;
+import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.Venue;
+import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.BookingStatus;
 
@@ -510,11 +513,12 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         String fanUsername = rs.getString("fan_username");
         int venueId = rs.getInt("venue_id");
 
-        // Retrieve Fan and Venue objects
-        FanDaoMySql fanDao = new FanDaoMySql();
+        // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        FanDao fanDao = daoFactory.getFanDao();
         Fan fan = fanDao.retrieveFan(fanUsername);
 
-        VenueDaoMySql venueDao = new VenueDaoMySql();
+        VenueDao venueDao = daoFactory.getVenueDao();
         Venue venue = venueDao.retrieveVenue(venueId);
 
         if (fan == null) {

@@ -3,10 +3,12 @@ package it.uniroma2.hoophub.dao.csv;
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.UserDao;
+import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
+import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
 import it.uniroma2.hoophub.utilities.UserType;
@@ -74,20 +76,11 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     // ========== CONSTRUCTORS ==========
 
     /**
-     * Default constructor that creates a UserDaoCsv instance.
-     * <p>
-     * This constructor is convenient for standalone usage without dependency injection.
-     * </p>
-     */
-    public VenueManagerDaoCsv() {
-        this(new UserDaoCsv());
-    }
-
-    /**
      * Constructor with dependency injection for UserDao.
      * <p>
-     * This constructor allows injecting a different UserDao implementation
-     * (e.g., for testing or using MySQL instead of CSV).
+     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
+     * by the VenueManagerDaoFactory, ensuring proper use of the Factory pattern and avoiding
+     * direct instantiation with "new" inside DAOs.
      * </p>
      *
      * @param userDao The UserDao implementation to use for common user operations
@@ -312,8 +305,9 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     public synchronized List<Venue> getVenues(VenueManager venueManager) throws DAOException {
         validateNotNull(venueManager, "VenueManager");
 
-        // Use VenueDao to retrieve venues by manager username (no circular dependency)
-        VenueDaoCsv venueDao = new VenueDaoCsv();
+        // Use DaoFactoryFacade to get VenueDao (Factory pattern)
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        VenueDao venueDao = daoFactory.getVenueDao();
         return venueDao.retrieveVenuesByManager(venueManager.getUsername());
     }
 

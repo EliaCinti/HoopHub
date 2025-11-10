@@ -72,9 +72,15 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * The UserDao is used to handle common user operations, following the
      * DRY principle and avoiding code duplication.
      * </p>
+     * <p>
+     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
+     * by the FanDaoFactory, ensuring proper use of the Factory pattern.
+     * </p>
+     *
+     * @param userDao The UserDao implementation to use for common user operations
      */
-    public FanDaoMySql() {
-        this.userDao = new UserDaoMySql();
+    public FanDaoMySql(UserDao userDao) {
+        this.userDao = userDao;
     }
 
     /**

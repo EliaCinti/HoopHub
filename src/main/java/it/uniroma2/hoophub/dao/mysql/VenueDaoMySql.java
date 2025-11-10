@@ -3,9 +3,11 @@ package it.uniroma2.hoophub.dao.mysql;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.VenueDao;
+import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
+import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.VenueType;
 
@@ -370,8 +372,9 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {
         String managerUsername = rs.getString("venue_manager_username");
 
-        // Retrieve the full VenueManager object
-        VenueManagerDaoMySql venueManagerDao = new VenueManagerDaoMySql();
+        // Retrieve the full VenueManager object using DaoFactoryFacade (Factory pattern)
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
         VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
 
         if (venueManager == null) {

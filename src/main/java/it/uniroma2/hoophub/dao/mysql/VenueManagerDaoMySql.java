@@ -4,9 +4,11 @@ import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.UserDao;
+import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.VenueManager;
+import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 
 import java.sql.Connection;
@@ -73,9 +75,15 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
     /**
      * Constructs a new VenueManagerDaoMySql with a UserDao dependency.
+     * <p>
+     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
+     * by the VenueManagerDaoFactory, ensuring proper use of the Factory pattern.
+     * </p>
+     *
+     * @param userDao The UserDao implementation to use for common user operations
      */
-    public VenueManagerDaoMySql() {
-        this.userDao = new UserDaoMySql();
+    public VenueManagerDaoMySql(UserDao userDao) {
+        this.userDao = userDao;
     }
 
     /**
@@ -293,7 +301,9 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         validateVenueManagerInput(venueManager);
 
         List<it.uniroma2.hoophub.model.Venue> venues = new ArrayList<>();
-        VenueDaoMySql venueDao = new VenueDaoMySql();
+        // Use DaoFactoryFacade to get VenueDao (Factory pattern)
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        VenueDao venueDao = daoFactory.getVenueDao();
 
         try {
             Connection conn = ConnectionFactory.getConnection();
