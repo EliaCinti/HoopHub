@@ -116,7 +116,7 @@ public final class CliUtils {
      * Works on most Unix/Linux terminals and Windows 10+ with ANSI support.
      */
     public static void clearScreen() {
-        System.out.print("\033[H\033[2J");
+        createStandardCliView().showMessage("\033[H\033[2J");
         System.out.flush();
     }
 

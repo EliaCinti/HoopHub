@@ -62,10 +62,10 @@ public class NavigatorSingleton {
     public void gotoPage(String fxmlPath) throws IOException {
         FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
         Parent root = loader.load();
-        Stage stage = new Stage();
-        stage.setScene(new Scene(root));
-        stage.setTitle("HoopHub");
-        stage.setResizable(false);
-        stage.show();
+        Stage stagePage = new Stage();
+        stagePage.setScene(new Scene(root));
+        stagePage.setTitle("HoopHub");
+        stagePage.setResizable(false);
+        stagePage.show();
     }
 }

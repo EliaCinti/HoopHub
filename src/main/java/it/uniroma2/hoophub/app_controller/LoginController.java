@@ -23,6 +23,7 @@ import it.uniroma2.hoophub.utilities.UserType;
  * the same instance via {@link #getInstance()}.
  * </p>
  */
+@SuppressWarnings("java:S6548") // Singleton is required
 public class LoginController extends AbstractController {
 
     private static LoginController instance;

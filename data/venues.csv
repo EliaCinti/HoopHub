@@ -1,0 +1,4 @@
+"id","name","type","address","city","max_capacity","venue_manager_username"
+"1","Lakers Fan Zone","SPORTS_BAR","123 Main St","Los Angeles","100","mike_manager"
+"2","Warriors Lounge","LOUNGE","456 Bay St","San Francisco","50","sarah_owner"
+"3","NBA Central Pub","PUB","789 Court Ave","Los Angeles","150","mike_manager"

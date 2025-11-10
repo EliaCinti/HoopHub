@@ -22,8 +22,8 @@ package it.uniroma2.hoophub.utilities;
  * between registration sessions.
  * </p>
  *
- * @SuppressWarnings("java:S6548") Singleton pattern is justified for this multi-step registration workflow
  */
+@SuppressWarnings("java:S6548")
 public class SignUpDataSingleton {
     private static SignUpDataSingleton instance;
     private String username;
@@ -73,7 +73,7 @@ public class SignUpDataSingleton {
     }
 
     /**
-     * Clears user data after registration has been completed or cancelled.
+     * Clears user data after registration has been completed or canceled.
      */
     public void clearUserData() {
         this.username = null;

@@ -2,6 +2,7 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/db/mysql/hoophub_script.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/ConnectionFactory.java" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/BookingDaoMySql.java" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/FanDaoMySql.java" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/NotificationDaoMySql.java" dialect="MySQL" />
