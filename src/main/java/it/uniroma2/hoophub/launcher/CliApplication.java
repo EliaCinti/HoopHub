@@ -1,11 +1,10 @@
 package it.uniroma2.hoophub.launcher;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
+import it.uniroma2.hoophub.graphic_controller.cli.CliGraphicController;
 import it.uniroma2.hoophub.graphic_controller.cli.CliMainMenuGraphicController;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.utilities.CliUtils;
-import it.uniroma2.hoophub.utilities.CliView;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -24,23 +23,15 @@ public class CliApplication {
      * Initializes resources, launches the first graphic controller, and handles cleanup.
      */
     public void start() {
-        CliView view = null;
-
         try {
-            // Initialize view
-            view = CliUtils.createStandardCliView();
-
             // Launch first graphic controller (main menu)
-            CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController(view);
+            CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController();
             mainMenuController.execute();
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error in CLI application", e);
-            if (view != null) {
-                view.showError("An unexpected error occurred: " + e.getMessage());
-            }
         } finally {
-            cleanup(view);
+            cleanup();
         }
     }
 
@@ -48,11 +39,9 @@ public class CliApplication {
      * Performs cleanup operations.
      * Closes resources and database connections.
      */
-    private void cleanup(CliView view) {
-        // Close view resources
-        if (view != null) {
-            view.close();
-        }
+    private void cleanup() {
+        // Close CLI scanner
+        CliGraphicController.closeScanner();
 
         // Close database connection if using MySQL
         if (DaoFactoryFacade.getInstance().getPersistenceType() == PersistenceType.MYSQL) {
