@@ -71,7 +71,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @return Optional containing the authenticated UserBean, or empty if login is cancelled or max attempts reached
      */
     private Optional<UserBean> performLogin() {
-        printTitle(TITLE);
+         printTitle(TITLE);
 
         int attemptCount = 0;
 
@@ -132,7 +132,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @return Optional containing the password, or empty if validation fails
      */
     private Optional<String> readPassword() {
-        String password = readPassword(PASSWORD_PROMPT);
+        String password = readInput(PASSWORD_PROMPT);
 
         if (password.isEmpty()) {
             printWarning(EMPTY_PASSWORD_MSG);

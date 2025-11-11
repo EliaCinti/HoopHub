@@ -13,7 +13,6 @@ public class CliMainMenuGraphicController extends CliGraphicController {
     private static final Logger LOGGER = Logger.getLogger(CliMainMenuGraphicController.class.getName());
 
     // ========== Menu constants ==========
-    private static final String APP_NAME = "🏀 HOOPHUB 🏀";
     private static final String WELCOME_MSG = "Welcome to HoopHub - Basketball Venue Booking System";
     private static final String MENU_TITLE = "MAIN MENU";
     private static final String OPTION_LOGIN_TEXT = "Login";
