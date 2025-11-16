@@ -506,7 +506,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
     /**
      * Parses a team string to TeamNBA enum.
-     * Tries display name first, then abbreviation.
+     * Tries multiple formats: display name, abbreviation, enum constant.
      *
      * @param teamString Team name or abbreviation from database
      * @param context Context for error message (e.g., "home_team for booking 123")
@@ -514,9 +514,17 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
      * @throws DAOException if team cannot be parsed
      */
     private TeamNBA parseTeam(String teamString, String context) throws DAOException {
-        TeamNBA team = TeamNBA.fromDisplayName(teamString);
+        TeamNBA team = TeamNBA.fromDisplayName(teamString);  // "Golden State Warriors"
         if (team == null) {
-            team = TeamNBA.fromAbbreviation(teamString);
+            team = TeamNBA.fromAbbreviation(teamString);  // "GSW"
+        }
+        if (team == null) {
+            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
+            try {
+                team = TeamNBA.valueOf(teamString);
+            } catch (IllegalArgumentException ignored) {
+                // Not a valid enum constant
+            }
         }
         if (team == null) {
             throw new DAOException("Invalid team " + context + ": " + teamString);
