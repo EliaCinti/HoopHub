@@ -147,12 +147,10 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /** {@inheritDoc} */
     @Override
     public synchronized List<Fan> retrieveAllFans() throws DAOException {
-        List<String[]> fanData = CsvUtilities.readAll(csvFile);
+        List<String[]> fanData = readAllDataRows(); // Uses AbstractCsvDao helper
         List<Fan> fans = new ArrayList<>();
 
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < fanData.size(); i++) {
-            String[] fanRow = fanData.get(i);
+        for (String[] fanRow : fanData) {
             String username = fanRow[COL_USERNAME];
 
             String[] userData = userDao.retrieveUser(username);

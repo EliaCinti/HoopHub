@@ -297,8 +297,26 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * when Fan is referenced from related entities.
      * </p>
      */
-    private Fan mapResultSetToFan(ResultSet rs) throws SQLException {
+    private Fan mapResultSetToFan(ResultSet rs) throws SQLException, DAOException {
         String username = rs.getString("username");
+        String teamString = rs.getString("fav_team");
+
+        // Parse team - try display name first, then abbreviation, then enum constant
+        TeamNBA team = TeamNBA.fromDisplayName(teamString);  // "Golden State Warriors"
+        if (team == null) {
+            team = TeamNBA.fromAbbreviation(teamString);  // "GSW"
+        }
+        if (team == null) {
+            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
+            try {
+                team = TeamNBA.valueOf(teamString);
+            } catch (IllegalArgumentException e) {
+                // Not a valid enum constant, will throw below
+            }
+        }
+        if (team == null) {
+            throw new DAOException("Invalid team for fan " + username + ": " + teamString);
+        }
 
         String key = "Fan:" + username;
         if (DaoLoadingContext.isLoading(key)) {
@@ -307,7 +325,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
+                    .favTeam(team)
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings not loaded during cycle
                     .build();
@@ -319,7 +337,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
+                    .favTeam(team)
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
                     .build();

@@ -137,15 +137,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
         validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
 
+        // Uses AbstractCsvDao helper to find all matching rows
+        List<String[]> matchingRows = findAllRowsByValue(COL_FAN_USERNAME, fanUsername);
         List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (row[COL_FAN_USERNAME].equals(fanUsername)) {
-                bookings.add(mapRowToBooking(row));
-            }
+        for (String[] row : matchingRows) {
+            bookings.add(mapRowToBooking(row));
         }
 
         return bookings;
@@ -155,15 +152,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
         validatePositiveId(venueId);
 
+        // Uses AbstractCsvDao helper to find all matching rows
+        List<String[]> matchingRows = findAllRowsByValue(COL_VENUE_ID, String.valueOf(venueId));
         List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Integer.parseInt(row[COL_VENUE_ID]) == venueId) {
-                bookings.add(mapRowToBooking(row));
-            }
+        for (String[] row : matchingRows) {
+            bookings.add(mapRowToBooking(row));
         }
 
         logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
@@ -338,15 +332,22 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
             // Check if we're in a circular loading situation
             if (DaoLoadingContext.isLoading(bookingKey)) {
-                // Break the cycle by creating minimal objects
-                Fan minimalFan = new Fan.Builder()
-                        .username(fanUsername)
-                        .bookingList(new ArrayList<>())
-                        .build();
+                // Break the cycle by loading Fan and Venue which will detect the cycle
+                // and return minimal objects (Fan with empty bookings, Venue with minimal data)
+                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
 
-                Venue minimalVenue = new Venue.Builder()
-                        .id(venueId)
-                        .build();
+                FanDao fanDao = daoFactory.getFanDao();
+                Fan minimalFan = fanDao.retrieveFan(fanUsername);
+
+                VenueDao venueDao = daoFactory.getVenueDao();
+                Venue minimalVenue = venueDao.retrieveVenue(venueId);
+
+                if (minimalFan == null) {
+                    throw new DAOException("Fan not found for booking: " + fanUsername);
+                }
+                if (minimalVenue == null) {
+                    throw new DAOException("Venue not found for booking: " + venueId);
+                }
 
                 return new Booking.Builder(
                         bookingId,

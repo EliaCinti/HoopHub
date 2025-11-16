@@ -549,11 +549,24 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String teamName = rs.getString("team_name");
-                        try {
-                            TeamNBA team = TeamNBA.fromDisplayName(teamName);
+                        // Try multiple formats: display name, abbreviation, enum constant
+                        TeamNBA team = TeamNBA.fromDisplayName(teamName);
+                        if (team == null) {
+                            team = TeamNBA.fromAbbreviation(teamName);
+                        }
+                        if (team == null) {
+                            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
+                            try {
+                                team = TeamNBA.valueOf(teamName);
+                            } catch (IllegalArgumentException ignored) {
+                                // Not a valid enum constant
+                            }
+                        }
+                        if (team != null) {
                             teams.add(team);
-                        } catch (IllegalArgumentException e) {
-                            logger.log(Level.WARNING, "Invalid team name in database: {0}", teamName);
+                        } else {
+                            logger.log(Level.WARNING, "Invalid team name in database for venue {0}: {1}",
+                                    new Object[]{venueId, teamName});
                         }
                     }
                 }
