@@ -85,10 +85,8 @@ public class LoginController extends AbstractController {
      * @throws UserSessionException If the user is already logged in elsewhere, preventing a new session start.
      */
     public UserBean login(CredentialsBean credentials) throws DAOException, UserSessionException {
-        String username = credentials.getUsername();
-
-        // Check rate limiting before attempting login
-        checkRateLimit(username);
+        // Check rate limiting before attempting login (global check)
+        checkRateLimit();
 
         DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
         UserDao userDao = daoFactoryFacade.getUserDao();
@@ -96,8 +94,8 @@ public class LoginController extends AbstractController {
         try {
             userDao.validateUser(credentials);
         } catch (DAOException e) {
-            // Login failed - increment failed attempts counter
-            recordFailedAttempt(username);
+            // Login failed - increment global failed attempts counter
+            recordFailedAttempt();
             throw e;
         }
 
@@ -105,12 +103,12 @@ public class LoginController extends AbstractController {
 
         if (user == null) {
             // inconsistenza in persistenza
-            recordFailedAttempt(username);
+            recordFailedAttempt();
             throw new DAOException("CRITICAL: User validated but not found in specific table. Inconsistency!");
         }
 
-        // Login successful - reset failed attempts for this user
-        resetFailedAttempts(username);
+        // Login successful - reset global failed attempts counter
+        resetFailedAttempts();
 
         // Store the Model in session (internal to controller)
         storeUserSession(user);
@@ -161,12 +159,11 @@ public class LoginController extends AbstractController {
      * - etc.
      * </p>
      *
-     * @param username The username attempting to log in (used for logging only)
      * @throws DAOException If the system is under rate limiting and user must wait
      */
-    private synchronized void checkRateLimit(String username) throws DAOException {
-        if (globalFailedAttempts <= MAX_ATTEMPTS_BEFORE_DELAY) {
-            return; // No rate limiting yet
+    private synchronized void checkRateLimit() throws DAOException {
+        if (globalFailedAttempts < MAX_ATTEMPTS_BEFORE_DELAY) {
+            return; // No rate limiting yet (attempts 0, 1, 2 are allowed)
         }
 
         if (lastFailedAttemptTime == null) {
@@ -194,20 +191,16 @@ public class LoginController extends AbstractController {
     /**
      * Records a failed login attempt globally.
      * This increments the global counter regardless of which username was used.
-     *
-     * @param username The username that failed (used for logging only)
      */
-    private synchronized void recordFailedAttempt(String username) {
+    private synchronized void recordFailedAttempt() {
         globalFailedAttempts++;
         lastFailedAttemptTime = Instant.now();
     }
 
     /**
      * Resets the global failed login attempts counter after successful login.
-     *
-     * @param username The username that successfully logged in (used for logging only)
      */
-    private synchronized void resetFailedAttempts(String username) {
+    private synchronized void resetFailedAttempts() {
         globalFailedAttempts = 0;
         lastFailedAttemptTime = null;
     }
