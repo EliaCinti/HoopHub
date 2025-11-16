@@ -137,6 +137,12 @@ public class SignUpController extends AbstractController {
      * @throws IllegalArgumentException If the userBean type is not supported
      */
     public UserBean signUp(UserBean userBean, boolean autoLogin) throws DAOException, UserSessionException {
+        // POLYMORPHISM: Pattern matching with switch expressions (Java 21+) performs runtime type
+        // checking and dispatches to the appropriate registration method based on the actual type
+        // of the UserBean parameter. This is a modern, type-safe alternative to instanceof chains.
+        // The pattern matching automatically casts the userBean to the specific subtype (FanBean or
+        // VenueManagerBean) in each case, allowing us to call type-specific registration methods.
+        // The compiler ensures exhaustiveness - all possible UserBean subtypes must be handled.
         return switch (userBean) {
             case FanBean fanBean -> signUpFan(fanBean, autoLogin);
             case VenueManagerBean venueManagerBean -> signUpVenueManager(venueManagerBean, autoLogin);
