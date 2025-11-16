@@ -26,21 +26,25 @@ import java.util.Set;
 import java.util.logging.Level;
 
 /**
- * MySQL implementation of the VenueDao interface.
+ * MySQL implementation of VenueDao.
  * <p>
- * This class provides data access operations for Venue entities stored in a MySQL database.
- * It handles venue CRUD operations and maintains referential integrity with the venue_managers table.
+ * Manages Venue data across venues and venue_teams tables.
  * </p>
  * <p>
- * Database structure:
+ * <strong>Design Patterns:</strong>
  * <ul>
- *   <li><strong>venues table</strong>: id (PK, AUTO_INCREMENT), name, type, address, city,
- *       max_capacity, venue_manager_username (FK)</li>
+ *   <li><strong>Factory</strong>: Created via VenueDaoFactory</li>
+ *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access VenueManagerDao</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses Venue.Builder for object construction</li>
  * </ul>
+ * </p>
+ * <p>
+ * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops.
  * </p>
  *
  * @see VenueDao
- * @see AbstractMySqlDao
+ * @see DaoLoadingContext
  */
 public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
@@ -381,15 +385,11 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps a ResultSet row to a Venue domain object.
+     * Maps ResultSet to Venue.
      * <p>
-     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
-     * to prevent infinite loops when loading related entities. If this venue is already being loaded
-     * in the current call stack, it creates a minimal venue without reloading the VenueManager.
-     * </p>
-     * <p>
-     * This method reconstructs the VenueManager reference by querying the VenueManagerDao
-     * and loads the associated teams from the venue_teams table.
+     * Uses {@link DaoLoadingContext} to prevent circular loops:
+     * If already loading → return Venue with VenueManager (break cycle).
+     * Otherwise → load complete VenueManager via VenueManagerDao (Facade pattern).
      * </p>
      */
     private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {

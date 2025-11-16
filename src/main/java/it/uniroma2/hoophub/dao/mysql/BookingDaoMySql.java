@@ -505,10 +505,10 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps a ResultSet row to a Booking domain object.
+     * Maps ResultSet to Booking.
      * <p>
-     * This method reconstructs Fan and Venue references by querying their respective DAOs.
-     * Includes anti-loop protection via DaoLoadingContext to prevent circular dependencies.
+     * Uses {@link DaoLoadingContext} to prevent circular loops.
+     * Loads complete Fan and Venue via respective DAOs (Facade pattern).
      * </p>
      */
     private Booking mapResultSetToBooking(ResultSet rs) throws SQLException, DAOException {

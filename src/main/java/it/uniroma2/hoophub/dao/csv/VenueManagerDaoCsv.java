@@ -84,14 +84,10 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     // ========== CONSTRUCTORS ==========
 
     /**
-     * Constructor with dependency injection for UserDao.
-     * <p>
-     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
-     * by the VenueManagerDaoFactory, ensuring proper use of the Factory pattern and avoiding
-     * direct instantiation with "new" inside DAOs.
-     * </p>
+     * Constructs VenueManagerDaoCsv with UserDao dependency.
+     * Injected by VenueManagerDaoFactory (Factory pattern).
      *
-     * @param userDao The UserDao implementation to use for common user operations
+     * @param userDao DAO for common user operations
      */
     public VenueManagerDaoCsv(UserDao userDao) {
         super(CSV_FILE_PATH);
@@ -108,14 +104,8 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step save operation:
-     * <ol>
-     *   <li>Saves common user data via {@link UserDao#saveUser(UserBean)}</li>
-     *   <li>Saves venue manager-specific data (company name, phone number) to venue_managers.csv</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful save, observers are notified for cross-persistence synchronization.
+     * Saves in two steps: (1) common user data via UserDao, (2) manager-specific data to CSV.
+     * Notifies observers for CSV-MySQL synchronization (Observer pattern).
      * </p>
      */
     @Override
@@ -146,16 +136,8 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a three-step retrieval:
-     * <ol>
-     *   <li>Retrieves common user data via {@link UserDao#retrieveUser(String)}</li>
-     *   <li>Retrieves venue manager-specific data from venue_managers.csv</li>
-     *   <li>Loads all managed venues with full data using {@link DaoLoadingContext} to prevent loops</li>
-     * </ol>
-     * </p>
-     * <p>
-     * <strong>Object Completeness:</strong> The returned VenueManager object contains a fully
-     * populated managedVenues list with all real data, ensuring consistency with MySQL implementation.
+     * Returns fully populated VenueManager with complete managed venues list.
+     * Uses {@link DaoLoadingContext} to prevent infinite loops.
      * </p>
      */
     @Override
@@ -178,12 +160,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
         return mapRowToVenueManager(userData, managerData);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Each returned VenueManager object contains a fully populated managedVenues list with all real data.
-     * </p>
-     */
+    /** {@inheritDoc} */
     @Override
     public synchronized List<VenueManager> retrieveAllVenueManagers() throws DAOException {
         List<String[]> managerData = CsvUtilities.readAll(csvFile);
@@ -209,14 +186,8 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step update:
-     * <ol>
-     *   <li>Updates common user data via {@link UserDao#updateUser(it.uniroma2.hoophub.model.User, UserBean)}</li>
-     *   <li>Updates venue manager-specific data in venue_managers.csv</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful update, observers are notified for cross-persistence synchronization.
+     * Updates in two steps: (1) common user data via UserDao, (2) manager data in CSV.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -256,14 +227,8 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step deletion:
-     * <ol>
-     *   <li>Deletes venue manager-specific data from venue_managers.csv</li>
-     *   <li>Deletes common user data via {@link UserDao#deleteUser(it.uniroma2.hoophub.model.User)}</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful deletion, observers are notified for cross-persistence synchronization.
+     * Deletes manager-specific data from CSV, then common user data via UserDao.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -320,23 +285,16 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps CSV row data to a VenueManager domain object.
+     * Maps CSV row to VenueManager object.
      * <p>
-     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
-     * to detect and prevent infinite loops when loading related entities. If this VenueManager is
-     * already being loaded in the current call stack (circular reference), it creates a minimal
-     * VenueManager without reloading venues, breaking the cycle.
-     * </p>
-     * <p>
-     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
-     * loads all managed venues with complete data by delegating to VenueDao, ensuring that the
-     * returned VenueManager object is fully populated.
+     * Uses {@link DaoLoadingContext} to prevent circular loops:
+     * If already loading this manager → return with empty venues list (break cycle).
+     * Otherwise → load complete managed venues via VenueDao (Facade pattern).
      * </p>
      *
-     * @param userData Array containing common user data [username, password_hash, full_name, gender, type]
-     * @param managerData Array containing venue manager-specific data [username, company_name, phone_number]
-     * @return A fully constructed VenueManager object with complete managedVenues list
-     * @throws DAOException If there's an error constructing the VenueManager
+     * @param userData Common user data [username, password_hash, full_name, gender, type]
+     * @param managerData Manager data [username, company_name, phone_number]
+     * @return Fully populated VenueManager with complete venues list
      */
     private VenueManager mapRowToVenueManager(String[] userData, String[] managerData) throws DAOException {
         try {
