@@ -6,6 +6,7 @@ import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
 import it.uniroma2.hoophub.utilities.UserType;
@@ -113,7 +114,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     public synchronized void saveFan(FanBean fanBean) throws DAOException {
         validateNotNull(fanBean, "FanBean");
         validateNotNullOrEmpty(fanBean.getUsername(), "Username");
-        validateNotNullOrEmpty(fanBean.getFavTeam(), "Favorite team");
+        validateNotNull(fanBean.getFavTeam(), "Favorite team");
         validateNotNull(fanBean.getBirthday(), "Birthday");
 
         // Set user type to FAN before saving
@@ -125,7 +126,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
         // Step 2: Save fan-specific data
         String[] fanRow = {
                 fanBean.getUsername(),
-                fanBean.getFavTeam(),
+                fanBean.getFavTeam().name(),
                 fanBean.getBirthday().toString()
         };
 
@@ -228,7 +229,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
             String[] row = data.get(i);
 
             if (row[COL_USERNAME].equals(fan.getUsername())) {
-                row[COL_FAV_TEAM] = fan.getFavTeam();
+                row[COL_FAV_TEAM] = fan.getFavTeam().name();
                 row[COL_BIRTHDAY] = fan.getBirthday().toString();
                 found = true;
                 break;
@@ -307,12 +308,13 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     private Fan mapRowToFan(String[] userData, String[] fanData) throws DAOException {
         try {
             LocalDate birthday = LocalDate.parse(fanData[COL_BIRTHDAY]);
+            TeamNBA favTeam = TeamNBA.valueOf(fanData[COL_FAV_TEAM]);
 
             return new Fan.Builder()
                     .username(userData[0])
                     .fullName(userData[2])
                     .gender(userData[3])
-                    .favTeam(fanData[COL_FAV_TEAM])
+                    .favTeam(favTeam)
                     .birthday(birthday)
                     .bookingList(Collections.emptyList())  // EMPTY list - no circular dependency
                     .build();
