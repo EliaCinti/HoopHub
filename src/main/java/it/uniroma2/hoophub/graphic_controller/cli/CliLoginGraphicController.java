@@ -25,7 +25,6 @@ public class CliLoginGraphicController extends CliGraphicController {
     private static final String EXIT_COMMAND = "exit";
     private static final String QUIT_COMMAND = "quit";
     private static final String SIGNUP_COMMAND = "signup";
-    private static final int MAX_LOGIN_ATTEMPTS = 3;
 
     // Message constants
     private static final String TITLE = "HOOPHUB - LOGIN";
@@ -40,7 +39,6 @@ public class CliLoginGraphicController extends CliGraphicController {
     private static final String RETRY_MSG = "Please try again or type 'exit' to quit";
     private static final String USER_ALREADY_LOGGED_MSG = "This user is already logged in";
     private static final String LOGOUT_FIRST_MSG = "Please logout first or try another account";
-    private static final String MAX_ATTEMPTS_MSG = "Maximum login attempts reached. Please try again later.";
     private static final String LOADING_DASHBOARD_MSG = "Loading %s dashboard...";
     private static final String DASHBOARD_NOT_IMPLEMENTED_MSG = "Note: Dashboard graphic controllers not yet implemented";
     private static final String LOGGING_OUT_MSG = "Logging out...";
@@ -74,13 +72,18 @@ public class CliLoginGraphicController extends CliGraphicController {
     }
 
     /**
-     * Performs the login operation with attempt limiting and improved input validation.
+     * Performs the login operation with improved input validation.
      * <p>
      * <strong>Bean Pattern:</strong> Returns UserBean (not Model) to prevent CLI boundary
      * from accessing business logic methods.
      * </p>
+     * <p>
+     * <strong>Rate Limiting:</strong> No attempt limit at UI level. Rate limiting is handled
+     * entirely by the LoginController (application layer), which enforces global rate limits
+     * after 3 failed attempts. This ensures consistent rate limiting across all UIs.
+     * </p>
      *
-     * @return Optional containing the authenticated UserBean, or empty if login is cancelled or max attempts reached
+     * @return Optional containing the authenticated UserBean, or empty if login is cancelled or rate limited
      */
     private Optional<UserBean> performLogin() {
          printTitle(TITLE);
@@ -88,9 +91,7 @@ public class CliLoginGraphicController extends CliGraphicController {
         printInfo(EXIT_OPTION_MSG);
         printNewLine();
 
-        int attemptCount = 0;
-
-        while (attemptCount < MAX_LOGIN_ATTEMPTS) {
+        while (true) {
             printNewLine();
 
             Optional<String> username = readUsername();
@@ -114,16 +115,10 @@ public class CliLoginGraphicController extends CliGraphicController {
                 return Optional.empty();
             }
 
-            attemptCount++;
-
-            if (attemptCount < MAX_LOGIN_ATTEMPTS) {
-                printInfo(RETRY_MSG);
-                printNewLine();
-            }
+            // Login failed but no rate limit - allow retry
+            printInfo(RETRY_MSG);
+            printNewLine();
         }
-
-        printError(MAX_ATTEMPTS_MSG);
-        return Optional.empty();
     }
 
     /**
