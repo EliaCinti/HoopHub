@@ -47,6 +47,7 @@ public class CliLoginGraphicController extends CliGraphicController {
     private static final String LOGOUT_SUCCESS_MSG = "Logged out successfully";
     private static final String LOGOUT_ERROR_MSG = "Error during logout: %s";
     private static final String SIGNUP_OPTION_MSG = "Don't have an account? Type 'signup' to create one";
+    private static final String EXIT_OPTION_MSG = "Type 'exit' or 'quit' to close the application";
 
     private final LoginController loginController;
 
@@ -84,6 +85,7 @@ public class CliLoginGraphicController extends CliGraphicController {
     private Optional<UserBean> performLogin() {
          printTitle(TITLE);
         printInfo(SIGNUP_OPTION_MSG);
+        printInfo(EXIT_OPTION_MSG);
         printNewLine();
 
         int attemptCount = 0;

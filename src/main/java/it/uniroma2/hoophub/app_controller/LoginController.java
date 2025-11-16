@@ -10,6 +10,11 @@ import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.model.UserType;
 
+import java.time.Instant;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * LoginController manages the authentication process for users trying to log in to the HoopHub application.
  * This class interacts with various data access objects (DAOs)
@@ -27,6 +32,44 @@ import it.uniroma2.hoophub.model.UserType;
 public class LoginController extends AbstractController {
 
     private static LoginController instance;
+
+    // Rate limiting constants
+    private static final int MAX_ATTEMPTS_BEFORE_DELAY = 3;
+    private static final int BASE_DELAY_SECONDS = 30;
+
+    // Track failed login attempts per username
+    private final Map<String, FailedAttemptInfo> failedAttempts = new ConcurrentHashMap<>();
+
+    /**
+     * Inner class to track failed login attempts for rate limiting.
+     */
+    private static class FailedAttemptInfo {
+        private int attemptCount;
+        private Instant lastAttemptTime;
+
+        public FailedAttemptInfo() {
+            this.attemptCount = 0;
+            this.lastAttemptTime = Instant.now();
+        }
+
+        public int getAttemptCount() {
+            return attemptCount;
+        }
+
+        public void incrementAttempt() {
+            this.attemptCount++;
+            this.lastAttemptTime = Instant.now();
+        }
+
+        public Instant getLastAttemptTime() {
+            return lastAttemptTime;
+        }
+
+        public void reset() {
+            this.attemptCount = 0;
+            this.lastAttemptTime = Instant.now();
+        }
+    }
 
     /**
      * Private constructor to enforce Singleton pattern.
@@ -56,6 +99,10 @@ public class LoginController extends AbstractController {
      * It determines the user type, validates the credentials, retrieves the corresponding user data,
      * and initiates a session for the user if authentication is successful.
      * <p>
+     * <strong>Rate Limiting:</strong> After 3 failed login attempts, subsequent attempts require
+     * a waiting period of 30 * (attemptNumber - 3) seconds. This prevents brute-force attacks.
+     * </p>
+     * <p>
      * <strong>Bean Pattern:</strong> This method accepts a CredentialsBean (input) and returns
      * a UserBean (output), ensuring the boundary layer never accesses business logic from Model objects.
      * Internally, the controller works with Model objects and converts them to Beans for the boundary.
@@ -63,21 +110,36 @@ public class LoginController extends AbstractController {
      *
      * @param credentials The credentials provided by the user, containing username, password, and user type.
      * @return A UserBean containing user data without business logic, for boundary layer use.
-     * @throws DAOException         If there is an issue with data access, such as invalid user type or database errors.
+     * @throws DAOException         If there is an issue with data access, rate limit exceeded, or validation fails.
      * @throws UserSessionException If the user is already logged in elsewhere, preventing a new session start.
      */
     public UserBean login(CredentialsBean credentials) throws DAOException, UserSessionException {
+        String username = credentials.getUsername();
+
+        // Check rate limiting before attempting login
+        checkRateLimit(username);
 
         DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
         UserDao userDao = daoFactoryFacade.getUserDao();
-        userDao.validateUser(credentials);
+
+        try {
+            userDao.validateUser(credentials);
+        } catch (DAOException e) {
+            // Login failed - increment failed attempts counter
+            recordFailedAttempt(username);
+            throw e;
+        }
 
         User user = retrieveUserByType(credentials, daoFactoryFacade);
 
         if (user == null) {
             // inconsistenza in persistenza
+            recordFailedAttempt(username);
             throw new DAOException("CRITICAL: User validated but not found in specific table. Inconsistency!");
         }
+
+        // Login successful - reset failed attempts for this user
+        resetFailedAttempts(username);
 
         // Store the Model in session (internal to controller)
         storeUserSession(user);
@@ -110,6 +172,64 @@ public class LoginController extends AbstractController {
         }
 
         return null;
+    }
+
+    /**
+     * Checks if the user is under rate limiting due to excessive failed login attempts.
+     * <p>
+     * Rate limiting formula: After 3 failed attempts, subsequent attempts require a delay of
+     * 30 * (attemptNumber - 3) seconds.
+     * - Attempt 4: 30 seconds delay
+     * - Attempt 5: 60 seconds delay
+     * - Attempt 6: 90 seconds delay
+     * - etc.
+     * </p>
+     *
+     * @param username The username attempting to log in
+     * @throws DAOException If the user must wait before attempting login again
+     */
+    private void checkRateLimit(String username) throws DAOException {
+        FailedAttemptInfo attemptInfo = failedAttempts.get(username);
+        if (attemptInfo == null) {
+            return; // No failed attempts recorded
+        }
+
+        int attemptCount = attemptInfo.getAttemptCount();
+        if (attemptCount <= MAX_ATTEMPTS_BEFORE_DELAY) {
+            return; // No rate limiting yet
+        }
+
+        // Calculate required delay: 30 * (attemptNumber - 3) seconds
+        int delaySeconds = BASE_DELAY_SECONDS * (attemptCount - MAX_ATTEMPTS_BEFORE_DELAY);
+        Instant now = Instant.now();
+        Instant lastAttempt = attemptInfo.getLastAttemptTime();
+        Duration timeSinceLastAttempt = Duration.between(lastAttempt, now);
+
+        if (timeSinceLastAttempt.getSeconds() < delaySeconds) {
+            long remainingSeconds = delaySeconds - timeSinceLastAttempt.getSeconds();
+            throw new DAOException(String.format(
+                    "Too many failed login attempts. Please wait %d seconds before trying again.",
+                    remainingSeconds
+            ));
+        }
+    }
+
+    /**
+     * Records a failed login attempt for the given username.
+     *
+     * @param username The username that failed to log in
+     */
+    private void recordFailedAttempt(String username) {
+        failedAttempts.computeIfAbsent(username, k -> new FailedAttemptInfo()).incrementAttempt();
+    }
+
+    /**
+     * Resets the failed login attempts counter for a user after successful login.
+     *
+     * @param username The username that successfully logged in
+     */
+    private void resetFailedAttempts(String username) {
+        failedAttempts.remove(username);
     }
 
     /**
