@@ -311,7 +311,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * Navigates to the sign-up screen.
      */
     private void navigateToSignUp() {
-        printNewLine();
+        clearScreen();
         CliSignUpGraphicController signUpController = new CliSignUpGraphicController();
         signUpController.execute();
     }
