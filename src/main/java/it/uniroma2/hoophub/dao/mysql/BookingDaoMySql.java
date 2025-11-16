@@ -193,7 +193,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     bookings.add(mapResultSetToBooking(rs));
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} bookings", bookings.size());
+                logger.log(Level.FINE, "Retrieved {0} bookings", bookings.size());
                 return bookings;
             }
         } catch (SQLException e) {
@@ -252,7 +252,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
+                logger.log(Level.FINE, "Retrieved {0} bookings for venue {1}",
                         new Object[]{bookings.size(), venueId});
                 return bookings;
             }
@@ -287,7 +287,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} bookings for venue manager {1}",
+                logger.log(Level.FINE, "Retrieved {0} bookings for venue manager {1}",
                         new Object[]{bookings.size(), venueManagerUsername});
                 return bookings;
             }
@@ -318,7 +318,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} bookings for date {1}",
+                logger.log(Level.FINE, "Retrieved {0} bookings for date {1}",
                         new Object[]{bookings.size(), date});
                 return bookings;
             }
@@ -351,7 +351,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} {1} bookings for fan {2}",
+                logger.log(Level.FINE, "Retrieved {0} {1} bookings for fan {2}",
                         new Object[]{bookings.size(), status, fanUsername});
                 return bookings;
             }
@@ -382,7 +382,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} unnotified bookings for fan {1}",
+                logger.log(Level.FINE, "Retrieved {0} unnotified bookings for fan {1}",
                         new Object[]{bookings.size(), fanUsername});
                 return bookings;
             }

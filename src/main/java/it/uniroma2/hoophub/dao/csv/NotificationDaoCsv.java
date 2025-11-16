@@ -166,7 +166,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
         // Sort by created_at descending (most recent first)
         notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
 
-        logger.log(Level.INFO, "Retrieved {0} notifications for user {1}",
+        logger.log(Level.FINE, "Retrieved {0} notifications for user {1}",
                 new Object[]{notifications.size(), userId});
         return notifications;
     }
@@ -193,7 +193,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
         notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
 
-        logger.log(Level.INFO, "Retrieved {0} unread notifications for user {1}",
+        logger.log(Level.FINE, "Retrieved {0} unread notifications for user {1}",
                 new Object[]{notifications.size(), userId});
         return notifications;
     }
@@ -222,7 +222,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
         notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
 
-        logger.log(Level.INFO, "Retrieved {0} {1} notifications for user {2}",
+        logger.log(Level.FINE, "Retrieved {0} {1} notifications for user {2}",
                 new Object[]{notifications.size(), type, userId});
         return notifications;
     }
@@ -249,7 +249,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
         notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
 
-        logger.log(Level.INFO, "Retrieved {0} notifications for booking {1}",
+        logger.log(Level.FINE, "Retrieved {0} notifications for booking {1}",
                 new Object[]{notifications.size(), bookingId});
         return notifications;
     }
@@ -511,7 +511,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
 
         notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
 
-        logger.log(Level.INFO, "Retrieved {0} notifications", notifications.size());
+        logger.log(Level.FINE, "Retrieved {0} notifications", notifications.size());
         return notifications;
     }
 
@@ -533,7 +533,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
                 .limit(limit)
                 .collect(Collectors.toList());
 
-        logger.log(Level.INFO, "Retrieved {0} recent notifications for user {1}",
+        logger.log(Level.FINE, "Retrieved {0} recent notifications for user {1}",
                 new Object[]{recentNotifications.size(), userId});
         return recentNotifications;
     }

@@ -129,7 +129,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             bookings.add(mapRowToBooking(data.get(i)));
         }
 
-        logger.log(Level.INFO, "Retrieved {0} bookings", bookings.size());
+        logger.log(Level.FINE, "Retrieved {0} bookings", bookings.size());
         return bookings;
     }
 
@@ -160,7 +160,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             bookings.add(mapRowToBooking(row));
         }
 
-        logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",
+        logger.log(Level.FINE, "Retrieved {0} bookings for venue {1}",
                 new Object[]{bookings.size(), venueId});
         return bookings;
     }
@@ -215,7 +215,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} {1} bookings for fan {2}",
+        logger.log(Level.FINE, "Retrieved {0} {1} bookings for fan {2}",
                 new Object[]{bookings.size(), status, fanUsername});
         return bookings;
     }
@@ -236,7 +236,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} unnotified bookings for fan {1}",
+        logger.log(Level.FINE, "Retrieved {0} unnotified bookings for fan {1}",
                 new Object[]{bookings.size(), fanUsername});
         return bookings;
     }
