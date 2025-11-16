@@ -332,15 +332,22 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
             // Check if we're in a circular loading situation
             if (DaoLoadingContext.isLoading(bookingKey)) {
-                // Break the cycle by creating minimal objects
-                Fan minimalFan = new Fan.Builder()
-                        .username(fanUsername)
-                        .bookingList(new ArrayList<>())
-                        .build();
+                // Break the cycle by loading Fan and Venue which will detect the cycle
+                // and return minimal objects (Fan with empty bookings, Venue with minimal data)
+                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
 
-                Venue minimalVenue = new Venue.Builder()
-                        .id(venueId)
-                        .build();
+                FanDao fanDao = daoFactory.getFanDao();
+                Fan minimalFan = fanDao.retrieveFan(fanUsername);
+
+                VenueDao venueDao = daoFactory.getVenueDao();
+                Venue minimalVenue = venueDao.retrieveVenue(venueId);
+
+                if (minimalFan == null) {
+                    throw new DAOException("Fan not found for booking: " + fanUsername);
+                }
+                if (minimalVenue == null) {
+                    throw new DAOException("Venue not found for booking: " + venueId);
+                }
 
                 return new Booking.Builder(
                         bookingId,
