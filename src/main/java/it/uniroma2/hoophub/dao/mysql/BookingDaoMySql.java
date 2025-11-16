@@ -505,6 +505,26 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
+     * Parses a team string to TeamNBA enum.
+     * Tries display name first, then abbreviation.
+     *
+     * @param teamString Team name or abbreviation from database
+     * @param context Context for error message (e.g., "home_team for booking 123")
+     * @return TeamNBA enum
+     * @throws DAOException if team cannot be parsed
+     */
+    private TeamNBA parseTeam(String teamString, String context) throws DAOException {
+        TeamNBA team = TeamNBA.fromDisplayName(teamString);
+        if (team == null) {
+            team = TeamNBA.fromAbbreviation(teamString);
+        }
+        if (team == null) {
+            throw new DAOException("Invalid team " + context + ": " + teamString);
+        }
+        return team;
+    }
+
+    /**
      * Maps ResultSet to Booking.
      * <p>
      * Uses {@link DaoLoadingContext} to prevent circular loops.
@@ -516,6 +536,10 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         String fanUsername = rs.getString("fan_username");
         int venueId = rs.getInt("venue_id");
 
+        // Parse teams robustly
+        TeamNBA homeTeam = parseTeam(rs.getString("home_team"), "home_team for booking " + bookingId);
+        TeamNBA awayTeam = parseTeam(rs.getString("away_team"), "away_team for booking " + bookingId);
+
         String key = "Booking:" + bookingId;
         if (DaoLoadingContext.isLoading(key)) {
             // Return minimal booking object without loading relationships
@@ -523,8 +547,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     bookingId,
                     rs.getDate("game_date").toLocalDate(),
                     rs.getTime("game_time").toLocalTime(),
-                    TeamNBA.fromDisplayName(rs.getString("home_team")),
-                    TeamNBA.fromDisplayName(rs.getString("away_team")),
+                    homeTeam,
+                    awayTeam,
                     null,  // Minimal object: no venue
                     null   // Minimal object: no fan
             )
@@ -554,8 +578,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     bookingId,
                     rs.getDate("game_date").toLocalDate(),
                     rs.getTime("game_time").toLocalTime(),
-                    TeamNBA.fromDisplayName(rs.getString("home_team")),
-                    TeamNBA.fromDisplayName(rs.getString("away_team")),
+                    homeTeam,
+                    awayTeam,
                     venue,
                     fan
             )
