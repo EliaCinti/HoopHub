@@ -110,9 +110,17 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
 
         String[] userRow = findRowByValue(COL_USERNAME, credentials.getUsername());
 
-        if (userRow == null) {
+        // Check if user was not found (null or empty array from findRowByValue)
+        if (userRow == null || userRow.length == 0) {
             logger.log(Level.WARNING, "User not found: {0}", credentials.getUsername());
             throw new DAOException("Invalid username or password");
+        }
+
+        // Validate that the row has all required columns (data integrity check)
+        if (userRow.length < 5) {
+            logger.log(Level.SEVERE, "Corrupted user data for: {0}. Expected 5 columns, found {1}",
+                    new Object[]{credentials.getUsername(), userRow.length});
+            throw new DAOException("Data integrity error. Please contact support.");
         }
 
         String storedHash = userRow[COL_PASSWORD_HASH];
@@ -188,7 +196,8 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
     @Override
     public synchronized boolean isUsernameTaken(String username) throws DAOException {
         validateNotNullOrEmpty(username, "Username");
-        return findRowByValue(COL_USERNAME, username) != null;
+        String[] userRow = findRowByValue(COL_USERNAME, username);
+        return userRow != null && userRow.length > 0;
     }
 
     /**
