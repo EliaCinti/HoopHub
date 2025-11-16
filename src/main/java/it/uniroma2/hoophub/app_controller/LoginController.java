@@ -170,8 +170,11 @@ public class LoginController extends AbstractController {
             return; // No attempts recorded
         }
 
-        // Calculate required delay: 30 * (attemptNumber - 3) seconds
-        int delaySeconds = BASE_DELAY_SECONDS * (globalFailedAttempts - MAX_ATTEMPTS_BEFORE_DELAY);
+        // Calculate required delay: 30 * (attemptNumber - 2) seconds
+        // When counter = 3 (4th attempt), delay = 30 * 1 = 30 seconds
+        // When counter = 4 (5th attempt), delay = 30 * 2 = 60 seconds
+        // etc.
+        int delaySeconds = BASE_DELAY_SECONDS * (globalFailedAttempts - MAX_ATTEMPTS_BEFORE_DELAY + 1);
         Instant now = Instant.now();
         Duration timeSinceLastAttempt = Duration.between(lastFailedAttemptTime, now);
 
