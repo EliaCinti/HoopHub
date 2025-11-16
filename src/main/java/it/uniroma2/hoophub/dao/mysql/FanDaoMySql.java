@@ -301,10 +301,18 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
         String username = rs.getString("username");
         String teamString = rs.getString("fav_team");
 
-        // Parse team - try display name first, then abbreviation
-        TeamNBA team = TeamNBA.fromDisplayName(teamString);
+        // Parse team - try display name first, then abbreviation, then enum constant
+        TeamNBA team = TeamNBA.fromDisplayName(teamString);  // "Golden State Warriors"
         if (team == null) {
-            team = TeamNBA.fromAbbreviation(teamString);
+            team = TeamNBA.fromAbbreviation(teamString);  // "GSW"
+        }
+        if (team == null) {
+            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
+            try {
+                team = TeamNBA.valueOf(teamString);
+            } catch (IllegalArgumentException e) {
+                // Not a valid enum constant, will throw below
+            }
         }
         if (team == null) {
             throw new DAOException("Invalid team for fan " + username + ": " + teamString);
