@@ -297,8 +297,18 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * when Fan is referenced from related entities.
      * </p>
      */
-    private Fan mapResultSetToFan(ResultSet rs) throws SQLException {
+    private Fan mapResultSetToFan(ResultSet rs) throws SQLException, DAOException {
         String username = rs.getString("username");
+        String teamString = rs.getString("fav_team");
+
+        // Parse team - try display name first, then abbreviation
+        TeamNBA team = TeamNBA.fromDisplayName(teamString);
+        if (team == null) {
+            team = TeamNBA.fromAbbreviation(teamString);
+        }
+        if (team == null) {
+            throw new DAOException("Invalid team for fan " + username + ": " + teamString);
+        }
 
         String key = "Fan:" + username;
         if (DaoLoadingContext.isLoading(key)) {
@@ -307,7 +317,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
+                    .favTeam(team)
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings not loaded during cycle
                     .build();
@@ -319,7 +329,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
+                    .favTeam(team)
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
                     .build();
