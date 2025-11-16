@@ -2,7 +2,7 @@ package it.uniroma2.hoophub.launcher;
 
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.graphic_controller.cli.CliGraphicController;
-import it.uniroma2.hoophub.graphic_controller.cli.CliMainMenuGraphicController;
+import it.uniroma2.hoophub.graphic_controller.cli.CliLoginGraphicController;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -24,9 +24,9 @@ public class CliApplication {
      */
     public void start() {
         try {
-            // Launch first graphic controller (main menu)
-            CliMainMenuGraphicController mainMenuController = new CliMainMenuGraphicController();
-            mainMenuController.execute();
+            // Launch first graphic controller (login screen)
+            CliLoginGraphicController loginController = new CliLoginGraphicController();
+            loginController.execute();
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Unexpected error in CLI application", e);

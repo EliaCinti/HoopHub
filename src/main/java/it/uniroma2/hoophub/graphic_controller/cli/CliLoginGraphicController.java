@@ -24,6 +24,7 @@ public class CliLoginGraphicController extends CliGraphicController {
     // Constants for commands and limits
     private static final String EXIT_COMMAND = "exit";
     private static final String QUIT_COMMAND = "quit";
+    private static final String SIGNUP_COMMAND = "signup";
     private static final int MAX_LOGIN_ATTEMPTS = 3;
 
     // Message constants
@@ -45,20 +46,32 @@ public class CliLoginGraphicController extends CliGraphicController {
     private static final String LOGGING_OUT_MSG = "Logging out...";
     private static final String LOGOUT_SUCCESS_MSG = "Logged out successfully";
     private static final String LOGOUT_ERROR_MSG = "Error during logout: %s";
+    private static final String SIGNUP_OPTION_MSG = "Don't have an account? Type 'signup' to create one";
 
     private final LoginController loginController;
+    private final CliSignUpGraphicController signUpController;
 
     public CliLoginGraphicController() {
         this.loginController = LoginController.getInstance();
+        this.signUpController = new CliSignUpGraphicController();
     }
+
+    private boolean userRequestedExit = false;
 
     /**
      * Executes the complete login use case.
+     * Keeps showing login screen until successful login or user exits.
      */
     @Override
     public void execute() {
-        Optional<UserBean> loggedUser = performLogin();
-        loggedUser.ifPresent(this::navigateToHomepage);
+        while (!userRequestedExit) {
+            Optional<UserBean> loggedUser = performLogin();
+            if (loggedUser.isPresent()) {
+                navigateToHomepage(loggedUser.get());
+                break; // Exit loop after successful login and homepage navigation
+            }
+            // If empty and user didn't request exit, continue loop (e.g., came back from signup)
+        }
     }
 
     /**
@@ -72,6 +85,8 @@ public class CliLoginGraphicController extends CliGraphicController {
      */
     private Optional<UserBean> performLogin() {
          printTitle(TITLE);
+        printInfo(SIGNUP_OPTION_MSG);
+        printNewLine();
 
         int attemptCount = 0;
 
@@ -115,6 +130,12 @@ public class CliLoginGraphicController extends CliGraphicController {
 
         if (isExitCommand(username)) {
             printInfo(LOGIN_CANCELLED_MSG);
+            userRequestedExit = true; // Set flag to exit main loop
+            return Optional.empty();
+        }
+
+        if (SIGNUP_COMMAND.equalsIgnoreCase(username)) {
+            navigateToSignUp();
             return Optional.empty();
         }
 
@@ -286,6 +307,14 @@ public class CliLoginGraphicController extends CliGraphicController {
             LOGGER.log(Level.SEVERE, "Critical error during logout", e);
             printWarning(String.format(LOGOUT_ERROR_MSG, e.getMessage()));
         }
+    }
+
+    /**
+     * Navigates to the sign-up screen.
+     */
+    private void navigateToSignUp() {
+        printNewLine();
+        signUpController.execute();
     }
 
     /**
