@@ -12,8 +12,6 @@ import it.uniroma2.hoophub.model.UserType;
 
 import java.time.Instant;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * LoginController manages the authentication process for users trying to log in to the HoopHub application.
@@ -37,39 +35,9 @@ public class LoginController extends AbstractController {
     private static final int MAX_ATTEMPTS_BEFORE_DELAY = 3;
     private static final int BASE_DELAY_SECONDS = 30;
 
-    // Track failed login attempts per username
-    private final Map<String, FailedAttemptInfo> failedAttempts = new ConcurrentHashMap<>();
-
-    /**
-     * Inner class to track failed login attempts for rate limiting.
-     */
-    private static class FailedAttemptInfo {
-        private int attemptCount;
-        private Instant lastAttemptTime;
-
-        public FailedAttemptInfo() {
-            this.attemptCount = 0;
-            this.lastAttemptTime = Instant.now();
-        }
-
-        public int getAttemptCount() {
-            return attemptCount;
-        }
-
-        public void incrementAttempt() {
-            this.attemptCount++;
-            this.lastAttemptTime = Instant.now();
-        }
-
-        public Instant getLastAttemptTime() {
-            return lastAttemptTime;
-        }
-
-        public void reset() {
-            this.attemptCount = 0;
-            this.lastAttemptTime = Instant.now();
-        }
-    }
+    // Track failed login attempts globally (not per username)
+    private int globalFailedAttempts = 0;
+    private Instant lastFailedAttemptTime = null;
 
     /**
      * Private constructor to enforce Singleton pattern.
@@ -99,8 +67,11 @@ public class LoginController extends AbstractController {
      * It determines the user type, validates the credentials, retrieves the corresponding user data,
      * and initiates a session for the user if authentication is successful.
      * <p>
-     * <strong>Rate Limiting:</strong> After 3 failed login attempts, subsequent attempts require
-     * a waiting period of 30 * (attemptNumber - 3) seconds. This prevents brute-force attacks.
+     * <strong>Global Rate Limiting:</strong> After 3 failed login attempts (regardless of username),
+     * ALL subsequent login attempts are blocked for a waiting period of 30 * (attemptNumber - 3) seconds.
+     * This prevents both brute-force attacks and username enumeration attacks.
+     * Example: After 3 failed attempts, the 4th attempt requires waiting 30 seconds, the 5th requires
+     * 60 seconds, etc. The counter resets after a successful login or when the delay expires.
      * </p>
      * <p>
      * <strong>Bean Pattern:</strong> This method accepts a CredentialsBean (input) and returns
@@ -175,7 +146,12 @@ public class LoginController extends AbstractController {
     }
 
     /**
-     * Checks if the user is under rate limiting due to excessive failed login attempts.
+     * Checks if rate limiting is active due to excessive failed login attempts.
+     * <p>
+     * <strong>Global Rate Limiting:</strong> This applies to ALL login attempts, regardless
+     * of username. After 3 failed attempts (even with different usernames), the system
+     * enforces a delay. This prevents both brute-force attacks and username enumeration.
+     * </p>
      * <p>
      * Rate limiting formula: After 3 failed attempts, subsequent attempts require a delay of
      * 30 * (attemptNumber - 3) seconds.
@@ -185,25 +161,22 @@ public class LoginController extends AbstractController {
      * - etc.
      * </p>
      *
-     * @param username The username attempting to log in
-     * @throws DAOException If the user must wait before attempting login again
+     * @param username The username attempting to log in (used for logging only)
+     * @throws DAOException If the system is under rate limiting and user must wait
      */
-    private void checkRateLimit(String username) throws DAOException {
-        FailedAttemptInfo attemptInfo = failedAttempts.get(username);
-        if (attemptInfo == null) {
-            return; // No failed attempts recorded
-        }
-
-        int attemptCount = attemptInfo.getAttemptCount();
-        if (attemptCount <= MAX_ATTEMPTS_BEFORE_DELAY) {
+    private synchronized void checkRateLimit(String username) throws DAOException {
+        if (globalFailedAttempts <= MAX_ATTEMPTS_BEFORE_DELAY) {
             return; // No rate limiting yet
         }
 
+        if (lastFailedAttemptTime == null) {
+            return; // No attempts recorded
+        }
+
         // Calculate required delay: 30 * (attemptNumber - 3) seconds
-        int delaySeconds = BASE_DELAY_SECONDS * (attemptCount - MAX_ATTEMPTS_BEFORE_DELAY);
+        int delaySeconds = BASE_DELAY_SECONDS * (globalFailedAttempts - MAX_ATTEMPTS_BEFORE_DELAY);
         Instant now = Instant.now();
-        Instant lastAttempt = attemptInfo.getLastAttemptTime();
-        Duration timeSinceLastAttempt = Duration.between(lastAttempt, now);
+        Duration timeSinceLastAttempt = Duration.between(lastFailedAttemptTime, now);
 
         if (timeSinceLastAttempt.getSeconds() < delaySeconds) {
             long remainingSeconds = delaySeconds - timeSinceLastAttempt.getSeconds();
@@ -212,24 +185,31 @@ public class LoginController extends AbstractController {
                     remainingSeconds
             ));
         }
+
+        // Delay has expired - reset counter to allow new attempts
+        globalFailedAttempts = 0;
+        lastFailedAttemptTime = null;
     }
 
     /**
-     * Records a failed login attempt for the given username.
+     * Records a failed login attempt globally.
+     * This increments the global counter regardless of which username was used.
      *
-     * @param username The username that failed to log in
+     * @param username The username that failed (used for logging only)
      */
-    private void recordFailedAttempt(String username) {
-        failedAttempts.computeIfAbsent(username, k -> new FailedAttemptInfo()).incrementAttempt();
+    private synchronized void recordFailedAttempt(String username) {
+        globalFailedAttempts++;
+        lastFailedAttemptTime = Instant.now();
     }
 
     /**
-     * Resets the failed login attempts counter for a user after successful login.
+     * Resets the global failed login attempts counter after successful login.
      *
-     * @param username The username that successfully logged in
+     * @param username The username that successfully logged in (used for logging only)
      */
-    private void resetFailedAttempts(String username) {
-        failedAttempts.remove(username);
+    private synchronized void resetFailedAttempts(String username) {
+        globalFailedAttempts = 0;
+        lastFailedAttemptTime = null;
     }
 
     /**

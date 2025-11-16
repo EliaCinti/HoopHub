@@ -103,9 +103,15 @@ public class CliLoginGraphicController extends CliGraphicController {
                 continue; // Retry with new username
             }
 
-            Optional<UserBean> loginResult = attemptLogin(username.get(), password.get());
-            if (loginResult.isPresent()) {
-                return loginResult;
+            try {
+                Optional<UserBean> loginResult = attemptLogin(username.get(), password.get());
+                if (loginResult.isPresent()) {
+                    return loginResult;
+                }
+            } catch (RateLimitException e) {
+                // Rate limit is active - exit immediately and return to main loop
+                // User can only exit or wait for rate limit to expire
+                return Optional.empty();
             }
 
             attemptCount++;
@@ -169,6 +175,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * @param username The username
      * @param password The password
      * @return Optional containing the authenticated UserBean, or empty if authentication fails
+     * @throws RateLimitException if rate limiting is active (wrapped in RuntimeException for flow control)
      */
     private Optional<UserBean> attemptLogin(String username, String password) {
         try {
@@ -181,12 +188,24 @@ public class CliLoginGraphicController extends CliGraphicController {
             return Optional.of(loggedUser);
 
         } catch (DAOException e) {
-            handleDAOException(username, e);
+            boolean isRateLimited = handleDAOException(username, e);
+            if (isRateLimited) {
+                // Throw unchecked exception to break out of attempt loop
+                throw new RateLimitException();
+            }
         } catch (UserSessionException e) {
             handleSessionException(username, e);
         }
 
         return Optional.empty();
+    }
+
+    /**
+     * Unchecked exception used internally to signal rate limiting.
+     * This breaks out of the login attempt loop when rate limit is active.
+     */
+    private static class RateLimitException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
     }
 
     /**
@@ -219,10 +238,28 @@ public class CliLoginGraphicController extends CliGraphicController {
 
     /**
      * Handles DAO exceptions during login.
+     *
+     * @param username The username that failed
+     * @param e The exception
+     * @return true if this is a rate limiting exception (user must wait), false otherwise
      */
-    private void handleDAOException(String username, DAOException e) {
+    private boolean handleDAOException(String username, DAOException e) {
         LOGGER.log(Level.FINE, "Login failed for user: {0} - {1}", new Object[]{username, e.getMessage()});
-        printError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
+
+        // Check if this is a rate limiting error
+        boolean isRateLimited = e.getMessage() != null && e.getMessage().contains("Too many failed login attempts");
+
+        if (isRateLimited) {
+            printNewLine();
+            printError(e.getMessage());
+            printWarning("You cannot attempt login until the waiting period expires.");
+            printInfo("You can only type 'exit' or 'quit' to close the application, or wait.");
+            printNewLine();
+        } else {
+            printError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
+        }
+
+        return isRateLimited;
     }
 
     /**
