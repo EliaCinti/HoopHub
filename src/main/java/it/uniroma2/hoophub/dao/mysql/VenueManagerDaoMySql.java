@@ -21,22 +21,26 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * MySQL implementation of the VenueManagerDao interface.
+ * MySQL implementation of VenueManagerDao.
  * <p>
- * This class provides data access operations for VenueManager entities stored in a MySQL database.
- * It coordinates between the users and venue_managers tables, delegating common user operations
- * to {@link UserDaoMySql} while handling venue manager-specific data directly.
+ * Manages VenueManager data across users and venue_managers tables.
+ * Delegates common user operations to {@link UserDao}.
  * </p>
  * <p>
- * Database structure:
+ * <strong>Design Patterns:</strong>
  * <ul>
- *   <li><strong>users table</strong>: username (PK), password_hash, full_name, gender, user_type</li>
- *   <li><strong>venue_managers table</strong>: username (PK, FK), company_name, phone_number</li>
+ *   <li><strong>Factory</strong>: Created via VenueManagerDaoFactory</li>
+ *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access VenueDao</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses VenueManager.Builder for object construction</li>
  * </ul>
+ * </p>
+ * <p>
+ * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops.
  * </p>
  *
  * @see VenueManagerDao
- * @see AbstractMySqlDao
+ * @see DaoLoadingContext
  */
 public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManagerDao {
 
@@ -75,13 +79,10 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     private static final String ERR_VENUE_MANAGER_NOT_FOUND = "VenueManager not found";
 
     /**
-     * Constructs a new VenueManagerDaoMySql with a UserDao dependency.
-     * <p>
-     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
-     * by the VenueManagerDaoFactory, ensuring proper use of the Factory pattern.
-     * </p>
+     * Constructs VenueManagerDaoMySql with UserDao dependency.
+     * Injected by VenueManagerDaoFactory (Factory pattern).
      *
-     * @param userDao The UserDao implementation to use for common user operations
+     * @param userDao DAO for common user operations
      */
     public VenueManagerDaoMySql(UserDao userDao) {
         this.userDao = userDao;
@@ -90,12 +91,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation performs two operations within a transaction:
-     * <ol>
-     *   <li>Saves common user data via {@link UserDao#saveUser(UserBean)}</li>
-     *   <li>Saves venue manager-specific data in the venue_managers table</li>
-     * </ol>
-     * If either operation fails, the entire transaction is rolled back.
+     * Saves in transaction: (1) user data via UserDao, (2) manager data in DB.
+     * Rolls back on failure. Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -140,9 +137,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     /**
      * {@inheritDoc}
      * <p>
-     * Retrieves venue manager data using a JOIN between users and venue_managers tables.
-     * The returned VenueManager object has an empty venues list - venues should be
-     * loaded separately when needed using {@link #getVenues(VenueManager)}.
+     * Uses JOIN query. Returns VenueManager with empty venues list.
+     * Use {@link #getVenues(VenueManager)} to load venues separately.
      * </p>
      */
     @Override
@@ -195,11 +191,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation updates both:
-     * <ul>
-     *   <li>Common user data via {@link UserDao#updateUser(it.uniroma2.hoophub.model.User, UserBean)}</li>
-     *   <li>Venue manager-specific data in the venue_managers table</li>
-     * </ul>
+     * Updates in transaction: (1) user data via UserDao, (2) manager data in DB.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -245,11 +238,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation deletes in the correct order due to foreign key constraints:
-     * <ol>
-     *   <li>Delete venue manager-specific data from venue_managers table</li>
-     *   <li>Delete common user data via {@link UserDao#deleteUser(it.uniroma2.hoophub.model.User)}</li>
-     * </ol>
+     * Deletes in transaction: (1) manager data, (2) user data via UserDao.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -292,9 +282,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation queries the venues table and reconstructs full Venue objects
-     * using {@link VenueDaoMySql}. This avoids circular dependencies and respects
-     * the single responsibility principle.
+     * Queries venues table, reconstructs Venue objects via VenueDao (Facade pattern).
      * </p>
      */
     @Override
@@ -335,11 +323,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps a ResultSet row to a VenueManager domain object.
-     * <p>
-     * Includes anti-loop protection via DaoLoadingContext to prevent circular dependencies
-     * when VenueManager is referenced from related entities.
-     * </p>
+     * Maps ResultSet to VenueManager.
+     * Uses {@link DaoLoadingContext} to prevent circular loops.
      */
     private VenueManager mapResultSetToVenueManager(ResultSet rs) throws SQLException {
         String username = rs.getString("username");

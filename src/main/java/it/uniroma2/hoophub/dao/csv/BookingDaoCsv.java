@@ -18,31 +18,25 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * CSV implementation of the BookingDao interface.
+ * CSV implementation of BookingDao.
  * <p>
- * This class provides data access operations for Booking entities stored in CSV files.
- * It follows best practices:
+ * Manages Booking data in CSV file with references to Fan and Venue.
+ * </p>
+ * <p>
+ * <strong>Design Patterns:</strong>
  * <ul>
- *   <li>Extends {@link AbstractCsvDao} to eliminate code duplication</li>
- *   <li>Accepts {@link BookingBean} for write operations (save/update)</li>
- *   <li>Returns {@link Booking} model objects with fully loaded Fan and Venue references</li>
- *   <li>Uses {@link DaoLoadingContext} to prevent circular dependencies</li>
+ *   <li><strong>Factory</strong>: Created via BookingDaoFactory</li>
+ *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access FanDao and VenueDao</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses Booking.Builder for object construction</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Circular Dependency Prevention:</strong> This implementation uses {@link DaoLoadingContext}
- * to prevent infinite loops when loading related entities. When a Booking is being loaded and needs
- * to load its Fan and Venue, the context prevents re-loading the same entities during construction,
- * breaking the circular dependency while still providing complete objects.
- * </p>
- * <p>
- * <strong>Object Completeness:</strong> Unlike previous stub-based approaches, this DAO always
- * returns fully populated Booking objects with complete Fan and Venue data, ensuring consistency
- * with the MySQL implementation and respecting the Liskov Substitution Principle.
+ * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops
+ * when Booking loads Fan and Fan loads Bookings back.
  * </p>
  *
  * @see BookingDao
- * @see AbstractCsvDao
  * @see DaoLoadingContext
  */
 public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {

@@ -23,49 +23,30 @@ import java.util.List;
 import java.util.logging.Level;
 
 /**
- * CSV implementation of the FanDao interface.
+ * CSV implementation of FanDao.
  * <p>
- * This class provides data access operations for Fan entities stored in CSV files.
- * It extends {@link AbstractCsvDao} to leverage common functionality and works in
- * conjunction with {@link UserDao} to handle both common user data and fan-specific data.
+ * Manages Fan data in CSV file (fav_team, birthday) while delegating
+ * common user operations to {@link UserDao}.
  * </p>
  * <p>
- * <strong>CSV File Structure (fans.csv):</strong>
- * <pre>
- * username,fav_team,birthday
- * john_doe,Lakers,1990-05-15
- * jane_fan,Warriors,1985-08-22
- * </pre>
+ * <strong>CSV Structure:</strong> username,fav_team,birthday
  * </p>
  * <p>
- * <strong>Design Pattern:</strong> This DAO demonstrates proper separation of concerns by:
+ * <strong>Design Patterns:</strong>
  * <ul>
- *   <li>Using {@link UserDao} for common user operations (username, password, etc.)</li>
- *   <li>Managing only fan-specific data in its own CSV file</li>
- *   <li>Using {@link DaoLoadingContext} to prevent circular dependencies while loading complete objects</li>
+ *   <li><strong>Factory</strong>: Created via FanDaoFactory</li>
+ *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access BookingDao</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses Fan.Builder for object construction</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Circular Dependency Prevention:</strong> This implementation uses {@link DaoLoadingContext}
- * to prevent infinite loops when loading related entities. When a Fan is being loaded and needs
- * to load its bookings, the context prevents re-loading the same Fan during booking construction,
- * breaking the circular dependency while still providing complete objects.
- * </p>
- * <p>
- * <strong>Object Completeness:</strong> Unlike previous stub-based approaches, this DAO always
- * returns fully populated Fan objects with their complete booking list, ensuring consistency
- * with the MySQL implementation and respecting the Liskov Substitution Principle.
- * </p>
- * <p>
- * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
- * modification issues when multiple threads access the CSV file.
+ * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops
+ * when Fan loads Bookings and Booking loads Fan back.
  * </p>
  *
- * @see FanDao Interface defining the contract
- * @see AbstractCsvDao Base class providing common CSV functionality
- * @see UserDao DAO for common user operations
- * @see Fan Domain model representing a fan
- * @see DaoLoadingContext Utility for preventing circular loading
+ * @see FanDao
+ * @see DaoLoadingContext
  */
 public class FanDaoCsv extends AbstractCsvDao implements FanDao {
 
@@ -87,14 +68,10 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     // ========== CONSTRUCTORS ==========
 
     /**
-     * Constructor with dependency injection for UserDao.
-     * <p>
-     * <strong>Dependency Injection:</strong> The UserDao is injected via constructor
-     * by the FanDaoFactory, ensuring proper use of the Factory pattern and avoiding
-     * direct instantiation with "new" inside DAOs.
-     * </p>
+     * Constructs FanDaoCsv with UserDao dependency.
+     * Injected by FanDaoFactory (Factory pattern).
      *
-     * @param userDao The UserDao implementation to use for common user operations
+     * @param userDao DAO for common user operations
      */
     public FanDaoCsv(UserDao userDao) {
         super(CSV_FILE_PATH);
@@ -111,14 +88,8 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step save operation:
-     * <ol>
-     *   <li>Saves common user data via {@link UserDao#saveUser(UserBean)}</li>
-     *   <li>Saves fan-specific data (favorite team, birthday) to fans.csv</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful save, observers are notified for cross-persistence synchronization.
+     * Saves in two steps: (1) common user data via UserDao, (2) fan-specific data to CSV.
+     * Notifies observers for CSV-MySQL synchronization (Observer pattern).
      * </p>
      */
     @Override
@@ -149,17 +120,8 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step retrieval:
-     * <ol>
-     *   <li>Retrieves common user data via {@link UserDao#retrieveUser(String)}</li>
-     *   <li>Retrieves fan-specific data from fans.csv</li>
-     *   <li>Constructs a Fan object with EMPTY booking list (no circular dependency)</li>
-     * </ol>
-     * </p>
-     * <p>
-     * <strong>Circular Dependency Prevention:</strong> The returned Fan object has an
-     * empty booking list. If bookings are needed, they should be loaded separately via
-     * BookingDao after the Fan is constructed.
+     * Returns fully populated Fan with complete booking list.
+     * Uses {@link DaoLoadingContext} to prevent infinite loops.
      * </p>
      */
     @Override
@@ -182,13 +144,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
         return mapRowToFan(userData, fanData);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Each returned Fan object has an empty booking list. Bookings should be loaded
-     * separately if needed.
-     * </p>
-     */
+    /** {@inheritDoc} */
     @Override
     public synchronized List<Fan> retrieveAllFans() throws DAOException {
         List<String[]> fanData = CsvUtilities.readAll(csvFile);
@@ -214,14 +170,8 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step update:
-     * <ol>
-     *   <li>Updates common user data via {@link UserDao#updateUser(it.uniroma2.hoophub.model.User, UserBean)}</li>
-     *   <li>Updates fan-specific data in fans.csv</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful update, observers are notified for cross-persistence synchronization.
+     * Updates in two steps: (1) common user data via UserDao, (2) fan data in CSV.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -261,14 +211,8 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step deletion:
-     * <ol>
-     *   <li>Deletes fan-specific data from fans.csv</li>
-     *   <li>Deletes common user data via {@link UserDao#deleteUser(it.uniroma2.hoophub.model.User)}</li>
-     * </ol>
-     * </p>
-     * <p>
-     * After successful deletion, observers are notified for cross-persistence synchronization.
+     * Deletes fan-specific data from CSV, then common user data via UserDao.
+     * Notifies observers (Observer pattern).
      * </p>
      */
     @Override
@@ -304,23 +248,16 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps CSV row data to a Fan domain object.
+     * Maps CSV row to Fan object.
      * <p>
-     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
-     * to detect and prevent infinite loops when loading related entities. If this Fan is already
-     * being loaded in the current call stack (circular reference), it creates a minimal Fan
-     * without reloading bookings, breaking the cycle.
-     * </p>
-     * <p>
-     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
-     * loads all bookings with complete data by delegating to BookingDao, ensuring that the
-     * returned Fan object is fully populated.
+     * Uses {@link DaoLoadingContext} to prevent circular loops:
+     * If already loading this fan → return with empty bookings list (break cycle).
+     * Otherwise → load complete bookings via BookingDao (Facade pattern).
      * </p>
      *
-     * @param userData Array containing common user data [username, password_hash, full_name, gender, type]
-     * @param fanData Array containing fan-specific data [username, fav_team, birthday]
-     * @return A fully constructed Fan object with complete booking list
-     * @throws DAOException If there's an error parsing the date or constructing the Fan
+     * @param userData Common user data [username, password_hash, full_name, gender, type]
+     * @param fanData Fan data [username, fav_team, birthday]
+     * @return Fully populated Fan with complete bookings list
      */
     private Fan mapRowToFan(String[] userData, String[] fanData) throws DAOException {
         try {

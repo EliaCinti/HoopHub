@@ -18,41 +18,29 @@ import java.util.*;
 import java.util.logging.Level;
 
 /**
- * CSV implementation of the VenueDao interface.
+ * CSV implementation of VenueDao.
  * <p>
- * This class provides data access operations for Venue entities stored in CSV files.
- * It extends {@link AbstractCsvDao} to leverage common functionality like file initialization,
- * ID generation, and validation, eliminating code duplication.
+ * Manages Venue data in CSV file. Handles venue-team associations in separate CSV.
  * </p>
  * <p>
- * <strong>CSV File Structure (venues.csv):</strong>
- * <pre>
- * id,name,type,address,city,max_capacity,venue_manager_username
- * 1,The Sports Hub,PUB,123 Main St,Los Angeles,150,manager1
- * 2,Hoops Central,SPORTS_BAR,456 Oak Ave,New York,200,manager2
- * </pre>
+ * <strong>CSV Structure:</strong> id,name,type,address,city,max_capacity,venue_manager_username
  * </p>
  * <p>
- * <strong>Circular Dependency Prevention:</strong> This implementation uses {@link DaoLoadingContext}
- * to prevent infinite loops when loading related entities. When a Venue is being loaded and its
- * VenueManager needs to load its managed venues, the context prevents re-loading the same Venue,
- * breaking the circular dependency while still providing complete objects.
+ * <strong>Design Patterns:</strong>
+ * <ul>
+ *   <li><strong>Factory</strong>: Created via VenueDaoFactory</li>
+ *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access VenueManagerDao</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses Venue.Builder for object construction</li>
+ * </ul>
  * </p>
  * <p>
- * <strong>Object Completeness:</strong> Unlike previous stub-based approaches, this DAO always
- * returns fully populated VenueManager objects with real data, ensuring consistency with the
- * MySQL implementation and respecting the Liskov Substitution Principle.
- * </p>
- * <p>
- * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
- * modification issues when multiple threads access the CSV file.
+ * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops
+ * when Venue loads VenueManager and VenueManager loads Venues back.
  * </p>
  *
- * @see VenueDao Interface defining the contract
- * @see AbstractCsvDao Base class providing common CSV functionality
- * @see Venue Domain model representing a venue
- * @see VenueBean DTO for data transfer
- * @see DaoLoadingContext Utility for preventing circular loading
+ * @see VenueDao
+ * @see DaoLoadingContext
  */
 public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
