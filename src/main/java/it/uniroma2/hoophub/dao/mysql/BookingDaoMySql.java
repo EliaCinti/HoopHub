@@ -523,8 +523,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     bookingId,
                     rs.getDate("game_date").toLocalDate(),
                     rs.getTime("game_time").toLocalTime(),
-                    TeamNBA.valueOf(rs.getString("home_team")),
-                    TeamNBA.valueOf(rs.getString("away_team")),
+                    TeamNBA.fromDisplayName(rs.getString("home_team")),
+                    TeamNBA.fromDisplayName(rs.getString("away_team")),
                     null,  // Minimal object: no venue
                     null   // Minimal object: no fan
             )
@@ -554,8 +554,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     bookingId,
                     rs.getDate("game_date").toLocalDate(),
                     rs.getTime("game_time").toLocalTime(),
-                    TeamNBA.valueOf(rs.getString("home_team")),
-                    TeamNBA.valueOf(rs.getString("away_team")),
+                    TeamNBA.fromDisplayName(rs.getString("home_team")),
+                    TeamNBA.fromDisplayName(rs.getString("away_team")),
                     venue,
                     fan
             )

@@ -307,7 +307,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
+                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings not loaded during cycle
                     .build();
@@ -319,7 +319,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .username(username)
                     .fullName(rs.getString("full_name"))
                     .gender(rs.getString("gender"))
-                    .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
+                    .favTeam(TeamNBA.fromDisplayName(rs.getString("fav_team")))
                     .birthday(rs.getDate("birthday").toLocalDate())
                     .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
                     .build();

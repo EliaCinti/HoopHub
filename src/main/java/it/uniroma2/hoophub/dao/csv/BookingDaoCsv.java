@@ -352,8 +352,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
                         bookingId,
                         LocalDate.parse(row[COL_GAME_DATE]),
                         LocalTime.parse(row[COL_GAME_TIME]),
-                        TeamNBA.valueOf(row[COL_HOME_TEAM]),
-                        TeamNBA.valueOf(row[COL_AWAY_TEAM]),
+                        TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
+                        TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
                         minimalVenue,
                         minimalFan
                 )
@@ -386,8 +386,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
                         bookingId,
                         LocalDate.parse(row[COL_GAME_DATE]),
                         LocalTime.parse(row[COL_GAME_TIME]),
-                        TeamNBA.valueOf(row[COL_HOME_TEAM]),
-                        TeamNBA.valueOf(row[COL_AWAY_TEAM]),
+                        TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
+                        TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
                         venue,
                         fan
                 )

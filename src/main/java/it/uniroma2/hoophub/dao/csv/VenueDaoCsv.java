@@ -418,7 +418,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             String[] row = data.get(i);
             if (Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
                 try {
-                    TeamNBA team = TeamNBA.valueOf(row[COL_VT_TEAM_NAME]);
+                    TeamNBA team = TeamNBA.fromDisplayName(row[COL_VT_TEAM_NAME]);
                     teams.add(team);
                 } catch (IllegalArgumentException e) {
                     logger.log(Level.WARNING, "Invalid team name in CSV: {0}", row[COL_VT_TEAM_NAME]);
