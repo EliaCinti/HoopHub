@@ -3,15 +3,19 @@ package it.uniroma2.hoophub.dao.csv;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
 import it.uniroma2.hoophub.utilities.VenueType;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 
 /**
@@ -54,7 +58,11 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     // ========== CSV CONFIGURATION ==========
 
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venues.csv";
+    private static final String VENUE_TEAMS_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venue_teams.csv";
     private static final String[] CSV_HEADER = {"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"};
+    private static final String[] VENUE_TEAMS_HEADER = {"venue_id", "team_name"};
+
+    private final File venueTeamsFile;
 
     // ========== CONSTANTS ==========
 
@@ -73,19 +81,22 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     // ========== CONSTRUCTOR ==========
 
     /**
-     * Constructs a new VenueDaoCsv and initializes the CSV file.
+     * Constructs a new VenueDaoCsv and initializes the CSV files.
      * <p>
      * The parent constructor ({@link AbstractCsvDao}) handles:
      * <ul>
-     *   <li>Creating the File object</li>
+     *   <li>Creating the File object for venues.csv</li>
      *   <li>Creating parent directories if needed</li>
      *   <li>Initializing the CSV file with headers if it doesn't exist</li>
      *   <li>Setting up the logger</li>
      * </ul>
+     * Additionally, this constructor initializes the venue_teams.csv file.
      * </p>
      */
     public VenueDaoCsv() {
         super(CSV_FILE_PATH);
+        this.venueTeamsFile = new File(VENUE_TEAMS_FILE_PATH);
+        initializeVenueTeamsFile();
     }
 
     @Override
@@ -320,7 +331,127 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         return (int) getNextId(COL_ID);
     }
 
+    // ========== TEAM MANAGEMENT METHODS ==========
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void saveVenueTeam(int venueId, TeamNBA team) throws DAOException {
+        validatePositiveId(venueId);
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+
+        // Check if association already exists
+        Set<TeamNBA> existingTeams = retrieveVenueTeams(venueId);
+        if (existingTeams.contains(team)) {
+            logger.log(Level.INFO, "Team {0} already associated with venue {1}",
+                    new Object[]{team.getDisplayName(), venueId});
+            return; // Already exists, no need to add again
+        }
+
+        // Add new association
+        String[] newRow = {String.valueOf(venueId), team.name()};
+        CsvUtilities.writeFile(venueTeamsFile, newRow);
+
+        logger.log(Level.INFO, "Team {0} associated with venue {1}",
+                new Object[]{team.getDisplayName(), venueId});
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException {
+        validatePositiveId(venueId);
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+
+        List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
+        boolean found = false;
+
+        // Remove matching rows
+        for (int i = data.size() - 1; i >= CsvDaoConstants.FIRST_DATA_ROW; i--) {
+            String[] row = data.get(i);
+            if (row[0].equals(String.valueOf(venueId)) && row[1].equals(team.name())) {
+                data.remove(i);
+                found = true;
+            }
+        }
+
+        if (found) {
+            CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, data);
+            logger.log(Level.INFO, "Team {0} removed from venue {1}",
+                    new Object[]{team.getDisplayName(), venueId});
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
+        validatePositiveId(venueId);
+        Set<TeamNBA> teams = new HashSet<>();
+
+        List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
+
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (row[0].equals(String.valueOf(venueId))) {
+                try {
+                    TeamNBA team = TeamNBA.valueOf(row[1]);
+                    teams.add(team);
+                } catch (IllegalArgumentException e) {
+                    logger.log(Level.WARNING, "Invalid team name in CSV: {0}", row[1]);
+                }
+            }
+        }
+
+        logger.log(Level.INFO, "Retrieved {0} teams for venue {1}",
+                new Object[]{teams.size(), venueId});
+        return teams;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public synchronized void deleteAllVenueTeams(int venueId) throws DAOException {
+        validatePositiveId(venueId);
+
+        List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
+        int deletedCount = 0;
+
+        // Remove all rows for this venue
+        for (int i = data.size() - 1; i >= CsvDaoConstants.FIRST_DATA_ROW; i--) {
+            String[] row = data.get(i);
+            if (row[0].equals(String.valueOf(venueId))) {
+                data.remove(i);
+                deletedCount++;
+            }
+        }
+
+        if (deletedCount > 0) {
+            CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, data);
+            logger.log(Level.INFO, "Deleted {0} team associations for venue {1}",
+                    new Object[]{deletedCount, venueId});
+        }
+    }
+
     // ========== PRIVATE HELPER METHODS ==========
+
+    /**
+     * Initializes the venue_teams.csv file if it doesn't exist.
+     */
+    private void initializeVenueTeamsFile() {
+        if (!venueTeamsFile.exists()) {
+            CsvUtilities.initializeFile(venueTeamsFile, VENUE_TEAMS_HEADER);
+            logger.log(Level.INFO, "Initialized venue_teams.csv file");
+        }
+    }
 
     /**
      * Maps CSV row data to a Venue domain object.
@@ -330,12 +461,15 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
      * This prevents circular calls between VenueDao and VenueManagerDao during object construction.
      * </p>
      * <p>
+     * This method also loads the associated teams from the venue_teams.csv file.
+     * </p>
+     * <p>
      * If the full VenueManager object with all data is needed, it should be loaded separately
      * via VenueManagerDao after the Venue is constructed.
      * </p>
      *
      * @param row Array containing venue data [id, name, type, address, city, max_capacity, venue_manager_username]
-     * @return A fully constructed Venue object with STUB VenueManager
+     * @return A fully constructed Venue object with STUB VenueManager and associated teams
      * @throws DAOException If there's an error parsing data or constructing the Venue
      */
     private Venue mapRowToVenue(String[] row) throws DAOException {
@@ -355,7 +489,8 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                     .managedVenues(Collections.emptyList()) // EMPTY list - no circular dependency
                     .build();
 
-            return new Venue.Builder()
+            // Build the venue
+            Venue venue = new Venue.Builder()
                     .id(id)
                     .name(row[COL_NAME])
                     .type(type)
@@ -364,6 +499,14 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                     .maxCapacity(maxCapacity)
                     .venueManager(stubManager)
                     .build();
+
+            // Load associated teams
+            Set<TeamNBA> teams = retrieveVenueTeams(id);
+            for (TeamNBA team : teams) {
+                venue.addTeam(team);
+            }
+
+            return venue;
         } catch (NumberFormatException e) {
             throw new DAOException("Invalid number format in venue data: " + e.getMessage(), e);
         } catch (IllegalArgumentException e) {
