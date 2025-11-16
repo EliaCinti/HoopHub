@@ -219,7 +219,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             }
         }
 
-        logger.log(Level.INFO, "Retrieved {0} venues for manager: {1}",
+        logger.log(Level.FINE, "Retrieved {0} venues for manager: {1}",
                 new Object[]{venues.size(), venueManagerUsername});
         return venues;
     }
@@ -246,7 +246,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             }
         }
 
-        logger.log(Level.INFO, () ->
+        logger.log(Level.FINE, () ->
                 "Retrieved " + venues.size() + " venues in city: " + city);
         return venues;
     }

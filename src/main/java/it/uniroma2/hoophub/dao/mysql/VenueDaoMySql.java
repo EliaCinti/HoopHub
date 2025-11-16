@@ -223,7 +223,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
+                logger.log(Level.FINE, "Retrieved {0} venues for manager {1}",
                         new Object[]{venues.size(), venueManagerUsername});
                 return venues;
             }
@@ -254,7 +254,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} venues in city {1}",
+                logger.log(Level.FINE, "Retrieved {0} venues in city {1}",
                         new Object[]{venues.size(), city});
                 return venues;
             }
@@ -571,7 +571,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} teams for venue {1}",
+                logger.log(Level.FINE, "Retrieved {0} teams for venue {1}",
                         new Object[]{teams.size(), venueId});
                 return teams;
             }

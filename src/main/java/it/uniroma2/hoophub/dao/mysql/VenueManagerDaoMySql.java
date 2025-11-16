@@ -299,7 +299,7 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} venues for manager {1}",
+                logger.log(Level.FINE, "Retrieved {0} venues for manager {1}",
                         new Object[]{venues.size(), venueManager.getUsername()});
                 return venues;
             }

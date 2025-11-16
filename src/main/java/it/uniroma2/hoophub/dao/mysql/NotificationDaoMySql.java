@@ -189,7 +189,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} notifications for user {1}",
+                logger.log(Level.FINE, "Retrieved {0} notifications for user {1}",
                         new Object[]{notifications.size(), userId});
                 return notifications;
             }
@@ -220,7 +220,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} unread notifications for user {1}",
+                logger.log(Level.FINE, "Retrieved {0} unread notifications for user {1}",
                         new Object[]{notifications.size(), userId});
                 return notifications;
             }
@@ -255,7 +255,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} {1} notifications for user {2}",
+                logger.log(Level.FINE, "Retrieved {0} {1} notifications for user {2}",
                         new Object[]{notifications.size(), type, userId});
                 return notifications;
             }
@@ -286,7 +286,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} notifications for booking {1}",
+                logger.log(Level.FINE, "Retrieved {0} notifications for booking {1}",
                         new Object[]{notifications.size(), bookingId});
                 return notifications;
             }
@@ -528,7 +528,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     notifications.add(mapResultSetToNotification(rs));
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} notifications", notifications.size());
+                logger.log(Level.FINE, "Retrieved {0} notifications", notifications.size());
                 return notifications;
             }
         } catch (SQLException e) {
@@ -562,7 +562,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     }
                 }
 
-                logger.log(Level.INFO, "Retrieved {0} recent notifications for user {1}",
+                logger.log(Level.FINE, "Retrieved {0} recent notifications for user {1}",
                         new Object[]{notifications.size(), userId});
                 return notifications;
             }
