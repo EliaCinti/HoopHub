@@ -147,7 +147,11 @@ public class LoginController extends AbstractController {
             return null;
         }
 
-        // Polymorphic dispatch using switch expression with enum
+        // POLYMORPHISM: Enum-based switch expression dispatches to the appropriate DAO method
+        // at runtime based on the UserType enum value. This replaces traditional if-else chains
+        // with a type-safe, exhaustive-checked approach that ensures all enum cases are handled.
+        // The Java compiler verifies that all UserType enum values have a corresponding case.
+        // Each case returns a different User subtype (Fan or VenueManager) polymorphically.
         return switch (userType) {
             case FAN -> factory.getFanDao().retrieveFan(credentials.getUsername());
             case VENUE_MANAGER -> factory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
