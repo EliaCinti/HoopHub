@@ -8,7 +8,7 @@ import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
-import it.uniroma2.hoophub.utilities.UserType;
+import it.uniroma2.hoophub.model.UserType;
 
 /**
  * LoginController manages the authentication process for users trying to log in to the HoopHub application.

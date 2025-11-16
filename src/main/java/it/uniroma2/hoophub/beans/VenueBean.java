@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.beans;
 
-import it.uniroma2.hoophub.utilities.VenueType;
+import it.uniroma2.hoophub.model.VenueType;
 
 /**
  * Bean for venue data transfer.

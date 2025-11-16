@@ -7,7 +7,7 @@ import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import it.uniroma2.hoophub.utilities.UIHelper;
-import it.uniroma2.hoophub.utilities.UserType;
+import it.uniroma2.hoophub.model.UserType;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;

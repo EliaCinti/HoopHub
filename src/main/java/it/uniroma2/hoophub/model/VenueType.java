@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.utilities;
+package it.uniroma2.hoophub.model;
 
 /**
  * Types of venues where NBA games can be watched

@@ -3,7 +3,7 @@ package it.uniroma2.hoophub.dao;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
-import it.uniroma2.hoophub.utilities.BookingStatus;
+import it.uniroma2.hoophub.model.BookingStatus;
 
 import java.time.LocalDate;
 import java.util.List;

@@ -12,7 +12,7 @@ import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.BookingStatus;
+import it.uniroma2.hoophub.model.BookingStatus;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

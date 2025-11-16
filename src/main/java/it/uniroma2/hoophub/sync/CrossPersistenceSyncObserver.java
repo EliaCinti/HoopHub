@@ -14,7 +14,7 @@ import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.patterns.observer.DaoObserver;
-import it.uniroma2.hoophub.utilities.UserType;
+import it.uniroma2.hoophub.model.UserType;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;

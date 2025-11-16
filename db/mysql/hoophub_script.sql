@@ -70,7 +70,7 @@ CREATE TABLE venues (
 ) ENGINE=InnoDB;
 
 -- ============================================================================
--- TABLE: venue_teams (Many-to-Many relationship between Venues and Teams)
+-- TABLE: venue_teams
 -- ============================================================================
 CREATE TABLE venue_teams (
     venue_id INT NOT NULL,

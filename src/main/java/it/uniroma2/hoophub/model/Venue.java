@@ -1,8 +1,5 @@
 package it.uniroma2.hoophub.model;
 
-import it.uniroma2.hoophub.utilities.BookingStatus;
-import it.uniroma2.hoophub.utilities.VenueType;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;

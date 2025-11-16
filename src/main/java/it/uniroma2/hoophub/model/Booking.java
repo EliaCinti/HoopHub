@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.model;
 
-import it.uniroma2.hoophub.utilities.BookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 

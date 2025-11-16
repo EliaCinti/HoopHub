@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.utilities;
+package it.uniroma2.hoophub.model;
 
 /**
  * Enum representing the type of notification.

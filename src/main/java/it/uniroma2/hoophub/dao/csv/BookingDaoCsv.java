@@ -3,11 +3,8 @@ package it.uniroma2.hoophub.dao.csv;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.model.Booking;
-import it.uniroma2.hoophub.model.Fan;
-import it.uniroma2.hoophub.model.Venue;
+import it.uniroma2.hoophub.model.*;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.BookingStatus;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
 
 import java.time.LocalDate;
@@ -94,8 +91,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
                 String.valueOf(id),
                 bookingBean.getGameDate().toString(),
                 bookingBean.getGameTime().toString(),
-                bookingBean.getHomeTeam(),
-                bookingBean.getAwayTeam(),
+                String.valueOf(bookingBean.getHomeTeam()),
+                String.valueOf(bookingBean.getAwayTeam()),
                 String.valueOf(bookingBean.getVenueId()),
                 bookingBean.getFanUsername(),
                 bookingBean.getStatus().name(),
@@ -260,8 +257,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             if (Integer.parseInt(row[COL_ID]) == bookingBean.getId()) {
                 row[COL_GAME_DATE] = bookingBean.getGameDate().toString();
                 row[COL_GAME_TIME] = bookingBean.getGameTime().toString();
-                row[COL_HOME_TEAM] = bookingBean.getHomeTeam();
-                row[COL_AWAY_TEAM] = bookingBean.getAwayTeam();
+                row[COL_HOME_TEAM] = String.valueOf(bookingBean.getHomeTeam());
+                row[COL_AWAY_TEAM] = String.valueOf(bookingBean.getAwayTeam());
                 row[COL_VENUE_ID] = String.valueOf(bookingBean.getVenueId());
                 row[COL_STATUS] = bookingBean.getStatus().name();
                 row[COL_NOTIFIED] = String.valueOf(bookingBean.isNotified());
@@ -336,30 +333,20 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             // Create stub Fan (only username populated, other fields null/empty)
             Fan stubFan = new Fan.Builder()
                     .username(fanUsername)
-                    .fullName("") // Placeholder
-                    .gender("") // Placeholder
-                    .favTeam("") // Placeholder
-                    .birthday(LocalDate.now()) // Placeholder
                     .bookingList(new ArrayList<>())
                     .build();
 
             // Create stub Venue (only ID populated, other fields' placeholder)
             Venue stubVenue = new Venue.Builder()
                     .id(venueId)
-                    .name("") // Placeholder
-                    .type(null) // Placeholder
-                    .address("") // Placeholder
-                    .city("") // Placeholder
-                    .maxCapacity(0) // Placeholder
-                    .venueManager(null) // Placeholder
                     .build();
 
             return new Booking.Builder(
                     Integer.parseInt(row[COL_ID]),
                     LocalDate.parse(row[COL_GAME_DATE]),
                     LocalTime.parse(row[COL_GAME_TIME]),
-                    row[COL_HOME_TEAM],
-                    row[COL_AWAY_TEAM],
+                    TeamNBA.valueOf(row[COL_HOME_TEAM]),
+                    TeamNBA.valueOf(row[COL_AWAY_TEAM]),
                     stubVenue,
                     stubFan
             )

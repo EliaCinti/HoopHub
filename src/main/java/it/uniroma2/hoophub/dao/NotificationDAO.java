@@ -2,7 +2,7 @@ package it.uniroma2.hoophub.dao;
 
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
-import it.uniroma2.hoophub.utilities.NotificationType;
+import it.uniroma2.hoophub.model.NotificationType;
 
 import java.util.List;
 import java.util.Optional;

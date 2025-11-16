@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.utilities;
+package it.uniroma2.hoophub.model;
 
 /**
  * Enumeration representing the different types of users in the HoopHub system.

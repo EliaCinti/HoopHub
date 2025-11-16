@@ -2,9 +2,6 @@ package it.uniroma2.hoophub.model;
 
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 import it.uniroma2.hoophub.exception.VenueCapacityExceededException;
-import it.uniroma2.hoophub.utilities.BookingStatus;
-import it.uniroma2.hoophub.utilities.UserType;
-import it.uniroma2.hoophub.utilities.VenueType;
 
 import java.time.LocalDate;
 import java.util.ArrayList;

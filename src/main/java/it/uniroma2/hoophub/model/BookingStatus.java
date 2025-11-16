@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.utilities;
+package it.uniroma2.hoophub.model;
 
 /**
  * Status of a booking

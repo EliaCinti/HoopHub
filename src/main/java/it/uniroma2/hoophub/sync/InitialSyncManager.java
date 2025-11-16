@@ -4,7 +4,6 @@ import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
@@ -13,7 +12,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.utilities.UserType;
+import it.uniroma2.hoophub.model.UserType;
 
 import java.util.HashMap;
 import java.util.HashSet;

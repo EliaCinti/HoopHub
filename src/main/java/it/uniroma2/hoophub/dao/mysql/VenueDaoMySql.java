@@ -10,7 +10,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.VenueType;
+import it.uniroma2.hoophub.model.VenueType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
