@@ -62,7 +62,7 @@ public class SignUpController extends AbstractController {
      * @throws DAOException If there is an error saving the fan data
      * @throws UserSessionException If autoLogin is true and session creation fails
      */
-    public UserBean signUpFan(FanBean fanBean, boolean autoLogin) throws DAOException, UserSessionException {
+    private UserBean signUpFan(FanBean fanBean, boolean autoLogin) throws DAOException, UserSessionException {
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
         FanDao fanDao = daoFactory.getFanDao();
 
@@ -97,7 +97,7 @@ public class SignUpController extends AbstractController {
      * @throws DAOException If there is an error saving the venue manager data
      * @throws UserSessionException If autoLogin is true and session creation fails
      */
-    public UserBean signUpVenueManager(VenueManagerBean venueManagerBean, boolean autoLogin)
+    private UserBean signUpVenueManager(VenueManagerBean venueManagerBean, boolean autoLogin)
             throws DAOException, UserSessionException {
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
         VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();

@@ -8,6 +8,7 @@ import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.model.UserType;
 
+import java.io.Serial;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,7 +16,7 @@ import java.util.logging.Logger;
 /**
  * CLI graphic controller for the login use case.
  * Parallel to {@link it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController} for GUI.
- * Uses POLYMORPHISM to navigate to appropriate home screen based on user type.
+ * Use POLYMORPHISM to navigate to the appropriate home screen based on user type.
  */
 public class CliLoginGraphicController extends CliGraphicController {
 
@@ -83,10 +84,11 @@ public class CliLoginGraphicController extends CliGraphicController {
      * after 3 failed attempts. This ensures consistent rate limiting across all UIs.
      * </p>
      *
-     * @return Optional containing the authenticated UserBean, or empty if login is cancelled or rate limited
+     * @return Optional containing the authenticated UserBean, or empty if login is canceled or rate limited
      */
     private Optional<UserBean> performLogin() {
-         printTitle(TITLE);
+        clearScreen();
+        printTitle(TITLE);
         printInfo(SIGNUP_OPTION_MSG);
         printInfo(EXIT_OPTION_MSG);
         printNewLine();
@@ -111,7 +113,7 @@ public class CliLoginGraphicController extends CliGraphicController {
                 }
             } catch (RateLimitException e) {
                 // Rate limit is active - exit immediately and return to main loop
-                // User can only exit or wait for rate limit to expire
+                // User can only exit or wait for the rate limit to expire
                 return Optional.empty();
             }
 
@@ -197,9 +199,10 @@ public class CliLoginGraphicController extends CliGraphicController {
 
     /**
      * Unchecked exception used internally to signal rate limiting.
-     * This breaks out of the login attempt loop when rate limit is active.
+     * This breaks out of the login attempt loop when the rate limit is active.
      */
     private static class RateLimitException extends RuntimeException {
+        @Serial
         private static final long serialVersionUID = 1L;
     }
 

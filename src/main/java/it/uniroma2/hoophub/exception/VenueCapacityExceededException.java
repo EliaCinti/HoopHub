@@ -1,5 +1,7 @@
 package it.uniroma2.hoophub.exception;
 
+import java.time.LocalDate;
+
 /**
  * Exception thrown when a venue's capacity would be exceeded by a booking request.
  * <p>
@@ -34,7 +36,7 @@ package it.uniroma2.hoophub.exception;
  * </p>
  *
  * @see BookingNotAllowedException
- * @see it.uniroma2.hoophub.model.Venue#hasAvailableCapacity(java.time.LocalDate, int)
+ * @see it.uniroma2.hoophub.model.Venue#hasAvailableCapacity(LocalDate) (java.time.LocalDate, int)
  * @see it.uniroma2.hoophub.model.VenueManager#confirmBooking(it.uniroma2.hoophub.model.Booking, it.uniroma2.hoophub.model.Fan, it.uniroma2.hoophub.model.Venue)
  */
 public class VenueCapacityExceededException extends BookingNotAllowedException {
