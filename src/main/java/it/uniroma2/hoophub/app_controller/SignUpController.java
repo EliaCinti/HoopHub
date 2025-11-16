@@ -122,6 +122,12 @@ public class SignUpController extends AbstractController {
 
     /**
      * Generic signup method that routes to the appropriate registration method based on user type.
+     * <p>
+     * <strong>Polymorphism:</strong> This method uses pattern matching in switch expressions (Java 21+)
+     * to dispatch to the appropriate registration method based on the runtime type of the user bean.
+     * This is polymorphic behavior (runtime type checking and dispatch) that is type-safe and
+     * benefits from exhaustiveness checking.
+     * </p>
      *
      * @param userBean The user bean (must be FanBean or VenueManagerBean)
      * @param autoLogin If true, automatically logs in the user after registration
@@ -131,13 +137,12 @@ public class SignUpController extends AbstractController {
      * @throws IllegalArgumentException If the userBean type is not supported
      */
     public UserBean signUp(UserBean userBean, boolean autoLogin) throws DAOException, UserSessionException {
-        if (userBean instanceof FanBean fanBean) {
-            return signUpFan(fanBean, autoLogin);
-        } else if (userBean instanceof VenueManagerBean venueManagerBean) {
-            return signUpVenueManager(venueManagerBean, autoLogin);
-        } else {
-            throw new IllegalArgumentException("Invalid user type for signup: " + userBean.getClass().getName());
-        }
+        return switch (userBean) {
+            case FanBean fanBean -> signUpFan(fanBean, autoLogin);
+            case VenueManagerBean venueManagerBean -> signUpVenueManager(venueManagerBean, autoLogin);
+            case null -> throw new IllegalArgumentException("User bean cannot be null");
+            default -> throw new IllegalArgumentException("Invalid user type for signup: " + userBean.getClass().getName());
+        };
     }
 
     /**
