@@ -119,7 +119,11 @@ public class LoginController extends AbstractController {
 
     /**
      * Factory method that retrieves the appropriate user type based on credentials.
-     * Encapsulates the type-checking logic.
+     * <p>
+     * <strong>Polymorphism:</strong> Uses switch expression with enum to dispatch to the
+     * appropriate DAO retrieval method. This provides type safety and compile-time exhaustiveness
+     * checking compared to string-based if-else chains.
+     * </p>
      *
      * @param credentials The user credentials containing the user type
      * @param factory The DAO factory for data access
@@ -129,18 +133,25 @@ public class LoginController extends AbstractController {
     private User retrieveUserByType(CredentialsBean credentials, DaoFactoryFacade factory)
             throws DAOException {
 
-        String type = credentials.getType();
-        if (type == null) {
+        String typeString = credentials.getType();
+        if (typeString == null || typeString.isEmpty()) {
             return null;
         }
 
-        if (type.equalsIgnoreCase(String.valueOf(UserType.FAN))) {
-            return factory.getFanDao().retrieveFan(credentials.getUsername());
-        } else if (type.equalsIgnoreCase(String.valueOf(UserType.VENUE_MANAGER))) {
-            return factory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
+        // Convert String to UserType enum for type-safe dispatching
+        UserType userType;
+        try {
+            userType = UserType.valueOf(typeString.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            // Invalid user type string
+            return null;
         }
 
-        return null;
+        // Polymorphic dispatch using switch expression with enum
+        return switch (userType) {
+            case FAN -> factory.getFanDao().retrieveFan(credentials.getUsername());
+            case VENUE_MANAGER -> factory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
+        };
     }
 
     /**
@@ -221,14 +232,19 @@ public class LoginController extends AbstractController {
     }
 
     /**
-     * Converts a User Model object to a UserBean for boundary layer consumption.
+     * Converts a User Model object to the appropriate UserBean subtype for boundary layer consumption.
+     * <p>
+     * <strong>Polymorphism:</strong> Uses pattern matching with switch expression to determine
+     * the runtime type of the User and create the appropriate Bean subtype (FanBean or VenueManagerBean).
+     * This ensures type-specific data is properly transferred to the boundary layer.
+     * </p>
      * <p>
      * This method extracts only the necessary data from the Model and packages it
      * into a Bean, preventing the boundary layer from accessing business logic methods.
      * </p>
      *
-     * @param user The User Model object to convert
-     * @return A UserBean containing only data (no business logic)
+     * @param user The User Model object to convert (Fan or VenueManager)
+     * @return A UserBean subtype containing only data (no business logic)
      */
     private UserBean convertUserToBean(User user) {
         return new UserBean.Builder<>()
