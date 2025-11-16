@@ -99,8 +99,8 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                 }
 
                 // Create file with header using updateFile
+                // Note: updateFile() automatically adds header as first row, so we pass empty list
                 List<String[]> emptyData = new ArrayList<>();
-                emptyData.add(VENUE_TEAMS_HEADER); // Header row
                 CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, emptyData);
 
                 logger.log(Level.INFO, "Initialized venue_teams.csv file at: {0}", VENUE_TEAMS_FILE_PATH);

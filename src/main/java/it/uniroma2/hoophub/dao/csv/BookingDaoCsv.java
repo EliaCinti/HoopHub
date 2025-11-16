@@ -137,15 +137,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
         validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
 
+        // Uses AbstractCsvDao helper to find all matching rows
+        List<String[]> matchingRows = findAllRowsByValue(COL_FAN_USERNAME, fanUsername);
         List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (row[COL_FAN_USERNAME].equals(fanUsername)) {
-                bookings.add(mapRowToBooking(row));
-            }
+        for (String[] row : matchingRows) {
+            bookings.add(mapRowToBooking(row));
         }
 
         return bookings;
@@ -155,15 +152,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
         validatePositiveId(venueId);
 
+        // Uses AbstractCsvDao helper to find all matching rows
+        List<String[]> matchingRows = findAllRowsByValue(COL_VENUE_ID, String.valueOf(venueId));
         List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Integer.parseInt(row[COL_VENUE_ID]) == venueId) {
-                bookings.add(mapRowToBooking(row));
-            }
+        for (String[] row : matchingRows) {
+            bookings.add(mapRowToBooking(row));
         }
 
         logger.log(Level.INFO, "Retrieved {0} bookings for venue {1}",

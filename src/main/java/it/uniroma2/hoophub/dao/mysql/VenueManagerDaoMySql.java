@@ -99,11 +99,8 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     public void saveVenueManager(VenueManagerBean venueManagerBean) throws DAOException {
         validateVenueManagerBeanInput(venueManagerBean);
 
-        Connection conn = null;
-        try {
-            conn = ConnectionFactory.getConnection();
-            conn.setAutoCommit(false);
-
+        // Uses AbstractMySqlDao transaction helper to eliminate boilerplate
+        executeInTransactionVoid(conn -> {
             // Save common user data first
             userDao.saveUser(venueManagerBean);
 
@@ -116,22 +113,14 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    conn.commit();
                     logger.log(Level.INFO, "VenueManager saved successfully: {0}", venueManagerBean.getUsername());
                     notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManagerBean.getUsername(), venueManagerBean);
                 } else {
-                    conn.rollback();
                     throw new DAOException("Failed to insert venue manager-specific data");
                 }
             }
-
-        } catch (SQLException e) {
-            rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during venue manager save", e);
-            throw new DAOException("Error saving venue manager", e);
-        } finally {
-            resetAutoCommit(conn);
-        }
+            return null;
+        }, "Error saving venue manager");
     }
 
     /**
