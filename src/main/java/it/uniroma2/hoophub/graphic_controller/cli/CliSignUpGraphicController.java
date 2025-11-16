@@ -441,8 +441,8 @@ public class CliSignUpGraphicController extends CliGraphicController {
                     .birthday(birthday)
                     .build();
 
-            // Register and auto-login
-            UserBean registeredUser = signUpController.signUpFan(fanBean, true);
+            // Register and auto-login using polymorphic signUp method
+            UserBean registeredUser = signUpController.signUp(fanBean, true);
 
             displaySignUpSuccess(registeredUser);
             logSuccessfulSignUp(username);
@@ -474,8 +474,8 @@ public class CliSignUpGraphicController extends CliGraphicController {
                     .phoneNumber(phoneNumber)
                     .build();
 
-            // Register and auto-login
-            UserBean registeredUser = signUpController.signUpVenueManager(venueManagerBean, true);
+            // Register and auto-login using polymorphic signUp method
+            UserBean registeredUser = signUpController.signUp(venueManagerBean, true);
 
             displaySignUpSuccess(registeredUser);
             logSuccessfulSignUp(username);
