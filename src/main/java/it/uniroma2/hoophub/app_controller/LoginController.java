@@ -186,9 +186,8 @@ public class LoginController extends AbstractController {
             ));
         }
 
-        // Delay has expired - reset counter to allow new attempts
-        globalFailedAttempts = 0;
-        lastFailedAttemptTime = null;
+        // Delay has expired - allow the login attempt to proceed
+        // Do NOT reset counter here - it will only reset on successful login
     }
 
     /**
