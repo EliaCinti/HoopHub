@@ -19,8 +19,8 @@ public class Booking {
     private final int id;
     private final LocalDate gameDate;
     private final LocalTime gameTime;
-    private final String homeTeam;
-    private final String awayTeam;
+    private final TeamNBA homeTeam;
+    private final TeamNBA awayTeam;
     private final Venue venue;
     private final Fan fan;
 
@@ -121,17 +121,20 @@ public class Booking {
      * @return A string like "Home Team vs Away Team".
      */
     public String getMatchup() {
-        return homeTeam + " vs " + awayTeam;
+        return homeTeam.getDisplayName() + " vs " + awayTeam.getDisplayName();
     }
 
     /**
      * Checks if a specific team is playing in this game.
      *
-     * @param teamName The name of the team to check.
+     * @param team The NBA team to check.
      * @return true if the team is playing, false otherwise.
      */
-    public boolean isFavoriteTeamPlaying(String teamName) {
-        return homeTeam.equalsIgnoreCase(teamName) || awayTeam.equalsIgnoreCase(teamName);
+    public boolean isFavoriteTeamPlaying(TeamNBA team) {
+        if (team == null) {
+            return false;
+        }
+        return homeTeam == team || awayTeam == team;
     }
 
     // ========================================================================
@@ -150,11 +153,11 @@ public class Booking {
         return gameTime;
     }
 
-    public String getHomeTeam() {
+    public TeamNBA getHomeTeam() {
         return homeTeam;
     }
 
-    public String getAwayTeam() {
+    public TeamNBA getAwayTeam() {
         return awayTeam;
     }
 
@@ -194,8 +197,8 @@ public class Booking {
         private final int id;
         private final LocalDate gameDate;
         private final LocalTime gameTime;
-        private final String homeTeam;
-        private final String awayTeam;
+        private final TeamNBA homeTeam;
+        private final TeamNBA awayTeam;
         private final Venue venue;
         private final Fan fan;
 
@@ -207,7 +210,7 @@ public class Booking {
          * Constructor with required parameters only.
          */
         public Builder(int id, LocalDate gameDate, LocalTime gameTime,
-                       String homeTeam, String awayTeam, Venue venue, Fan fan) {
+                       TeamNBA homeTeam, TeamNBA awayTeam, Venue venue, Fan fan) {
             this.id = id;
             this.gameDate = gameDate;
             this.gameTime = gameTime;
@@ -240,7 +243,7 @@ public class Booking {
      * Centralized validation logic for booking data.
      */
     private void validateBookingData(int id, LocalDate gameDate, LocalTime gameTime,
-                                     String homeTeam, String awayTeam) {
+                                     TeamNBA homeTeam, TeamNBA awayTeam) {
         if (id < 0) {
             throw new IllegalArgumentException("Booking ID cannot be negative");
         }
@@ -250,13 +253,13 @@ public class Booking {
         if (gameTime == null) {
             throw new IllegalArgumentException("Game time cannot be null");
         }
-        if (homeTeam == null || homeTeam.trim().isEmpty()) {
-            throw new IllegalArgumentException("Home team cannot be null or empty");
+        if (homeTeam == null) {
+            throw new IllegalArgumentException("Home team cannot be null");
         }
-        if (awayTeam == null || awayTeam.trim().isEmpty()) {
-            throw new IllegalArgumentException("Away team cannot be null or empty");
+        if (awayTeam == null) {
+            throw new IllegalArgumentException("Away team cannot be null");
         }
-        if (homeTeam.equalsIgnoreCase(awayTeam)) {
+        if (homeTeam == awayTeam) {
             throw new IllegalArgumentException("Home team and away team cannot be the same");
         }
         // Skip past date validation during initial sync (SyncContext prevents observer loops already)

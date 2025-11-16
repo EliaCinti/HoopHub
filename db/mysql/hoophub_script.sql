@@ -26,7 +26,7 @@ CREATE TABLE users (
 -- ============================================================================
 CREATE TABLE fans (
     username VARCHAR(50) PRIMARY KEY,
-    fav_team VARCHAR(100) NOT NULL,
+    fav_team VARCHAR(50) NOT NULL,
     birthday DATE NOT NULL,
     CONSTRAINT fk_fan_user
         FOREIGN KEY (username) REFERENCES users(username)
@@ -70,14 +70,27 @@ CREATE TABLE venues (
 ) ENGINE=InnoDB;
 
 -- ============================================================================
+-- TABLE: venue_teams (Many-to-Many relationship between Venues and Teams)
+-- ============================================================================
+CREATE TABLE venue_teams (
+    venue_id INT NOT NULL,
+    team_name VARCHAR(50) NOT NULL,
+    PRIMARY KEY (venue_id, team_name),
+    CONSTRAINT fk_venue_team_venue
+        FOREIGN KEY (venue_id) REFERENCES venues(id)
+        ON DELETE CASCADE,
+    INDEX idx_team (team_name)
+) ENGINE=InnoDB;
+
+-- ============================================================================
 -- TABLE: bookings
 -- ============================================================================
 CREATE TABLE bookings (
     id INT AUTO_INCREMENT PRIMARY KEY,
     game_date DATE NOT NULL,
     game_time TIME NOT NULL,
-    home_team VARCHAR(100) NOT NULL,
-    away_team VARCHAR(100) NOT NULL,
+    home_team VARCHAR(50) NOT NULL,
+    away_team VARCHAR(50) NOT NULL,
     venue_id INT NOT NULL,
     fan_username VARCHAR(50) NOT NULL,
     status ENUM('PENDING', 'CONFIRMED', 'REJECTED', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
@@ -134,8 +147,8 @@ INSERT INTO users (username, password_hash, full_name, gender, user_type) VALUES
 
 -- Fans
 INSERT INTO fans (username, fav_team, birthday) VALUES
-('john_doe', 'Los Angeles Lakers', '1995-03-15'),
-('jane_smith', 'Golden State Warriors', '1998-07-22');
+('john_doe', 'LOS_ANGELES_LAKERS', '1995-03-15'),
+('jane_smith', 'GOLDEN_STATE_WARRIORS', '1998-07-22');
 
 -- Venue Managers
 INSERT INTO venue_managers (username, company_name, phone_number) VALUES
@@ -150,9 +163,18 @@ INSERT INTO venues (name, type, address, city, max_capacity, venue_manager_usern
 
 -- Bookings
 INSERT INTO bookings (game_date, game_time, home_team, away_team, venue_id, fan_username, status) VALUES
-(DATE_ADD(CURDATE(), INTERVAL 7 DAY), '19:30:00', 'Los Angeles Lakers', 'Boston Celtics', 1, 'john_doe', 'CONFIRMED'),
-(DATE_ADD(CURDATE(), INTERVAL 10 DAY), '20:00:00', 'Golden State Warriors', 'Phoenix Suns', 2, 'jane_smith', 'PENDING'),
-(DATE_ADD(CURDATE(), INTERVAL 14 DAY), '21:00:00', 'Los Angeles Lakers', 'Miami Heat', 3, 'john_doe', 'PENDING');
+(DATE_ADD(CURDATE(), INTERVAL 7 DAY), '19:30:00', 'LOS_ANGELES_LAKERS', 'BOSTON_CELTICS', 1, 'john_doe', 'CONFIRMED'),
+(DATE_ADD(CURDATE(), INTERVAL 10 DAY), '20:00:00', 'GOLDEN_STATE_WARRIORS', 'PHOENIX_SUNS', 2, 'jane_smith', 'PENDING'),
+(DATE_ADD(CURDATE(), INTERVAL 14 DAY), '21:00:00', 'LOS_ANGELES_LAKERS', 'MIAMI_HEAT', 3, 'john_doe', 'PENDING');
+
+-- Venue Teams (Associate teams with venues)
+INSERT INTO venue_teams (venue_id, team_name) VALUES
+(1, 'LOS_ANGELES_LAKERS'),  -- Lakers Fan Zone focuses on Lakers
+(1, 'BOSTON_CELTICS'),       -- Also shows Celtics games
+(2, 'GOLDEN_STATE_WARRIORS'), -- Warriors Lounge focuses on Warriors
+(2, 'PHOENIX_SUNS'),          -- Also shows Suns games
+(3, 'LOS_ANGELES_LAKERS'),    -- NBA Central Pub shows Lakers
+(3, 'MIAMI_HEAT');            -- Also shows Heat games
 
 -- ============================================================================
 -- END OF SCRIPT

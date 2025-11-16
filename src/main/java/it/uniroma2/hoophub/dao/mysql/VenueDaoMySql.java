@@ -5,6 +5,7 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
@@ -17,7 +18,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 
 /**
@@ -72,6 +75,18 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
     private static final String SQL_GET_MAX_ID =
             "SELECT COALESCE(MAX(id), 0) FROM venues";
+
+    private static final String SQL_INSERT_VENUE_TEAM =
+            "INSERT INTO venue_teams (venue_id, team_name) VALUES (?, ?)";
+
+    private static final String SQL_DELETE_VENUE_TEAM =
+            "DELETE FROM venue_teams WHERE venue_id = ? AND team_name = ?";
+
+    private static final String SQL_SELECT_VENUE_TEAMS =
+            "SELECT team_name FROM venue_teams WHERE venue_id = ?";
+
+    private static final String SQL_DELETE_ALL_VENUE_TEAMS =
+            "DELETE FROM venue_teams WHERE venue_id = ?";
 
     // ========== Constants ==========
     private static final String VENUE = "Venue";
@@ -366,11 +381,13 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     /**
      * Maps a ResultSet row to a Venue domain object.
      * <p>
-     * This method reconstructs the VenueManager reference by querying the VenueManagerDao.
+     * This method reconstructs the VenueManager reference by querying the VenueManagerDao
+     * and loads the associated teams from the venue_teams table.
      * </p>
      */
     private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {
         String managerUsername = rs.getString("venue_manager_username");
+        int venueId = rs.getInt("id");
 
         // Retrieve the full VenueManager object using DaoFactoryFacade (Factory pattern)
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
@@ -382,8 +399,9 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
             throw new DAOException("VenueManager not found: " + managerUsername);
         }
 
-        return new Venue.Builder()
-                .id(rs.getInt("id"))
+        // Build the venue
+        Venue venue = new Venue.Builder()
+                .id(venueId)
                 .name(rs.getString("name"))
                 .type(VenueType.valueOf(rs.getString("type")))
                 .address(rs.getString("address"))
@@ -391,6 +409,14 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 .maxCapacity(rs.getInt("max_capacity"))
                 .venueManager(venueManager)
                 .build();
+
+        // Load associated teams
+        Set<TeamNBA> teams = retrieveVenueTeams(venueId);
+        for (TeamNBA team : teams) {
+            venue.addTeam(team);
+        }
+
+        return venue;
     }
 
     // ========== VALIDATION METHODS ==========
@@ -404,6 +430,119 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     private void validateCityInput(String city) {
         if (city == null || city.trim().isEmpty()) {
             throw new IllegalArgumentException(ERR_NULL_CITY);
+        }
+    }
+
+    // ========== TEAM MANAGEMENT METHODS ==========
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void saveVenueTeam(int venueId, TeamNBA team) throws DAOException {
+        validateIdInput(venueId);
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
+                stmt.setInt(1, venueId);
+                stmt.setString(2, team.name());
+
+                stmt.executeUpdate();
+                logger.log(Level.INFO, "Team {0} associated with venue {1}",
+                        new Object[]{team.getDisplayName(), venueId});
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Database error during venue team save", e);
+            throw new DAOException("Error saving venue team association", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException {
+        validateIdInput(venueId);
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE_TEAM)) {
+                stmt.setInt(1, venueId);
+                stmt.setString(2, team.name());
+
+                int affectedRows = stmt.executeUpdate();
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Team {0} removed from venue {1}",
+                            new Object[]{team.getDisplayName(), venueId});
+                }
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Database error during venue team deletion", e);
+            throw new DAOException("Error deleting venue team association", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
+        validateIdInput(venueId);
+        Set<TeamNBA> teams = new HashSet<>();
+
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_TEAMS)) {
+                stmt.setInt(1, venueId);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    while (rs.next()) {
+                        String teamName = rs.getString("team_name");
+                        try {
+                            TeamNBA team = TeamNBA.valueOf(teamName);
+                            teams.add(team);
+                        } catch (IllegalArgumentException e) {
+                            logger.log(Level.WARNING, "Invalid team name in database: {0}", teamName);
+                        }
+                    }
+                }
+
+                logger.log(Level.INFO, "Retrieved {0} teams for venue {1}",
+                        new Object[]{teams.size(), venueId});
+                return teams;
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Database error during venue teams retrieval", e);
+            throw new DAOException("Error retrieving venue teams", e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void deleteAllVenueTeams(int venueId) throws DAOException {
+        validateIdInput(venueId);
+
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_ALL_VENUE_TEAMS)) {
+                stmt.setInt(1, venueId);
+
+                int affectedRows = stmt.executeUpdate();
+                logger.log(Level.INFO, "Deleted {0} team associations for venue {1}",
+                        new Object[]{affectedRows, venueId});
+            }
+        } catch (SQLException e) {
+            logger.log(Level.SEVERE, "Database error during all venue teams deletion", e);
+            throw new DAOException("Error deleting all venue teams", e);
         }
     }
 }

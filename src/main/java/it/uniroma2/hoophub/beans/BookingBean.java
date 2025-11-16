@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.beans;
 
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.utilities.BookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -13,8 +14,8 @@ public class BookingBean {
     private int id;
     private LocalDate gameDate;
     private LocalTime gameTime;
-    private String homeTeam;
-    private String awayTeam;
+    private TeamNBA homeTeam;
+    private TeamNBA awayTeam;
     private int venueId;
     private String fanUsername;
     private BookingStatus status;
@@ -36,8 +37,8 @@ public class BookingBean {
         private int id;
         private LocalDate gameDate;
         private LocalTime gameTime;
-        private String homeTeam;
-        private String awayTeam;
+        private TeamNBA homeTeam;
+        private TeamNBA awayTeam;
         private int venueId;
         private String fanUsername;
         private BookingStatus status = BookingStatus.PENDING;
@@ -58,12 +59,12 @@ public class BookingBean {
             return this;
         }
 
-        public Builder homeTeam(String homeTeam) {
+        public Builder homeTeam(TeamNBA homeTeam) {
             this.homeTeam = homeTeam;
             return this;
         }
 
-        public Builder awayTeam(String awayTeam) {
+        public Builder awayTeam(TeamNBA awayTeam) {
             this.awayTeam = awayTeam;
             return this;
         }
@@ -97,8 +98,8 @@ public class BookingBean {
     public int getId() { return id; }
     public LocalDate getGameDate() { return gameDate; }
     public LocalTime getGameTime() { return gameTime; }
-    public String getHomeTeam() { return homeTeam; }
-    public String getAwayTeam() { return awayTeam; }
+    public TeamNBA getHomeTeam() { return homeTeam; }
+    public TeamNBA getAwayTeam() { return awayTeam; }
     public int getVenueId() { return venueId; }
     public String getFanUsername() { return fanUsername; }
     public BookingStatus getStatus() { return status; }
@@ -108,8 +109,8 @@ public class BookingBean {
     public void setId(int id) { this.id = id; }
     public void setGameDate(LocalDate gameDate) { this.gameDate = gameDate; }
     public void setGameTime(LocalTime gameTime) { this.gameTime = gameTime; }
-    public void setHomeTeam(String homeTeam) { this.homeTeam = homeTeam; }
-    public void setAwayTeam(String awayTeam) { this.awayTeam = awayTeam; }
+    public void setHomeTeam(TeamNBA homeTeam) { this.homeTeam = homeTeam; }
+    public void setAwayTeam(TeamNBA awayTeam) { this.awayTeam = awayTeam; }
     public void setVenueId(int venueId) { this.venueId = venueId; }
     public void setFanUsername(String fanUsername) { this.fanUsername = fanUsername; }
     public void setStatus(BookingStatus status) { this.status = status; }

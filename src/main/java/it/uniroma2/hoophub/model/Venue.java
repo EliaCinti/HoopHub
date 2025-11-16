@@ -5,9 +5,12 @@ import it.uniroma2.hoophub.utilities.VenueType;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +29,7 @@ public class Venue {
     private int maxCapacity;
 
     private VenueManager venueManager;
+    private final Set<TeamNBA> associatedTeams;
     private final Map<LocalDate, List<Booking>> bookingsByDate;
 
     /**
@@ -45,6 +49,9 @@ public class Venue {
 
         // We call the private setter for manager to reuse validation
         this.setVenueManager(builder.venueManager);
+
+        // Initialize associated teams set (mutable set)
+        this.associatedTeams = new HashSet<>();
 
         // The map is initialized directly. There is no setBookingsByDate() method.
         this.bookingsByDate = new HashMap<>();
@@ -104,6 +111,51 @@ public class Venue {
         }
         LocalDate gameDate = booking.getGameDate();
         bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
+    }
+
+    /**
+     * Adds a team to this venue's associated teams list.
+     * FAN_CLUB venues can only have one team associated.
+     *
+     * @param team The NBA team to associate with this venue
+     * @throws IllegalArgumentException if team is null
+     * @throws IllegalStateException if trying to add more than one team to a FAN_CLUB venue
+     */
+    public void addTeam(TeamNBA team) {
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+        if (this.type == VenueType.FAN_CLUB && !associatedTeams.isEmpty()) {
+            throw new IllegalStateException("FAN_CLUB venues can only have one associated team");
+        }
+        associatedTeams.add(team);
+    }
+
+    /**
+     * Removes a team from this venue's associated teams list.
+     *
+     * @param team The NBA team to remove from this venue
+     * @throws IllegalArgumentException if team is null
+     * @return true if the team was removed, false if it wasn't associated
+     */
+    public boolean removeTeam(TeamNBA team) {
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
+        }
+        return associatedTeams.remove(team);
+    }
+
+    /**
+     * Checks if a team is associated with this venue.
+     *
+     * @param team The team to check
+     * @return true if the team is associated with this venue, false otherwise
+     */
+    public boolean isTeamAssociated(TeamNBA team) {
+        if (team == null) {
+            return false;
+        }
+        return associatedTeams.contains(team);
     }
 
     // ========================================================================
@@ -203,6 +255,15 @@ public class Venue {
 
     public String getVenueManagerUsername() {
         return venueManager.getUsername();
+    }
+
+    /**
+     * Gets an unmodifiable view of the teams associated with this venue.
+     *
+     * @return An unmodifiable set of associated NBA teams
+     */
+    public Set<TeamNBA> getAssociatedTeams() {
+        return Collections.unmodifiableSet(associatedTeams);
     }
 
     // ========================================================================

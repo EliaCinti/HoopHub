@@ -2,8 +2,10 @@ package it.uniroma2.hoophub.dao;
 
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Data Access Object interface for Venue entities.
@@ -99,4 +101,43 @@ public interface VenueDao {
      * @throws DAOException If there is an error accessing the data storage
      */
     int getNextVenueId() throws DAOException;
+
+    /**
+     * Associates a team with a venue.
+     *
+     * @param venueId The ID of the venue
+     * @param team The NBA team to associate
+     * @throws DAOException If an error occurs during the operation
+     * @throws IllegalArgumentException If venueId is not positive or team is null
+     */
+    void saveVenueTeam(int venueId, TeamNBA team) throws DAOException;
+
+    /**
+     * Removes a team association from a venue.
+     *
+     * @param venueId The ID of the venue
+     * @param team The NBA team to disassociate
+     * @throws DAOException If an error occurs during the operation
+     * @throws IllegalArgumentException If venueId is not positive or team is null
+     */
+    void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException;
+
+    /**
+     * Retrieves all teams associated with a venue.
+     *
+     * @param venueId The ID of the venue
+     * @return A set of NBA teams associated with the venue, empty set if none
+     * @throws DAOException If an error occurs while accessing the data storage
+     * @throws IllegalArgumentException If venueId is not positive
+     */
+    Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException;
+
+    /**
+     * Removes all team associations from a venue.
+     *
+     * @param venueId The ID of the venue
+     * @throws DAOException If an error occurs during the operation
+     * @throws IllegalArgumentException If venueId is not positive
+     */
+    void deleteAllVenueTeams(int venueId) throws DAOException;
 }

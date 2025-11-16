@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  * @author Elia Cinti
  */
 public class Fan extends User {
-    private String favTeam;
+    private TeamNBA favTeam;
     private LocalDate birthday;
     private final List<Booking> bookingList;
 
@@ -44,11 +44,11 @@ public class Fan extends User {
      *
      * @param newFullName   The user's new full name.
      * @param newGender     The user's new gender.
-     * @param newFavTeam    The fan's new favorite team.
+     * @param newFavTeam    The fan's new favorite NBA team.
      * @param newBirthday   The fan's new birthday.
      * @throws IllegalArgumentException if validation for new data fails.
      */
-    public void updateFanProfile(String newFullName, String newGender, String newFavTeam, LocalDate newBirthday) {
+    public void updateFanProfile(String newFullName, String newGender, TeamNBA newFavTeam, LocalDate newBirthday) {
         // 1. Call the parent's business operation
         super.updateProfileDetails(newFullName, newGender);
 
@@ -153,7 +153,7 @@ public class Fan extends User {
     // PUBLIC GETTERS (Read-Only Access)
     // ========================================================================
 
-    public String getFavTeam() {
+    public TeamNBA getFavTeam() {
         return favTeam;
     }
 
@@ -176,7 +176,7 @@ public class Fan extends User {
      * Private setter for favorite team.
      * Only called by updateFanProfile().
      */
-    private void setFavTeam(String favTeam) {
+    private void setFavTeam(TeamNBA favTeam) {
         this.favTeam = favTeam;
     }
 
@@ -193,11 +193,11 @@ public class Fan extends User {
     // ========================================================================
 
     public static class Builder extends User.Builder<Builder> {
-        private String favTeam;
+        private TeamNBA favTeam;
         private LocalDate birthday;
         private List<Booking> bookingList;
 
-        public Builder favTeam(String favTeam) {
+        public Builder favTeam(TeamNBA favTeam) {
             this.favTeam = favTeam;
             return this;
         }
@@ -234,9 +234,9 @@ public class Fan extends User {
     // PRIVATE VALIDATION & HELPER METHODS (Internal Logic)
     // ========================================================================
 
-    private static void validateFavTeam(String favTeam) {
-        if (favTeam == null || favTeam.trim().isEmpty()) {
-            throw new IllegalArgumentException("Favorite team cannot be null or empty");
+    private static void validateFavTeam(TeamNBA favTeam) {
+        if (favTeam == null) {
+            throw new IllegalArgumentException("Favorite team cannot be null");
         }
     }
 
@@ -252,11 +252,11 @@ public class Fan extends User {
         }
     }
 
-    private boolean hasBookingForGame(LocalDate date, String homeTeam, String awayTeam) {
+    private boolean hasBookingForGame(LocalDate date, TeamNBA homeTeam, TeamNBA awayTeam) {
         return bookingList.stream()
                 .anyMatch(b -> b.getGameDate().equals(date) &&
-                        b.getHomeTeam().equals(homeTeam) &&
-                        b.getAwayTeam().equals(awayTeam));
+                        b.getHomeTeam() == homeTeam &&
+                        b.getAwayTeam() == awayTeam);
     }
 
     private int countBookingsOnDate(LocalDate date) {
