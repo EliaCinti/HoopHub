@@ -134,6 +134,14 @@ public abstract class CliGraphicController {
     }
 
     /**
+     * Clears the console screen using ANSI escape codes.
+     */
+    protected static void clearScreen() {
+        output("\u001B[2J\u001B[H");
+        System.out.flush();
+    }
+
+    /**
      * Prints a horizontal separator line.
      */
     protected static void printSeparator() {
