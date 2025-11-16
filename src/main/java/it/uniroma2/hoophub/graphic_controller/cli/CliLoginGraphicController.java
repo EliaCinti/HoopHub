@@ -49,11 +49,9 @@ public class CliLoginGraphicController extends CliGraphicController {
     private static final String SIGNUP_OPTION_MSG = "Don't have an account? Type 'signup' to create one";
 
     private final LoginController loginController;
-    private final CliSignUpGraphicController signUpController;
 
     public CliLoginGraphicController() {
         this.loginController = LoginController.getInstance();
-        this.signUpController = new CliSignUpGraphicController();
     }
 
     private boolean userRequestedExit = false;
@@ -314,6 +312,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      */
     private void navigateToSignUp() {
         printNewLine();
+        CliSignUpGraphicController signUpController = new CliSignUpGraphicController();
         signUpController.execute();
     }
 
