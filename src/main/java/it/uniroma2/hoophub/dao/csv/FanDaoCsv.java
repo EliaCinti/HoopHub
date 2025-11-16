@@ -272,7 +272,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
                         .username(username)
                         .fullName(userData[2])
                         .gender(userData[3])
-                        .favTeam(TeamNBA.valueOf(fanData[COL_FAV_TEAM]))
+                        .favTeam(TeamNBA.fromDisplayName(fanData[COL_FAV_TEAM]))
                         .birthday(birthday)
                         .bookingList(Collections.emptyList())  // Empty to break cycle
                         .build();
@@ -291,7 +291,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
                         .username(username)
                         .fullName(userData[2])
                         .gender(userData[3])
-                        .favTeam(TeamNBA.valueOf(fanData[COL_FAV_TEAM]))
+                        .favTeam(TeamNBA.fromDisplayName(fanData[COL_FAV_TEAM]))
                         .birthday(birthday)
                         .bookingList(bookings)  // COMPLETE list
                         .build();

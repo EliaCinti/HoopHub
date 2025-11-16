@@ -550,7 +550,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                     while (rs.next()) {
                         String teamName = rs.getString("team_name");
                         try {
-                            TeamNBA team = TeamNBA.valueOf(teamName);
+                            TeamNBA team = TeamNBA.fromDisplayName(teamName);
                             teams.add(team);
                         } catch (IllegalArgumentException e) {
                             logger.log(Level.WARNING, "Invalid team name in database: {0}", teamName);
