@@ -11,6 +11,7 @@ import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.UserType;
 
 import java.util.ArrayList;
@@ -38,13 +39,19 @@ import java.util.logging.Level;
  * <ul>
  *   <li>Using {@link UserDao} for common user operations (username, password, etc.)</li>
  *   <li>Managing only venue manager-specific data in its own CSV file</li>
- *   <li>Avoiding circular dependencies by creating VenueManager objects with EMPTY managed venues lists</li>
+ *   <li>Using {@link DaoLoadingContext} to prevent circular dependencies while loading complete objects</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Circular Dependency Prevention:</strong> The {@link #retrieveVenueManager(String)} method
- * creates VenueManager objects with an empty managedVenues list. Venues should be loaded separately
- * via VenueDao or using the {@link #getVenues(VenueManager)} method when needed.
+ * <strong>Circular Dependency Prevention:</strong> This implementation uses {@link DaoLoadingContext}
+ * to prevent infinite loops when loading related entities. When a VenueManager is being loaded and needs
+ * to load its managed venues, the context prevents re-loading the same VenueManager during venue construction,
+ * breaking the circular dependency while still providing complete objects.
+ * </p>
+ * <p>
+ * <strong>Object Completeness:</strong> Unlike previous stub-based approaches, this DAO always
+ * returns fully populated VenueManager objects with their complete managed venues list, ensuring
+ * consistency with the MySQL implementation and respecting the Liskov Substitution Principle.
  * </p>
  * <p>
  * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
@@ -55,6 +62,7 @@ import java.util.logging.Level;
  * @see AbstractCsvDao Base class providing common CSV functionality
  * @see UserDao DAO for common user operations
  * @see VenueManager Domain model representing a venue manager
+ * @see DaoLoadingContext Utility for preventing circular loading
  */
 public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDao {
 
@@ -138,17 +146,16 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * This method performs a two-step retrieval:
+     * This method performs a three-step retrieval:
      * <ol>
      *   <li>Retrieves common user data via {@link UserDao#retrieveUser(String)}</li>
      *   <li>Retrieves venue manager-specific data from venue_managers.csv</li>
-     *   <li>Constructs a VenueManager object with EMPTY managed venues list (no circular dependency)</li>
+     *   <li>Loads all managed venues with full data using {@link DaoLoadingContext} to prevent loops</li>
      * </ol>
      * </p>
      * <p>
-     * <strong>Circular Dependency Prevention:</strong> The returned VenueManager object has an
-     * empty managedVenues list. If venues are needed, they should be loaded separately via
-     * {@link #getVenues(VenueManager)} or VenueDao after the VenueManager is constructed.
+     * <strong>Object Completeness:</strong> The returned VenueManager object contains a fully
+     * populated managedVenues list with all real data, ensuring consistency with MySQL implementation.
      * </p>
      */
     @Override
@@ -174,8 +181,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * {@inheritDoc}
      * <p>
-     * Each returned VenueManager object has an empty managedVenues list. Venues should be loaded
-     * separately if needed.
+     * Each returned VenueManager object contains a fully populated managedVenues list with all real data.
      * </p>
      */
     @Override
@@ -316,26 +322,61 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /**
      * Maps CSV row data to a VenueManager domain object.
      * <p>
-     * This method constructs a VenueManager using the Builder pattern. The VenueManager is created
-     * with an EMPTY managedVenues list to avoid circular dependencies. Venues should be loaded
-     * separately via {@link #getVenues(VenueManager)} or VenueDao if needed.
+     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
+     * to detect and prevent infinite loops when loading related entities. If this VenueManager is
+     * already being loaded in the current call stack (circular reference), it creates a minimal
+     * VenueManager without reloading venues, breaking the cycle.
+     * </p>
+     * <p>
+     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
+     * loads all managed venues with complete data by delegating to VenueDao, ensuring that the
+     * returned VenueManager object is fully populated.
      * </p>
      *
      * @param userData Array containing common user data [username, password_hash, full_name, gender, type]
      * @param managerData Array containing venue manager-specific data [username, company_name, phone_number]
-     * @return A fully constructed VenueManager object with empty managedVenues list
+     * @return A fully constructed VenueManager object with complete managedVenues list
      * @throws DAOException If there's an error constructing the VenueManager
      */
     private VenueManager mapRowToVenueManager(String[] userData, String[] managerData) throws DAOException {
         try {
-            return new VenueManager.Builder()
-                    .username(userData[0])
-                    .fullName(userData[2])
-                    .gender(userData[3])
-                    .companyName(managerData[COL_COMPANY_NAME])
-                    .phoneNumber(managerData[COL_PHONE_NUMBER])
-                    .managedVenues(Collections.emptyList())  // EMPTY list - no circular dependency
-                    .build();
+            String username = userData[0];
+            String managerKey = "VenueManager:" + username;
+
+            // Check if we're in a circular loading situation
+            if (DaoLoadingContext.isLoading(managerKey)) {
+                // Break the cycle by returning a minimal manager without loading venues
+                return new VenueManager.Builder()
+                        .username(username)
+                        .fullName(userData[2])
+                        .gender(userData[3])
+                        .companyName(managerData[COL_COMPANY_NAME])
+                        .phoneNumber(managerData[COL_PHONE_NUMBER])
+                        .managedVenues(Collections.emptyList())  // Empty to break cycle
+                        .build();
+            }
+
+            // Mark this manager as being loaded
+            DaoLoadingContext.startLoading(managerKey);
+            try {
+                // Load COMPLETE list of managed venues (not empty)
+                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+                VenueDao venueDao = daoFactory.getVenueDao();
+                List<Venue> managedVenues = venueDao.retrieveVenuesByManager(username);
+
+                // Build VenueManager with COMPLETE venues list
+                return new VenueManager.Builder()
+                        .username(username)
+                        .fullName(userData[2])
+                        .gender(userData[3])
+                        .companyName(managerData[COL_COMPANY_NAME])
+                        .phoneNumber(managerData[COL_PHONE_NUMBER])
+                        .managedVenues(managedVenues)  // COMPLETE list
+                        .build();
+            } finally {
+                // Always clean up the loading context
+                DaoLoadingContext.finishLoading(managerKey);
+            }
         } catch (IllegalArgumentException e) {
             throw new DAOException("Error constructing VenueManager object: " + e.getMessage(), e);
         }

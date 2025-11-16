@@ -10,6 +10,7 @@ import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -335,16 +336,40 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
     /**
      * Maps a ResultSet row to a VenueManager domain object.
+     * <p>
+     * Includes anti-loop protection via DaoLoadingContext to prevent circular dependencies
+     * when VenueManager is referenced from related entities.
+     * </p>
      */
     private VenueManager mapResultSetToVenueManager(ResultSet rs) throws SQLException {
-        return new VenueManager.Builder()
-                .username(rs.getString("username"))
-                .fullName(rs.getString("full_name"))
-                .gender(rs.getString("gender"))
-                .companyName(rs.getString("company_name"))
-                .phoneNumber(rs.getString("phone_number"))
-                .managedVenues(new ArrayList<>())  // Empty list - venues loaded separately
-                .build();
+        String username = rs.getString("username");
+
+        String key = "VenueManager:" + username;
+        if (DaoLoadingContext.isLoading(key)) {
+            // Return minimal VenueManager object without loading relationships
+            return new VenueManager.Builder()
+                    .username(username)
+                    .fullName(rs.getString("full_name"))
+                    .gender(rs.getString("gender"))
+                    .companyName(rs.getString("company_name"))
+                    .phoneNumber(rs.getString("phone_number"))
+                    .managedVenues(new ArrayList<>())  // Empty list - venues not loaded during cycle
+                    .build();
+        }
+
+        DaoLoadingContext.startLoading(key);
+        try {
+            return new VenueManager.Builder()
+                    .username(username)
+                    .fullName(rs.getString("full_name"))
+                    .gender(rs.getString("gender"))
+                    .companyName(rs.getString("company_name"))
+                    .phoneNumber(rs.getString("phone_number"))
+                    .managedVenues(new ArrayList<>())  // Empty list - venues loaded separately
+                    .build();
+        } finally {
+            DaoLoadingContext.finishLoading(key);
+        }
     }
 
     // ========== VALIDATION METHODS ==========

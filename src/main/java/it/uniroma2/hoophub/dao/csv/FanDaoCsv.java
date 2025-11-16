@@ -2,13 +2,17 @@ package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.UserBean;
+import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.TeamNBA;
+import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.UserType;
 
 import java.time.LocalDate;
@@ -38,13 +42,19 @@ import java.util.logging.Level;
  * <ul>
  *   <li>Using {@link UserDao} for common user operations (username, password, etc.)</li>
  *   <li>Managing only fan-specific data in its own CSV file</li>
- *   <li>Avoiding circular dependencies by creating Fan objects with EMPTY booking lists</li>
+ *   <li>Using {@link DaoLoadingContext} to prevent circular dependencies while loading complete objects</li>
  * </ul>
  * </p>
  * <p>
- * <strong>Circular Dependency Prevention:</strong> The {@link #retrieveFan(String)} method
- * creates Fan objects with an empty booking list. Bookings should be loaded separately
- * via BookingDao when needed, preventing circular DAO calls during object construction.
+ * <strong>Circular Dependency Prevention:</strong> This implementation uses {@link DaoLoadingContext}
+ * to prevent infinite loops when loading related entities. When a Fan is being loaded and needs
+ * to load its bookings, the context prevents re-loading the same Fan during booking construction,
+ * breaking the circular dependency while still providing complete objects.
+ * </p>
+ * <p>
+ * <strong>Object Completeness:</strong> Unlike previous stub-based approaches, this DAO always
+ * returns fully populated Fan objects with their complete booking list, ensuring consistency
+ * with the MySQL implementation and respecting the Liskov Substitution Principle.
  * </p>
  * <p>
  * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
@@ -55,6 +65,7 @@ import java.util.logging.Level;
  * @see AbstractCsvDao Base class providing common CSV functionality
  * @see UserDao DAO for common user operations
  * @see Fan Domain model representing a fan
+ * @see DaoLoadingContext Utility for preventing circular loading
  */
 public class FanDaoCsv extends AbstractCsvDao implements FanDao {
 
@@ -295,28 +306,62 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     /**
      * Maps CSV row data to a Fan domain object.
      * <p>
-     * This method constructs a Fan using the Builder pattern. The Fan is created with
-     * an EMPTY booking list to avoid circular dependencies. Bookings should be loaded
-     * separately via BookingDao if needed.
+     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
+     * to detect and prevent infinite loops when loading related entities. If this Fan is already
+     * being loaded in the current call stack (circular reference), it creates a minimal Fan
+     * without reloading bookings, breaking the cycle.
+     * </p>
+     * <p>
+     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
+     * loads all bookings with complete data by delegating to BookingDao, ensuring that the
+     * returned Fan object is fully populated.
      * </p>
      *
      * @param userData Array containing common user data [username, password_hash, full_name, gender, type]
      * @param fanData Array containing fan-specific data [username, fav_team, birthday]
-     * @return A fully constructed Fan object with empty booking list
+     * @return A fully constructed Fan object with complete booking list
      * @throws DAOException If there's an error parsing the date or constructing the Fan
      */
     private Fan mapRowToFan(String[] userData, String[] fanData) throws DAOException {
         try {
+            String username = userData[0];
             LocalDate birthday = LocalDate.parse(fanData[COL_BIRTHDAY]);
+            String fanKey = "Fan:" + username;
 
-            return new Fan.Builder()
-                    .username(userData[0])
-                    .fullName(userData[2])
-                    .gender(userData[3])
-                    .favTeam(TeamNBA.valueOf(fanData[COL_FAV_TEAM]))
-                    .birthday(birthday)
-                    .bookingList(Collections.emptyList())  // EMPTY list - no circular dependency
-                    .build();
+            // Check if we're in a circular loading situation
+            if (DaoLoadingContext.isLoading(fanKey)) {
+                // Break the cycle by returning a minimal fan without loading bookings
+                return new Fan.Builder()
+                        .username(username)
+                        .fullName(userData[2])
+                        .gender(userData[3])
+                        .favTeam(TeamNBA.valueOf(fanData[COL_FAV_TEAM]))
+                        .birthday(birthday)
+                        .bookingList(Collections.emptyList())  // Empty to break cycle
+                        .build();
+            }
+
+            // Mark this fan as being loaded
+            DaoLoadingContext.startLoading(fanKey);
+            try {
+                // Load COMPLETE list of bookings (not empty)
+                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+                BookingDao bookingDao = daoFactory.getBookingDao();
+                List<Booking> bookings = bookingDao.retrieveBookingsByFan(username);
+
+                // Build Fan with COMPLETE bookings list
+                return new Fan.Builder()
+                        .username(username)
+                        .fullName(userData[2])
+                        .gender(userData[3])
+                        .favTeam(TeamNBA.valueOf(fanData[COL_FAV_TEAM]))
+                        .birthday(birthday)
+                        .bookingList(bookings)  // COMPLETE list
+                        .build();
+            } finally {
+                // Always clean up the loading context
+                DaoLoadingContext.finishLoading(fanKey);
+            }
         } catch (DateTimeParseException e) {
             throw new DAOException("Invalid date format for fan: " + fanData[COL_USERNAME], e);
         } catch (IllegalArgumentException e) {
