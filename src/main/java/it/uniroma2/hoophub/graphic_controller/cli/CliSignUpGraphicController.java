@@ -55,11 +55,9 @@ public class CliSignUpGraphicController extends CliGraphicController {
     private static final String LOADING_DASHBOARD_MSG = "Loading your dashboard...";
 
     private final SignUpController signUpController;
-    private final CliLoginGraphicController loginController;
 
     public CliSignUpGraphicController() {
         this.signUpController = SignUpController.getInstance();
-        this.loginController = new CliLoginGraphicController();
     }
 
     /**
@@ -115,11 +113,11 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
     /**
      * Handles the back/cancel command by returning to login.
+     * Simply returns empty to exit signup and return to caller (login screen).
      */
     private Optional<UserBean> handleBackOrCancel() {
         printInfo(SIGNUP_CANCELLED_MSG);
         printNewLine();
-        loginController.execute();
         return Optional.empty();
     }
 
@@ -386,8 +384,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
             LOGGER.log(Level.SEVERE, "Error during logout after signup", e);
         }
 
-        // Return to login
-        loginController.execute();
+        // Exit signup - caller (login screen) will show again
     }
 
     /**
