@@ -295,4 +295,57 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
     protected String getFilePath() {
         return csvFile.getAbsolutePath();
     }
+
+    /**
+     * Reads all data rows from the CSV file, automatically skipping the header.
+     * <p>
+     * This is a convenience method that eliminates the need to manually skip the header
+     * row when iterating over CSV data. Returns an empty list if the file only contains
+     * a header or is empty.
+     * </p>
+     *
+     * @return List of data rows (without header), or empty list if no data exists
+     * @throws DAOException If there is an error reading the CSV file
+     */
+    protected synchronized List<String[]> readAllDataRows() throws DAOException {
+        List<String[]> allData = CsvUtilities.readAll(csvFile);
+
+        if (allData.size() <= CsvDaoConstants.FIRST_DATA_ROW) {
+            return new ArrayList<>();
+        }
+
+        // Return all rows except header
+        return new ArrayList<>(allData.subList(CsvDaoConstants.FIRST_DATA_ROW, allData.size()));
+    }
+
+    /**
+     * Finds all rows matching a specific value in a column.
+     * <p>
+     * Unlike {@link #findRowByValue(int, String)} which returns only the first match,
+     * this method returns all matching rows. Useful for one-to-many relationships.
+     * </p>
+     *
+     * @param columnIndex The index of the column to search in
+     * @param value The value to search for (exact match, case-sensitive)
+     * @return List of all matching rows, or empty list if none found
+     * @throws DAOException If there is an error reading the CSV file
+     */
+    protected synchronized List<String[]> findAllRowsByValue(int columnIndex, String value) throws DAOException {
+        if (value == null) {
+            return new ArrayList<>();
+        }
+
+        List<String[]> matches = new ArrayList<>();
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+
+        // Start from index 1 to skip header
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (row.length > columnIndex && row[columnIndex].equals(value)) {
+                matches.add(row);
+            }
+        }
+
+        return matches;
+    }
 }

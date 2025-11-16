@@ -2,6 +2,8 @@ package it.uniroma2.hoophub.dao.mysql;
 
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
+import it.uniroma2.hoophub.dao.ConnectionFactory;
+import it.uniroma2.hoophub.exception.DAOException;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -162,5 +164,92 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
         if (id == null || id <= 0) {
             throw new IllegalArgumentException(ERR_INVALID_ID);
         }
+    }
+
+    // ========== TRANSACTION HELPERS ==========
+
+    /**
+     * Functional interface for database operations that need to execute within a transaction.
+     * <p>
+     * This interface allows for cleaner transaction management using lambda expressions
+     * or method references, eliminating boilerplate transaction code.
+     * </p>
+     *
+     * @param <T> The type of result returned by the operation
+     */
+    @FunctionalInterface
+    protected interface TransactionOperation<T> {
+        /**
+         * Executes the database operation using the provided connection.
+         *
+         * @param connection The database connection within the transaction
+         * @return The result of the operation
+         * @throws SQLException If a database error occurs
+         * @throws DAOException If a DAO-specific error occurs
+         */
+        T execute(Connection connection) throws SQLException, DAOException;
+    }
+
+    /**
+     * Executes a database operation within a transaction.
+     * <p>
+     * This method handles all transaction boilerplate:
+     * <ul>
+     *   <li>Gets connection and disables auto-commit</li>
+     *   <li>Executes the operation</li>
+     *   <li>Commits on success</li>
+     *   <li>Rolls back on error</li>
+     *   <li>Resets auto-commit in finally block</li>
+     * </ul>
+     * </p>
+     * <p>
+     * <strong>Example usage:</strong>
+     * <pre>
+     * executeInTransaction(conn -> {
+     *     // Your SQL operations here
+     *     stmt.execute();
+     *     return result;
+     * }, "Error saving entity");
+     * </pre>
+     * </p>
+     *
+     * @param <T> The return type of the operation
+     * @param operation The operation to execute
+     * @param errorMessage Error message to use if operation fails
+     * @return The result of the operation
+     * @throws DAOException If the operation fails
+     */
+    protected <T> T executeInTransaction(TransactionOperation<T> operation, String errorMessage) throws DAOException {
+        Connection conn = null;
+        try {
+            conn = ConnectionFactory.getConnection();
+            conn.setAutoCommit(false);
+
+            T result = operation.execute(conn);
+
+            conn.commit();
+            return result;
+
+        } catch (SQLException e) {
+            rollbackTransaction(conn);
+            logger.log(Level.SEVERE, errorMessage, e);
+            throw new DAOException(errorMessage, e);
+        } finally {
+            resetAutoCommit(conn);
+        }
+    }
+
+    /**
+     * Executes a database operation within a transaction (void return).
+     * <p>
+     * Convenience method for operations that don't return a value.
+     * </p>
+     *
+     * @param operation The operation to execute
+     * @param errorMessage Error message to use if operation fails
+     * @throws DAOException If the operation fails
+     */
+    protected void executeInTransactionVoid(TransactionOperation<Void> operation, String errorMessage) throws DAOException {
+        executeInTransaction(operation, errorMessage);
     }
 }

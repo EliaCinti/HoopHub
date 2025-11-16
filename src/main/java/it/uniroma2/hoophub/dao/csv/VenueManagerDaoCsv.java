@@ -163,12 +163,10 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
     /** {@inheritDoc} */
     @Override
     public synchronized List<VenueManager> retrieveAllVenueManagers() throws DAOException {
-        List<String[]> managerData = CsvUtilities.readAll(csvFile);
+        List<String[]> managerData = readAllDataRows(); // Uses AbstractCsvDao helper
         List<VenueManager> venueManagers = new ArrayList<>();
 
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < managerData.size(); i++) {
-            String[] managerRow = managerData.get(i);
+        for (String[] managerRow : managerData) {
             String username = managerRow[COL_USERNAME];
 
             String[] userData = userDao.retrieveUser(username);
