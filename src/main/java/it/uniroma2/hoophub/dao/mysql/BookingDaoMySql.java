@@ -8,6 +8,7 @@ import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
@@ -126,8 +127,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
                 stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
                 stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-                stmt.setString(3, bookingBean.getHomeTeam());
-                stmt.setString(4, bookingBean.getAwayTeam());
+                stmt.setString(3, bookingBean.getHomeTeam().name());
+                stmt.setString(4, bookingBean.getAwayTeam().name());
                 stmt.setInt(5, bookingBean.getVenueId());
                 stmt.setString(6, bookingBean.getFanUsername());
                 stmt.setString(7, bookingBean.getStatus().name());
@@ -403,8 +404,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
                 stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
                 stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-                stmt.setString(3, bookingBean.getHomeTeam());
-                stmt.setString(4, bookingBean.getAwayTeam());
+                stmt.setString(3, bookingBean.getHomeTeam().name());
+                stmt.setString(4, bookingBean.getAwayTeam().name());
                 stmt.setInt(5, bookingBean.getVenueId());
                 stmt.setString(6, bookingBean.getStatus().name());
                 stmt.setBoolean(7, bookingBean.isNotified());
@@ -532,8 +533,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 bookingId,
                 rs.getDate("game_date").toLocalDate(),
                 rs.getTime("game_time").toLocalTime(),
-                rs.getString("home_team"),
-                rs.getString("away_team"),
+                TeamNBA.valueOf(rs.getString("home_team")),
+                TeamNBA.valueOf(rs.getString("away_team")),
                 venue,
                 fan
         )

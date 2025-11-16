@@ -7,6 +7,7 @@ import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;
+import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 
 import java.sql.Connection;
@@ -109,7 +110,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
             // Then save fan-specific data
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_FAN)) {
                 stmt.setString(1, fanBean.getUsername());
-                stmt.setString(2, fanBean.getFavTeam());
+                stmt.setString(2, fanBean.getFavTeam().name());
                 stmt.setDate(3, Date.valueOf(fanBean.getBirthday()));
 
                 int affectedRows = stmt.executeUpdate();
@@ -213,7 +214,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
             // Then update fan-specific data
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_FAN)) {
-                stmt.setString(1, fan.getFavTeam());
+                stmt.setString(1, fan.getFavTeam().name());
                 stmt.setDate(2, Date.valueOf(fan.getBirthday()));
                 stmt.setString(3, fan.getUsername());
 
@@ -298,7 +299,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                 .username(rs.getString("username"))
                 .fullName(rs.getString("full_name"))
                 .gender(rs.getString("gender"))
-                .favTeam(rs.getString("fav_team"))
+                .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
                 .birthday(rs.getDate("birthday").toLocalDate())
                 .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
                 .build();

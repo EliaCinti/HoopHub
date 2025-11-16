@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.beans;
 
+import it.uniroma2.hoophub.model.TeamNBA;
 import java.time.LocalDate;
 
 /**
@@ -7,7 +8,7 @@ import java.time.LocalDate;
  * Contains minimal validation - business rules are enforced in the Model.
  */
 public class FanBean extends UserBean {
-    private String favTeam;
+    private TeamNBA favTeam;
     private LocalDate birthday;
 
     private FanBean(Builder builder) {
@@ -17,14 +18,14 @@ public class FanBean extends UserBean {
     }
 
     public static class Builder extends UserBean.Builder<Builder> {
-        private String favTeam;
+        private TeamNBA favTeam;
         private LocalDate birthday;
 
         public Builder() {
             super();
         }
 
-        public Builder favTeam(String favTeam) {
+        public Builder favTeam(TeamNBA favTeam) {
             this.favTeam = favTeam;
             return this;
         }
@@ -45,11 +46,11 @@ public class FanBean extends UserBean {
         }
     }
 
-    public String getFavTeam() {
+    public TeamNBA getFavTeam() {
         return favTeam;
     }
 
-    public void setFavTeam(String favTeam) {
+    public void setFavTeam(TeamNBA favTeam) {
         this.favTeam = favTeam;
     }
 
