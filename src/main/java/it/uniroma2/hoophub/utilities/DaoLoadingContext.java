@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Thread-safe context to prevent circular dependencies when DAOs load related entities.
+ * Simple context to prevent circular dependencies when DAOs load related entities.
  * <p>
  * This utility prevents infinite loops that occur when DAOs call other DAOs to reconstruct
  * object graphs with bidirectional relationships. For example:
@@ -35,8 +35,9 @@ import java.util.Set;
  * </pre>
  * </p>
  * <p>
- * <strong>Thread Safety:</strong> Uses ThreadLocal to maintain separate contexts for each thread,
- * ensuring that concurrent operations don't interfere with each other.
+ * <strong>Design Note:</strong> This implementation uses a simple static Set, suitable for
+ * single-threaded applications. The call stack nature of DAO operations ensures proper
+ * cleanup via try-finally blocks.
  * </p>
  *
  * @see it.uniroma2.hoophub.dao.VenueDao
@@ -46,11 +47,10 @@ import java.util.Set;
 public final class DaoLoadingContext {
 
     /**
-     * Thread-local set tracking entities currently being loaded in this thread.
+     * Set tracking entities currently being loaded in the current call stack.
      * Each entry is a string key identifying the entity (e.g., "Venue:123", "Fan:john_doe").
      */
-    private static final ThreadLocal<Set<String>> LOADING_CONTEXT =
-        ThreadLocal.withInitial(HashSet::new);
+    private static final Set<String> loadingContext = new HashSet<>();
 
     /**
      * Private constructor to prevent instantiation.
@@ -61,7 +61,7 @@ public final class DaoLoadingContext {
     }
 
     /**
-     * Checks if an entity with the given key is currently being loaded in this thread.
+     * Checks if an entity with the given key is currently being loaded.
      * <p>
      * This method is used to detect circular loading and prevent infinite recursion.
      * If it returns true, the calling DAO should return a minimal representation
@@ -72,11 +72,11 @@ public final class DaoLoadingContext {
      * @return true if this entity is already being loaded in the current call stack
      */
     public static boolean isLoading(String entityKey) {
-        return LOADING_CONTEXT.get().contains(entityKey);
+        return loadingContext.contains(entityKey);
     }
 
     /**
-     * Marks an entity as currently being loaded in this thread.
+     * Marks an entity as currently being loaded.
      * <p>
      * This method should be called before starting to load an entity and its relations.
      * It must be paired with {@link #finishLoading(String)} in a try-finally block
@@ -86,11 +86,11 @@ public final class DaoLoadingContext {
      * @param entityKey Unique identifier for the entity being loaded
      */
     public static void startLoading(String entityKey) {
-        LOADING_CONTEXT.get().add(entityKey);
+        loadingContext.add(entityKey);
     }
 
     /**
-     * Marks an entity as finished loading in this thread.
+     * Marks an entity as finished loading.
      * <p>
      * This method should always be called in a finally block to ensure cleanup
      * even if an exception occurs during loading.
@@ -99,11 +99,11 @@ public final class DaoLoadingContext {
      * @param entityKey Unique identifier for the entity that finished loading
      */
     public static void finishLoading(String entityKey) {
-        LOADING_CONTEXT.get().remove(entityKey);
+        loadingContext.remove(entityKey);
     }
 
     /**
-     * Clears the entire loading context for the current thread.
+     * Clears the entire loading context.
      * <p>
      * This is primarily useful for cleanup in exceptional situations or testing.
      * Under normal circumstances, {@link #finishLoading(String)} should be used
@@ -111,11 +111,11 @@ public final class DaoLoadingContext {
      * </p>
      */
     public static void clear() {
-        LOADING_CONTEXT.get().clear();
+        loadingContext.clear();
     }
 
     /**
-     * Returns the number of entities currently being loaded in this thread.
+     * Returns the number of entities currently being loaded.
      * <p>
      * This is primarily useful for debugging and testing to verify that the
      * context is being properly maintained.
@@ -124,6 +124,6 @@ public final class DaoLoadingContext {
      * @return The number of entities in the loading context
      */
     public static int getLoadingCount() {
-        return LOADING_CONTEXT.get().size();
+        return loadingContext.size();
     }
 }
