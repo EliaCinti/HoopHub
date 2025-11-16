@@ -9,6 +9,7 @@ import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -292,17 +293,39 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * Maps a ResultSet row to a Fan domain object.
      * <p>
      * The ResultSet must contain all required columns from the JOIN query.
+     * Includes anti-loop protection via DaoLoadingContext to prevent circular dependencies
+     * when Fan is referenced from related entities.
      * </p>
      */
     private Fan mapResultSetToFan(ResultSet rs) throws SQLException {
-        return new Fan.Builder()
-                .username(rs.getString("username"))
-                .fullName(rs.getString("full_name"))
-                .gender(rs.getString("gender"))
-                .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
-                .birthday(rs.getDate("birthday").toLocalDate())
-                .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
-                .build();
+        String username = rs.getString("username");
+
+        String key = "Fan:" + username;
+        if (DaoLoadingContext.isLoading(key)) {
+            // Return minimal Fan object without loading relationships
+            return new Fan.Builder()
+                    .username(username)
+                    .fullName(rs.getString("full_name"))
+                    .gender(rs.getString("gender"))
+                    .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
+                    .birthday(rs.getDate("birthday").toLocalDate())
+                    .bookingList(new ArrayList<>())  // Empty list - bookings not loaded during cycle
+                    .build();
+        }
+
+        DaoLoadingContext.startLoading(key);
+        try {
+            return new Fan.Builder()
+                    .username(username)
+                    .fullName(rs.getString("full_name"))
+                    .gender(rs.getString("gender"))
+                    .favTeam(TeamNBA.valueOf(rs.getString("fav_team")))
+                    .birthday(rs.getDate("birthday").toLocalDate())
+                    .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
+                    .build();
+        } finally {
+            DaoLoadingContext.finishLoading(key);
+        }
     }
 
     // ========== VALIDATION METHODS ==========

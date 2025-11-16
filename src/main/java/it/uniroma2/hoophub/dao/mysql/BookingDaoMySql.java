@@ -13,6 +13,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.model.BookingStatus;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -507,6 +508,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
      * Maps a ResultSet row to a Booking domain object.
      * <p>
      * This method reconstructs Fan and Venue references by querying their respective DAOs.
+     * Includes anti-loop protection via DaoLoadingContext to prevent circular dependencies.
      * </p>
      */
     private Booking mapResultSetToBooking(ResultSet rs) throws SQLException, DAOException {
@@ -514,33 +516,55 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         String fanUsername = rs.getString("fan_username");
         int venueId = rs.getInt("venue_id");
 
-        // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
-        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-        FanDao fanDao = daoFactory.getFanDao();
-        Fan fan = fanDao.retrieveFan(fanUsername);
-
-        VenueDao venueDao = daoFactory.getVenueDao();
-        Venue venue = venueDao.retrieveVenue(venueId);
-
-        if (fan == null) {
-            throw new DAOException("Fan not found for booking: " + fanUsername);
+        String key = "Booking:" + bookingId;
+        if (DaoLoadingContext.isLoading(key)) {
+            // Return minimal booking object without loading relationships
+            return new Booking.Builder(
+                    bookingId,
+                    rs.getDate("game_date").toLocalDate(),
+                    rs.getTime("game_time").toLocalTime(),
+                    TeamNBA.valueOf(rs.getString("home_team")),
+                    TeamNBA.valueOf(rs.getString("away_team")),
+                    null,  // Minimal object: no venue
+                    null   // Minimal object: no fan
+            )
+                    .status(BookingStatus.valueOf(rs.getString("status")))
+                    .notified(rs.getBoolean("notified"))
+                    .build();
         }
-        if (venue == null) {
-            throw new DAOException("Venue not found for booking: " + venueId);
-        }
 
-        return new Booking.Builder(
-                bookingId,
-                rs.getDate("game_date").toLocalDate(),
-                rs.getTime("game_time").toLocalTime(),
-                TeamNBA.valueOf(rs.getString("home_team")),
-                TeamNBA.valueOf(rs.getString("away_team")),
-                venue,
-                fan
-        )
-                .status(BookingStatus.valueOf(rs.getString("status")))
-                .notified(rs.getBoolean("notified"))
-                .build();
+        DaoLoadingContext.startLoading(key);
+        try {
+            // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
+            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+            FanDao fanDao = daoFactory.getFanDao();
+            Fan fan = fanDao.retrieveFan(fanUsername);
+
+            VenueDao venueDao = daoFactory.getVenueDao();
+            Venue venue = venueDao.retrieveVenue(venueId);
+
+            if (fan == null) {
+                throw new DAOException("Fan not found for booking: " + fanUsername);
+            }
+            if (venue == null) {
+                throw new DAOException("Venue not found for booking: " + venueId);
+            }
+
+            return new Booking.Builder(
+                    bookingId,
+                    rs.getDate("game_date").toLocalDate(),
+                    rs.getTime("game_time").toLocalTime(),
+                    TeamNBA.valueOf(rs.getString("home_team")),
+                    TeamNBA.valueOf(rs.getString("away_team")),
+                    venue,
+                    fan
+            )
+                    .status(BookingStatus.valueOf(rs.getString("status")))
+                    .notified(rs.getBoolean("notified"))
+                    .build();
+        } finally {
+            DaoLoadingContext.finishLoading(key);
+        }
     }
 
     // ========== VALIDATION METHODS ==========

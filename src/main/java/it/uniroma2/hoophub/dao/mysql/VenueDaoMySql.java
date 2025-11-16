@@ -10,6 +10,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
+import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.VenueType;
 
 import java.sql.Connection;
@@ -18,6 +19,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -381,6 +383,11 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     /**
      * Maps a ResultSet row to a Venue domain object.
      * <p>
+     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
+     * to prevent infinite loops when loading related entities. If this venue is already being loaded
+     * in the current call stack, it creates a minimal venue without reloading the VenueManager.
+     * </p>
+     * <p>
      * This method reconstructs the VenueManager reference by querying the VenueManagerDao
      * and loads the associated teams from the venue_teams table.
      * </p>
@@ -388,35 +395,72 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {
         String managerUsername = rs.getString("venue_manager_username");
         int venueId = rs.getInt("id");
+        String venueKey = "Venue:" + venueId;
 
-        // Retrieve the full VenueManager object using DaoFactoryFacade (Factory pattern)
-        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-        VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
-        VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
+        // Check if we're in a circular loading situation
+        if (DaoLoadingContext.isLoading(venueKey)) {
+            // Break the cycle by loading VenueManager without its managed venues
+            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+            VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
+            VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
 
-        if (venueManager == null) {
-            logger.log(Level.SEVERE, "VenueManager not found for venue mapping: {0}", managerUsername);
-            throw new DAOException("VenueManager not found: " + managerUsername);
+            if (venueManager == null) {
+                throw new DAOException("VenueManager not found: " + managerUsername);
+            }
+
+            Venue venue = new Venue.Builder()
+                    .id(venueId)
+                    .name(rs.getString("name"))
+                    .type(VenueType.valueOf(rs.getString("type")))
+                    .address(rs.getString("address"))
+                    .city(rs.getString("city"))
+                    .maxCapacity(rs.getInt("max_capacity"))
+                    .venueManager(venueManager)
+                    .build();
+
+            Set<TeamNBA> teams = retrieveVenueTeams(venueId);
+            for (TeamNBA team : teams) {
+                venue.addTeam(team);
+            }
+
+            return venue;
         }
 
-        // Build the venue
-        Venue venue = new Venue.Builder()
-                .id(venueId)
-                .name(rs.getString("name"))
-                .type(VenueType.valueOf(rs.getString("type")))
-                .address(rs.getString("address"))
-                .city(rs.getString("city"))
-                .maxCapacity(rs.getInt("max_capacity"))
-                .venueManager(venueManager)
-                .build();
+        // Mark this venue as being loaded
+        DaoLoadingContext.startLoading(venueKey);
+        try {
+            // Retrieve the full VenueManager object using DaoFactoryFacade (Factory pattern)
+            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+            VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
+            VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
 
-        // Load associated teams
-        Set<TeamNBA> teams = retrieveVenueTeams(venueId);
-        for (TeamNBA team : teams) {
-            venue.addTeam(team);
+            if (venueManager == null) {
+                logger.log(Level.SEVERE, "VenueManager not found for venue mapping: {0}", managerUsername);
+                throw new DAOException("VenueManager not found: " + managerUsername);
+            }
+
+            // Build the venue with COMPLETE manager
+            Venue venue = new Venue.Builder()
+                    .id(venueId)
+                    .name(rs.getString("name"))
+                    .type(VenueType.valueOf(rs.getString("type")))
+                    .address(rs.getString("address"))
+                    .city(rs.getString("city"))
+                    .maxCapacity(rs.getInt("max_capacity"))
+                    .venueManager(venueManager)
+                    .build();
+
+            // Load associated teams
+            Set<TeamNBA> teams = retrieveVenueTeams(venueId);
+            for (TeamNBA team : teams) {
+                venue.addTeam(team);
+            }
+
+            return venue;
+        } finally {
+            // Always clean up the loading context
+            DaoLoadingContext.finishLoading(venueKey);
         }
-
-        return venue;
     }
 
     // ========== VALIDATION METHODS ==========
