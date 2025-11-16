@@ -112,7 +112,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
 
         // Check if user was not found (null or empty array from findRowByValue)
         if (userRow == null || userRow.length == 0) {
-            logger.log(Level.WARNING, "User not found: {0}", credentials.getUsername());
+            logger.log(Level.FINE, "User not found: {0}", credentials.getUsername());
             throw new DAOException("Invalid username or password");
         }
 
@@ -127,11 +127,11 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
 
         if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
             credentials.setType(userRow[COL_USER_TYPE]);
-            logger.log(Level.INFO, "User validated successfully: {0}", credentials.getUsername());
+            logger.log(Level.FINE, "User validated successfully: {0}", credentials.getUsername());
             return;
         }
 
-        logger.log(Level.WARNING, "Invalid password for user: {0}", credentials.getUsername());
+        logger.log(Level.FINE, "Invalid password for user: {0}", credentials.getUsername());
         throw new DAOException("Invalid username or password");
     }
 

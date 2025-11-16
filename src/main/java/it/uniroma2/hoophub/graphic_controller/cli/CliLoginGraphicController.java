@@ -221,7 +221,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * Handles DAO exceptions during login.
      */
     private void handleDAOException(String username, DAOException e) {
-        LOGGER.log(Level.WARNING, "Login failed for user: " + username, e);
+        LOGGER.log(Level.FINE, "Login failed for user: {0} - {1}", new Object[]{username, e.getMessage()});
         printError(String.format(LOGIN_FAILED_MSG, e.getMessage()));
     }
 
