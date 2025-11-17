@@ -1,0 +1,333 @@
+@startuml VOPC_BookGameSeat_Simplified
+
+' ============================================================
+' VOPC - BookGameSeat Use Case (VERSIONE SEMPLIFICATA)
+' Questa versione OMETTE i layer DAO e Bean per semplicità
+' da usare nelle prime fasi di design
+' ============================================================
+
+title VOPC - BookGameSeat Use Case (Simplified - No DAO/Bean)
+
+' ============================================================
+' CONFIGURAZIONE STILE
+' ============================================================
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+skinparam class {
+    BackgroundColor<<boundary>> LightBlue
+    BackgroundColor<<control>> LightGreen
+    BackgroundColor<<entity>> LightYellow
+    BorderColor Black
+    ArrowColor Black
+}
+
+' ============================================================
+' BOUNDARY (Interfaccia Utente)
+' ============================================================
+
+class FanBookGameSeat <<boundary>> {
+    + execute(): void
+    + selectGame(): NbaGame
+    + requestVenueFilters(): VenueFilters
+    + selectVenue(): Venue
+    + confirmBooking(): boolean
+    + displayGamesList(games: List<NbaGame>): void
+    + displayVenuesList(venues: List<Venue>): void
+    + displayVenueDetails(venue: Venue): void
+    + displayConfirmationCode(code: String): void
+    + displayError(message: String): void
+    + offerWaitlist(venue: Venue): void
+}
+
+class VenueManagerBookGameSeat <<boundary>> {
+    + execute(): void
+    + displayNewBookingNotification(notification: Notification): void
+    + displayNotificationBadge(count: int): void
+}
+
+class FanManageSeats <<boundary>> {
+    + execute(): void
+    + selectBooking(): Booking
+    + requestFilterCriteria(): FilterCriteria
+    + requestCancellation(): boolean
+    + displayBookingList(bookings: List<Booking>): void
+    + displayBookingDetails(booking: Booking): void
+    + displayNotifications(notifications: List<Notification>): void
+    + displaySuccess(message: String): void
+    + displayError(message: String): void
+}
+
+class VenueManagerManageVenues <<boundary>> {
+    + execute(): void
+    + selectVenue(): Venue
+    + selectOperation(): String
+    + selectBookingRequest(): Booking
+    + requestDecision(): boolean
+    + requestFilterCriteria(): FilterCriteria
+    + requestTeamToAdd(): NbaTeam
+    + requestTeamToRemove(): NbaTeam
+    + displayVenueList(venues: List<Venue>): void
+    + displayVenueDetails(venue: Venue): void
+    + displayVenueOperations(): void
+    + displayBookingList(bookings: List<Booking>): void
+    + displayBookingDetails(booking: Booking): void
+    + displayNotifications(notifications: List<Notification>): void
+    + displaySuccess(message: String): void
+    + displayError(message: String): void
+}
+
+class BookGameSeatNBASchedule <<boundary>> {
+    + fetchUpcomingGames(): List<NbaGame>
+    + parseGameResponse(json: String): List<NbaGame>
+    + handleApiError(exception: Exception): void
+}
+
+' ============================================================
+' CONTROLLER (Logica Applicativa - Singleton)
+' ============================================================
+
+class BookGameSeatController <<control>> {
+    - {static} instance: BookGameSeatController
+    - nbaScheduleService: BookGameSeatNBASchedule
+    __
+    + {static} getInstance(): BookGameSeatController
+    __
+    + getAvailableGames(): List<NbaGame>
+    + getAvailableVenues(game: NbaGame, filters: VenueFilters): List<Venue>
+    + checkVenueAvailability(venue: Venue, date: LocalDate): boolean
+    + submitBookingRequest(fan: Fan, venue: Venue, game: NbaGame): String
+    + cancelBookingRequest(booking: Booking): void
+    + offerWaitlist(venue: Venue): void
+    - applyFilters(venues: List<Venue>, filters: VenueFilters): List<Venue>
+}
+
+class ManageVenuesController <<control>> {
+    - {static} instance: ManageVenuesController
+    __
+    + {static} getInstance(): ManageVenuesController
+    __
+    + getManagerVenues(manager: VenueManager): List<Venue>
+    + getVenueDetails(venueId: String): Venue
+    + addTeamToVenue(venue: Venue, team: NbaTeam): void
+    + removeTeamFromVenue(venue: Venue, team: NbaTeam): void
+    + getBookingsForVenue(venue: Venue, filters: FilterCriteria): List<Booking>
+    + getPendingBookings(manager: VenueManager): List<Booking>
+    + acceptBookingRequest(manager: VenueManager, booking: Booking): void
+    + rejectBookingRequest(manager: VenueManager, booking: Booking): void
+    + getManagerNotifications(manager: VenueManager): List<Notification>
+    + markNotificationAsRead(notification: Notification): void
+    - applyBookingFilters(bookings: List<Booking>, filters: FilterCriteria): List<Booking>
+    - validateVenueOwnership(manager: VenueManager, venue: Venue): boolean
+}
+
+class ManageSeatsController <<control>> {
+    - {static} instance: ManageSeatsController
+    __
+    + {static} getInstance(): ManageSeatsController
+    __
+    + getFanBookings(fan: Fan, filters: FilterCriteria): List<Booking>
+    + getBookingDetails(bookingId: String): Booking
+    + cancelBooking(fan: Fan, booking: Booking): void
+    + getFanNotifications(fan: Fan): List<Notification>
+    + markNotificationAsRead(notification: Notification): void
+    - applyBookingFilters(bookings: List<Booking>, filters: FilterCriteria): List<Booking>
+    - validateBookingOwnership(fan: Fan, booking: Booking): boolean
+}
+
+class NotificationController <<control>> {
+    - {static} instance: NotificationController
+    __
+    + {static} getInstance(): NotificationController
+    __
+    + notifyVenueManager(booking: Booking): void
+    + notifyFan(booking: Booking, status: BookingStatus): void
+}
+
+' ============================================================
+' ENTITY (Dominio)
+' ============================================================
+
+class Fan <<entity>> {
+    - username: String
+    - fullName: String
+    - favTeam: NbaTeam
+    - birthday: LocalDate
+    - bookingList: List<Booking>
+    __
+    + addBooking(booking: Booking): void
+    + getBookingList(): List<Booking>
+}
+
+class VenueManager <<entity>> {
+    - username: String
+    - fullName: String
+    - companyName: String
+    - phoneNumber: String
+    - managedVenues: List<Venue>
+    __
+    + confirmBooking(booking: Booking): void
+    + rejectBooking(booking: Booking): void
+    + getAllPendingBookings(): List<Booking>
+    + getManagedVenues(): List<Venue>
+}
+
+class Venue <<entity>> {
+    - id: String
+    - name: String
+    - type: VenueType
+    - address: String
+    - city: String
+    - maxCapacity: int
+    - associatedTeams: Set<TeamNBA>
+    - venueManager: VenueManager
+    - bookingsByDate: Map<LocalDate, List<Booking>>
+    __
+    + hasAvailableCapacity(date: LocalDate): boolean
+    + getRemainingCapacity(date: LocalDate): int
+    + addBooking(booking: Booking): void
+    + addTeam(team: NbaTeam): void
+    + removeTeam(team: NbaTeam): boolean
+    + isTeamAssociated(team: NbaTeam): boolean
+}
+
+class Booking <<entity>> {
+    - id: String
+    - gameDate: LocalDate
+    - gameTime: LocalTime
+    - homeTeam: NbaTeam
+    - awayTeam: NbaTeam
+    - venue: Venue
+    - fan: Fan
+    - status: BookingStatus
+    - notified: boolean
+    __
+    + confirm(): void
+    + reject(): void
+    + cancel(): void
+    + getMatchup(): String
+}
+
+class Notification <<entity>> {
+    - id: String
+    - userId: String
+    - userType: UserType
+    - type: NotificationType
+    - message: String
+    - relatedBookingId: String
+    - isRead: boolean
+    - createdAt: LocalDateTime
+    __
+    + markAsRead(): Notification
+}
+
+' ============================================================
+' RELAZIONI BOUNDARY -> CONTROLLER
+' ============================================================
+
+FanBookGameSeat --> BookGameSeatController : usa
+VenueManagerBookGameSeat --> ManageVenuesController : usa
+
+BookGameSeatController --> BookGameSeatNBASchedule : usa
+
+FanManageSeats --> ManageSeatsController : usa
+VenueManagerManageVenues --> ManageVenuesController : usa
+
+' ============================================================
+' RELAZIONI TRA CONTROLLER
+' ============================================================
+
+BookGameSeatController --> NotificationController : usa
+ManageVenuesController --> NotificationController : usa
+
+' ============================================================
+' RELAZIONI CONTROLLER -> ENTITY (ACCESSO DIRETTO - NO DAO)
+' ============================================================
+
+BookGameSeatController --> Fan : usa
+BookGameSeatController --> Venue : usa
+BookGameSeatController ..> Booking : <<create>>
+
+ManageVenuesController --> VenueManager : usa
+ManageVenuesController --> Venue : usa
+ManageVenuesController --> Booking : usa
+
+ManageSeatsController --> Fan : usa
+ManageSeatsController --> Booking : usa
+
+NotificationController --> Notification : usa
+NotificationController ..> Notification : <<create>>
+
+' ============================================================
+' RELAZIONI TRA ENTITY
+' ============================================================
+
+' COMPOSIZIONE: Fan è il "tutto", Booking è la "parte"
+Fan "1" *-- "0..*" Booking : ha
+
+' AGGREGAZIONE: VenueManager gestisce Venue
+VenueManager "1" o-- "1..*" Venue : gestisce
+
+' AGGREGAZIONE: Venue ospita Booking
+Venue "1" o-- "0..*" Booking : ospita
+
+' ASSOCIAZIONE SEMPLICE: navigabilità inversa
+Booking "*" --> "1" Fan : prenotata da
+Booking "*" --> "1" Venue : presso
+
+' ============================================================
+' NOTE
+' ============================================================
+
+note right of BookGameSeatController
+  <b>Steps 1-10</b>
+
+  1. Fan seleziona partita NBA
+  2. Recupera venues disponibili
+  3. Applica filtri (tipo, team)
+  4. Fan seleziona venue
+  5. Crea Booking (status: PENDING)
+  6. Aggiunge a Fan.bookingList
+  7. Aggiunge a Venue.bookingsByDate
+
+  Step 10: Chiama NotificationController
+  per notificare VenueManager
+end note
+
+note right of ManageVenuesController
+  <b>Steps 11-12</b>
+
+  11. VenueManager visualizza richiesta
+  12. Accetta/Rifiuta booking
+
+  Chiama NotificationController
+  per notificare Fan
+end note
+
+note bottom of Fan
+  <b>COMPOSIZIONE con Booking</b>
+
+  Fan è il "tutto"
+  Booking è la "parte"
+
+  Lifecycle dipendente
+  Simbolo: ◆ (rombo pieno)
+end note
+
+note as N1
+  <b>VERSIONE SEMPLIFICATA</b>
+
+  Questa versione OMETTE:
+  - Layer DAO (accesso dati)
+  - Layer Bean (DTO)
+
+  I Controller accedono
+  DIRETTAMENTE alle Entity.
+
+  Usare solo per design iniziale.
+  NON conforme al codice reale.
+end note
+
+@enduml
