@@ -15,12 +15,12 @@ import java.util.Objects;
 public class Notification {
 
     // All fields are final, making the object immutable.
-    private final Long id;
-    private final Long userId;
+    private final int id;
+    private final String username;
     private final UserType userType;
     private final NotificationType type;
     private final String message;
-    private final Long relatedBookingId;
+    private final int relatedBookingId;
     private final boolean isRead;
     private final LocalDateTime createdAt;
 
@@ -29,7 +29,7 @@ public class Notification {
      */
     private Notification(Builder builder) {
         this.id = builder.id;
-        this.userId = builder.userId;
+        this.username = builder.username;
         this.userType = builder.userType;
         this.type = builder.type;
         this.message = builder.message;
@@ -74,12 +74,12 @@ public class Notification {
     // PUBLIC GETTERS (Read-Only Access)
     // ========================================================================
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 
-    public Long getUserId() {
-        return userId;
+    public String getUsername() {
+        return username;
     }
 
     public UserType getUserType() {
@@ -94,7 +94,7 @@ public class Notification {
         return message;
     }
 
-    public Long getRelatedBookingId() {
+    public int getRelatedBookingId() {
         return relatedBookingId;
     }
 
@@ -114,22 +114,22 @@ public class Notification {
      * Builder class for constructing Notification instances.
      */
     public static class Builder {
-        private Long id;
-        private Long userId;
+        private int id;
+        private String username;
         private UserType userType;
         private NotificationType type;
         private String message;
-        private Long relatedBookingId;
+        private int relatedBookingId;
         private boolean isRead = false;
         private LocalDateTime createdAt = LocalDateTime.now();
 
-        public Builder id(Long id) {
+        public Builder id(int id) {
             this.id = id;
             return this;
         }
 
-        public Builder userId(Long userId) {
-            this.userId = userId;
+        public Builder username(String username) {
+            this.username = username;
             return this;
         }
 
@@ -148,7 +148,7 @@ public class Notification {
             return this;
         }
 
-        public Builder relatedBookingId(Long relatedBookingId) {
+        public Builder relatedBookingId(int relatedBookingId) {
             this.relatedBookingId = relatedBookingId;
             return this;
         }
@@ -169,7 +169,7 @@ public class Notification {
          */
         public Builder from(Notification notification) {
             this.id = notification.id;
-            this.userId = notification.userId;
+            this.username = notification.username;
             this.userType = notification.userType;
             this.type = notification.type;
             this.message = notification.message;
@@ -198,8 +198,8 @@ public class Notification {
          * Validation logic called by the Builder at construction time.
          */
         private void validateRequiredFields() {
-            if (userId == null) {
-                throw new IllegalStateException("userId is required");
+            if (username == null || username.trim().isEmpty()) {
+                throw new IllegalStateException("username is required");
             }
             if (userType == null) {
                 throw new IllegalStateException("userType is required");
@@ -238,7 +238,7 @@ public class Notification {
     public String toString() {
         return "Notification{" +
                 "id=" + id +
-                ", userId=" + userId +
+                ", username='" + username + '\'' +
                 ", userType=" + userType +
                 ", type=" + type +
                 ", message='" + message + '\'' +

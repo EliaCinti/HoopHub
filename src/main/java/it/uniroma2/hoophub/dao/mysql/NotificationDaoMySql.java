@@ -1,140 +1,122 @@
 package it.uniroma2.hoophub.dao.mysql;
 
+import it.uniroma2.hoophub.beans.NotificationBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
-import it.uniroma2.hoophub.dao.NotificationDAO;
+import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
 import it.uniroma2.hoophub.model.NotificationType;
 import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Level;
 
 /**
- * MySQL implementation of the NotificationDAO interface.
+ * MySQL implementation of the NotificationDao interface.
  * <p>
  * This class provides comprehensive data access operations for Notification entities stored in a MySQL database.
- * It handles notification CRUD operations and provides various filtering and marking methods
- * for efficient notification management.
+ * It handles notification CRUD operations for both Fan and VenueManager users.
  * </p>
  * <p>
  * Database structure:
  * <ul>
- *   <li><strong>notifications table</strong>: id (PK, AUTO_INCREMENT), user_id, user_type,
- *       type, message, related_booking_id (FK), is_read, created_at</li>
+ *   <li><strong>notifications table</strong>: id (PK, AUTO_INCREMENT), username, user_type,
+ *       notification_type, message, related_booking_id, is_read, created_at</li>
  * </ul>
  * </p>
  *
- * @see NotificationDAO
+ * @see NotificationDao
  * @see AbstractMySqlDao
  */
-public class NotificationDaoMySql extends AbstractMySqlDao implements NotificationDAO {
+public class NotificationDaoMySql extends AbstractMySqlDao implements NotificationDao {
 
     // ========== SQL Queries ==========
     private static final String SQL_INSERT_NOTIFICATION =
-            "INSERT INTO notifications (user_id, user_type, type, message, related_booking_id, " +
-                    "is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+            "INSERT INTO notifications (user_id, user_type, type, message, " +
+                    "related_booking_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
-    private static final String SQL_SELECT_BY_ID =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE id = ?";
+    private static final String SQL_SELECT_NOTIFICATION =
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
+                    "is_read, created_at FROM notifications WHERE id = ?";
 
-    private static final String SQL_SELECT_BY_USER =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE user_id = ? ORDER BY created_at DESC";
+    private static final String SQL_SELECT_NOTIFICATIONS_BY_USER =
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
+                    "is_read, created_at FROM notifications WHERE user_id = ? AND user_type = ? " +
+                    "ORDER BY created_at DESC";
 
-    private static final String SQL_SELECT_UNREAD_BY_USER =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE user_id = ? AND is_read = FALSE ORDER BY created_at DESC";
+    private static final String SQL_SELECT_UNREAD_NOTIFICATIONS =
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
+                    "is_read, created_at FROM notifications WHERE user_id = ? AND user_type = ? " +
+                    "AND is_read = FALSE ORDER BY created_at DESC";
 
-    private static final String SQL_SELECT_BY_USER_AND_TYPE =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE user_id = ? AND type = ? ORDER BY created_at DESC";
-
-    private static final String SQL_SELECT_BY_BOOKING =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE related_booking_id = ? ORDER BY created_at DESC";
-
-    private static final String SQL_COUNT_UNREAD_BY_USER =
-            "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND is_read = FALSE";
-
-    private static final String SQL_MARK_AS_READ =
+    private static final String SQL_UPDATE_MARK_AS_READ =
             "UPDATE notifications SET is_read = TRUE WHERE id = ?";
 
-    private static final String SQL_MARK_ALL_AS_READ_BY_USER =
-            "UPDATE notifications SET is_read = TRUE WHERE user_id = ?";
+    private static final String SQL_UPDATE_ALL_AS_READ =
+            "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND user_type = ? AND is_read = FALSE";
 
-    private static final String SQL_MARK_AS_READ_BY_BOOKING_AND_USER =
-            "UPDATE notifications SET is_read = TRUE WHERE related_booking_id = ? AND user_id = ?";
-
-    private static final String SQL_UPDATE_NOTIFICATION =
-            "UPDATE notifications SET user_id = ?, user_type = ?, type = ?, message = ?, " +
-                    "related_booking_id = ?, is_read = ? WHERE id = ?";
-
-    private static final String SQL_DELETE_BY_ID =
+    private static final String SQL_DELETE_NOTIFICATION =
             "DELETE FROM notifications WHERE id = ?";
 
-    private static final String SQL_DELETE_BY_USER =
-            "DELETE FROM notifications WHERE user_id = ?";
+    private static final String SQL_DELETE_BY_BOOKING =
+            "DELETE FROM notifications WHERE related_booking_id = ?";
 
-    private static final String SQL_DELETE_READ_BY_USER =
-            "DELETE FROM notifications WHERE user_id = ? AND is_read = TRUE";
+    private static final String SQL_COUNT_UNREAD =
+            "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = FALSE";
 
-    private static final String SQL_SELECT_ALL =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications ORDER BY created_at DESC";
 
-    private static final String SQL_SELECT_RECENT_BY_USER =
-            "SELECT id, user_id, user_type, type, message, related_booking_id, is_read, created_at " +
-                    "FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?";
+    // ========== Constants ==========
+    private static final String NOTIFICATION = "Notification";
 
     // ========== Error messages ==========
-    private static final String ERR_NULL_NOTIFICATION = "Notification cannot be null";
-    private static final String ERR_INVALID_LIMIT = "Limit must be positive";
+    private static final String ERR_NULL_NOTIFICATION_BEAN = "NotificationBean cannot be null";
+    private static final String ERR_NULL_USERNAME = "Username cannot be null";
+    private static final String ERR_NULL_USER_TYPE = "UserType cannot be null";
+    private static final String ERR_NOTIFICATION_NOT_FOUND = "Notification not found";
 
     /**
      * {@inheritDoc}
+     * <p>
+     * After successful insertion, observers are notified for cross-persistence sync.
+     * </p>
      */
     @Override
-    public Notification save(Notification notification) throws DAOException {
-        if (notification == null) {
-            throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
-        }
+    public void saveNotification(NotificationBean notificationBean) throws DAOException {
+        validateNotificationBeanInput(notificationBean);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION,
-                         Statement.RETURN_GENERATED_KEYS)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_NOTIFICATION)) {
 
-                setNotificationParameters(stmt, notification, 1);
-                stmt.setTimestamp(7, Timestamp.valueOf(notification.getCreatedAt()));
+                stmt.setString(1, notificationBean.getUsername());
+                stmt.setString(2, notificationBean.getUserType().name());
+                stmt.setString(3, notificationBean.getType().name());
+                stmt.setString(4, notificationBean.getMessage());
+
+                if (notificationBean.getRelatedBookingId() == 0) {
+                    stmt.setNull(5, java.sql.Types.INTEGER);
+                } else {
+                    stmt.setInt(5, notificationBean.getRelatedBookingId());
+                }
+
+                stmt.setBoolean(6, notificationBean.isRead());
+                stmt.setTimestamp(7, Timestamp.valueOf(notificationBean.getCreatedAt()));
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            long generatedId = generatedKeys.getLong(1);
-                            logger.log(Level.INFO, "Notification saved successfully with ID: {0}", generatedId);
-
-                            // Return new notification with generated ID
-                            return new Notification.Builder()
-                                    .from(notification)
-                                    .id(generatedId)
-                                    .build();
-                        }
-                    }
+                    logger.log(Level.INFO, "Notification saved successfully for user: {0}",
+                            notificationBean.getUsername());
+                    notifyObservers(DaoOperation.INSERT, NOTIFICATION,
+                            notificationBean.getUsername(), notificationBean);
                 }
-
-                throw new DAOException("Failed to save notification");
             }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification save", e);
@@ -146,20 +128,20 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public Optional<Notification> findById(Long id) throws DAOException {
+    public Notification retrieveNotification(int id) throws DAOException {
         validateIdInput(id);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_ID)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_NOTIFICATION)) {
 
-                stmt.setLong(1, id);
+                stmt.setInt(1, id);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        return Optional.of(mapResultSetToNotification(rs));
+                        return mapResultSetToNotification(rs);
                     }
-                    return Optional.empty();
+                    return null;
                 }
             }
         } catch (SQLException e) {
@@ -172,16 +154,18 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public List<Notification> findByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
+    public List<Notification> getNotificationsForUser(String username, UserType userType) throws DAOException {
+        validateUsernameInput(username);
+        validateUserTypeInput(userType);
 
         List<Notification> notifications = new ArrayList<>();
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_NOTIFICATIONS_BY_USER)) {
 
-                stmt.setLong(1, userId);
+                stmt.setString(1, username);
+                stmt.setString(2, userType.name());
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -190,7 +174,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
 
                 logger.log(Level.FINE, "Retrieved {0} notifications for user {1}",
-                        new Object[]{notifications.size(), userId});
+                        new Object[]{notifications.size(), username});
                 return notifications;
             }
         } catch (SQLException e) {
@@ -203,16 +187,18 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public List<Notification> findUnreadByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
+    public List<Notification> getUnreadNotificationsForUser(String username, UserType userType) throws DAOException {
+        validateUsernameInput(username);
+        validateUserTypeInput(userType);
 
         List<Notification> notifications = new ArrayList<>();
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_BY_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNREAD_NOTIFICATIONS)) {
 
-                stmt.setLong(1, userId);
+                stmt.setString(1, username);
+                stmt.setString(2, userType.name());
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
@@ -221,7 +207,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
 
                 logger.log(Level.FINE, "Retrieved {0} unread notifications for user {1}",
-                        new Object[]{notifications.size(), userId});
+                        new Object[]{notifications.size(), username});
                 return notifications;
             }
         } catch (SQLException e) {
@@ -234,117 +220,33 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public List<Notification> findByUserIdAndType(Long userId, NotificationType type) throws DAOException {
-        validateIdInput(userId);
-        if (type == null) {
-            throw new IllegalArgumentException("NotificationType cannot be null");
-        }
-
-        List<Notification> notifications = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_USER_AND_TYPE)) {
-
-                stmt.setLong(1, userId);
-                stmt.setString(2, type.name());
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        notifications.add(mapResultSetToNotification(rs));
-                    }
-                }
-
-                logger.log(Level.FINE, "Retrieved {0} {1} notifications for user {2}",
-                        new Object[]{notifications.size(), type, userId});
-                return notifications;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notifications retrieval by type", e);
-            throw new DAOException("Error retrieving notifications by type", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<Notification> findByBookingId(Long bookingId) throws DAOException {
-        validateIdInput(bookingId);
-
-        List<Notification> notifications = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BY_BOOKING)) {
-
-                stmt.setLong(1, bookingId);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        notifications.add(mapResultSetToNotification(rs));
-                    }
-                }
-
-                logger.log(Level.FINE, "Retrieved {0} notifications for booking {1}",
-                        new Object[]{notifications.size(), bookingId});
-                return notifications;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notifications retrieval by booking", e);
-            throw new DAOException("Error retrieving notifications by booking", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int countUnreadByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD_BY_USER)) {
-
-                stmt.setLong(1, userId);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(1);
-                    }
-                    return 0;
-                }
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during unread count", e);
-            throw new DAOException("Error counting unread notifications", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean markAsRead(Long notificationId) throws DAOException {
+    public void markAsRead(int notificationId) throws DAOException {
         validateIdInput(notificationId);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_MARK_AS_READ)) {
 
-                stmt.setLong(1, notificationId);
+                stmt.setInt(1, notificationId);
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
                     logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
-                }
 
-                return affectedRows > 0;
+                    // Create a minimal bean for notification
+                    NotificationBean bean = new NotificationBean.Builder()
+                            .id(notificationId)
+                            .isRead(true)
+                            .build();
+
+                    notifyObservers(DaoOperation.UPDATE, NOTIFICATION, String.valueOf(notificationId), bean);
+                } else {
+                    throw new DAOException(ERR_NOTIFICATION_NOT_FOUND + ": " + notificationId);
+                }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during mark as read", e);
+            logger.log(Level.SEVERE, "Database error during notification update", e);
             throw new DAOException("Error marking notification as read", e);
         }
     }
@@ -353,21 +255,23 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public int markAllAsReadByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
+    public void markAllAsReadForUser(String username, UserType userType) throws DAOException {
+        validateUsernameInput(username);
+        validateUserTypeInput(userType);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_ALL_AS_READ_BY_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_ALL_AS_READ)) {
 
-                stmt.setLong(1, userId);
+                stmt.setString(1, username);
+                stmt.setString(2, userType.name());
 
                 int affectedRows = stmt.executeUpdate();
 
-                logger.log(Level.INFO, "Marked {0} notifications as read for user {1}",
-                        new Object[]{affectedRows, userId});
-
-                return affectedRows;
+                if (affectedRows > 0) {
+                    logger.log(Level.INFO, "Marked {0} notifications as read for user {1}",
+                            new Object[]{affectedRows, username});
+                }
             }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during mark all as read", e);
@@ -379,80 +283,23 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public int markAsReadByBookingAndUser(Long bookingId, Long userId) throws DAOException {
-        validateIdInput(bookingId);
-        validateIdInput(userId);
+    public void deleteNotification(int notificationId) throws DAOException {
+        validateIdInput(notificationId);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_MARK_AS_READ_BY_BOOKING_AND_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_NOTIFICATION)) {
 
-                stmt.setLong(1, bookingId);
-                stmt.setLong(2, userId);
-
-                int affectedRows = stmt.executeUpdate();
-
-                logger.log(Level.INFO, "Marked {0} notifications as read for booking {1} and user {2}",
-                        new Object[]{affectedRows, bookingId, userId});
-
-                return affectedRows;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during mark as read by booking", e);
-            throw new DAOException("Error marking notifications as read by booking", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean update(Notification notification) throws DAOException {
-        if (notification == null || notification.getId() == null) {
-            throw new IllegalArgumentException(ERR_NULL_NOTIFICATION);
-        }
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_NOTIFICATION)) {
-
-                setNotificationParameters(stmt, notification, 1);
-                stmt.setLong(7, notification.getId());
+                stmt.setInt(1, notificationId);
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    logger.log(Level.INFO, "Notification updated successfully: {0}", notification.getId());
+                    logger.log(Level.INFO, "Notification deleted successfully: {0}", notificationId);
+                    notifyObservers(DaoOperation.DELETE, NOTIFICATION, String.valueOf(notificationId), null);
+                } else {
+                    throw new DAOException(ERR_NOTIFICATION_NOT_FOUND + ": " + notificationId);
                 }
-
-                return affectedRows > 0;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notification update", e);
-            throw new DAOException("Error updating notification", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean deleteById(Long id) throws DAOException {
-        validateIdInput(id);
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_ID)) {
-
-                stmt.setLong(1, id);
-
-                int affectedRows = stmt.executeUpdate();
-
-                if (affectedRows > 0) {
-                    logger.log(Level.INFO, "Notification deleted successfully: {0}", id);
-                }
-
-                return affectedRows > 0;
             }
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Database error during notification deletion", e);
@@ -464,25 +311,23 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public int deleteByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
+    public void deleteNotificationsByBooking(int bookingId) throws DAOException {
+        validateIdInput(bookingId);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BY_BOOKING)) {
 
-                stmt.setLong(1, userId);
+                stmt.setInt(1, bookingId);
 
                 int affectedRows = stmt.executeUpdate();
 
-                logger.log(Level.INFO, "Deleted {0} notifications for user {1}",
-                        new Object[]{affectedRows, userId});
-
-                return affectedRows;
+                logger.log(Level.INFO, "Deleted {0} notifications for booking: {1}",
+                        new Object[]{affectedRows, bookingId});
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notifications deletion by user", e);
-            throw new DAOException("Error deleting notifications by user", e);
+            logger.log(Level.SEVERE, "Database error during notifications deletion by booking", e);
+            throw new DAOException("Error deleting notifications by booking", e);
         }
     }
 
@@ -490,137 +335,79 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      * {@inheritDoc}
      */
     @Override
-    public int deleteReadByUserId(Long userId) throws DAOException {
-        validateIdInput(userId);
+    public int getUnreadCount(String username, UserType userType) throws DAOException {
+        validateUsernameInput(username);
+        validateUserTypeInput(userType);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_READ_BY_USER)) {
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_COUNT_UNREAD)) {
 
-                stmt.setLong(1, userId);
-
-                int affectedRows = stmt.executeUpdate();
-
-                logger.log(Level.INFO, "Deleted {0} read notifications for user {1}",
-                        new Object[]{affectedRows, userId});
-
-                return affectedRows;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during read notifications deletion", e);
-            throw new DAOException("Error deleting read notifications", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<Notification> findAll() throws DAOException {
-        List<Notification> notifications = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL);
-                 ResultSet rs = stmt.executeQuery()) {
-
-                while (rs.next()) {
-                    notifications.add(mapResultSetToNotification(rs));
-                }
-
-                logger.log(Level.FINE, "Retrieved {0} notifications", notifications.size());
-                return notifications;
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during all notifications retrieval", e);
-            throw new DAOException("Error retrieving all notifications", e);
-        }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public List<Notification> findRecentByUserId(Long userId, int limit) throws DAOException {
-        validateIdInput(userId);
-        if (limit <= 0) {
-            throw new IllegalArgumentException(ERR_INVALID_LIMIT);
-        }
-
-        List<Notification> notifications = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_RECENT_BY_USER)) {
-
-                stmt.setLong(1, userId);
-                stmt.setInt(2, limit);
+                stmt.setString(1, username);
+                stmt.setString(2, userType.name());
 
                 try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        notifications.add(mapResultSetToNotification(rs));
+                    if (rs.next()) {
+                        return rs.getInt(1);
                     }
+                    return 0;
                 }
-
-                logger.log(Level.FINE, "Retrieved {0} recent notifications for user {1}",
-                        new Object[]{notifications.size(), userId});
-                return notifications;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during recent notifications retrieval", e);
-            throw new DAOException("Error retrieving recent notifications", e);
+            logger.log(Level.SEVERE, "Database error during unread count retrieval", e);
+            throw new DAOException("Error getting unread notification count", e);
         }
     }
 
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Sets the common notification parameters in a PreparedStatement.
-     * <p>
-     * This helper method eliminates code duplication between save() and update() methods
-     * by centralizing the logic for setting notification fields.
-     * </p>
-     *
-     * @param stmt The PreparedStatement to populate
-     * @param notification The Notification object containing the data
-     * @param startIndex The starting parameter index (1 for save, varies for update)
-     * @throws SQLException If there is an error setting parameters
+     * Maps ResultSet to Notification.
      */
-    private void setNotificationParameters(PreparedStatement stmt, Notification notification, int startIndex)
-            throws SQLException {
-        stmt.setLong(startIndex, notification.getUserId());
-        stmt.setString(startIndex + 1, notification.getUserType().name());
-        stmt.setString(startIndex + 2, notification.getType().name());
-        stmt.setString(startIndex + 3, notification.getMessage());
-
-        if (notification.getRelatedBookingId() != null) {
-            stmt.setLong(startIndex + 4, notification.getRelatedBookingId());
-        } else {
-            stmt.setNull(startIndex + 4, java.sql.Types.BIGINT);
-        }
-
-        stmt.setBoolean(startIndex + 5, notification.isRead());
-    }
-
-    /**
-     * Maps a ResultSet row to a Notification domain object.
-     */
-    private Notification mapResultSetToNotification(ResultSet rs) throws SQLException {
-        Long relatedBookingId = rs.getLong("related_booking_id");
+    private Notification mapResultSetToNotification(ResultSet rs) throws SQLException, DAOException {
+        int id = rs.getInt("id");
+        String username = rs.getString("user_id");
+        UserType userType = UserType.valueOf(rs.getString("user_type"));
+        NotificationType notificationType = NotificationType.valueOf(rs.getString("type"));
+        String message = rs.getString("message");
+        int relatedBookingId = rs.getInt("related_booking_id");
+        // If was NULL, getInt returns 0 and wasNull() returns true
         if (rs.wasNull()) {
-            relatedBookingId = null;
+            relatedBookingId = 0;
         }
+        boolean isRead = rs.getBoolean("is_read");
+        Timestamp createdAtTimestamp = rs.getTimestamp("created_at");
 
         return new Notification.Builder()
-                .id(rs.getLong("id"))
-                .userId(rs.getLong("user_id"))
-                .userType(UserType.valueOf(rs.getString("user_type")))
-                .type(NotificationType.valueOf(rs.getString("type")))
-                .message(rs.getString("message"))
+                .id(id)
+                .username(username)
+                .userType(userType)
+                .type(notificationType)
+                .message(message)
                 .relatedBookingId(relatedBookingId)
-                .isRead(rs.getBoolean("is_read"))
-                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
+                .isRead(isRead)
+                .createdAt(createdAtTimestamp.toLocalDateTime())
                 .build();
     }
 
+    // ========== VALIDATION METHODS ==========
+
+    private void validateNotificationBeanInput(NotificationBean notificationBean) {
+        if (notificationBean == null) {
+            throw new IllegalArgumentException(ERR_NULL_NOTIFICATION_BEAN);
+        }
+    }
+
+    @Override
+    protected void validateUsernameInput(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            throw new IllegalArgumentException(ERR_NULL_USERNAME);
+        }
+    }
+
+    private void validateUserTypeInput(UserType userType) {
+        if (userType == null) {
+            throw new IllegalArgumentException(ERR_NULL_USER_TYPE);
+        }
+    }
 }

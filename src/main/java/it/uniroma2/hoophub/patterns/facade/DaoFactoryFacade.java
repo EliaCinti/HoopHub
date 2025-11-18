@@ -2,16 +2,19 @@ package it.uniroma2.hoophub.patterns.facade;
 
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.FanDao;
+import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.patterns.factory.BookingDaoFactory;
 import it.uniroma2.hoophub.patterns.factory.FanDaoFactory;
+import it.uniroma2.hoophub.patterns.factory.NotificationDaoFactory;
+import it.uniroma2.hoophub.patterns.factory.ObserverFactory;
 import it.uniroma2.hoophub.patterns.factory.UserDaoFactory;
 import it.uniroma2.hoophub.patterns.factory.VenueDaoFactory;
 import it.uniroma2.hoophub.patterns.factory.VenueManagerDaoFactory;
+import it.uniroma2.hoophub.patterns.observer.DaoObserver;
 import it.uniroma2.hoophub.patterns.observer.ObservableDao;
-import it.uniroma2.hoophub.sync.CrossPersistenceSyncObserver;
 
 /**
  * Facade that provides a unified interface to all DAO factories and manages cross-persistence synchronization.
@@ -46,10 +49,10 @@ public class DaoFactoryFacade {
     private VenueManagerDao venueManagerDao;
     private VenueDao venueDao;
     private BookingDao bookingDao;
+    private NotificationDao notificationDao;
 
-    // Observers for bidirectional synchronization
-    private final CrossPersistenceSyncObserver mysqlToCsvObserver = new CrossPersistenceSyncObserver(PersistenceType.MYSQL);
-    private final CrossPersistenceSyncObserver csvToMysqlObserver = new CrossPersistenceSyncObserver(PersistenceType.CSV);
+    // Observer factory for creating and managing observers (Singleton + Factory pattern)
+    private final ObserverFactory observerFactory = ObserverFactory.getInstance();
 
     /**
      * Private constructor to enforce Singleton pattern.
@@ -103,6 +106,7 @@ public class DaoFactoryFacade {
             this.venueManagerDao = null;
             this.venueDao = null;
             this.bookingDao = null;
+            this.notificationDao = null;
         }
     }
 
@@ -119,12 +123,9 @@ public class DaoFactoryFacade {
     public UserDao getUserDao() {
         if (userDao == null) {
             userDao = new UserDaoFactory().getUserDao(this.persistenceType);
-            // Connect the appropriate observer at creation time
-            if (this.persistenceType == PersistenceType.MYSQL) {
-                ((ObservableDao) userDao).addObserver(mysqlToCsvObserver);
-            } else {
-                ((ObservableDao) userDao).addObserver(csvToMysqlObserver);
-            }
+            // Connect the appropriate sync observer using ObserverFactory
+            DaoObserver syncObserver = getSyncObserver();
+            ((ObservableDao) userDao).addObserver(syncObserver);
         }
         return userDao;
     }
@@ -142,11 +143,9 @@ public class DaoFactoryFacade {
     public FanDao getFanDao() {
         if (fanDao == null) {
             fanDao = new FanDaoFactory().getFanDao(this.persistenceType);
-            if (this.persistenceType == PersistenceType.MYSQL) {
-                ((ObservableDao) fanDao).addObserver(mysqlToCsvObserver);
-            } else {
-                ((ObservableDao) fanDao).addObserver(csvToMysqlObserver);
-            }
+            // Connect the appropriate sync observer using ObserverFactory
+            DaoObserver syncObserver = getSyncObserver();
+            ((ObservableDao) fanDao).addObserver(syncObserver);
         }
         return fanDao;
     }
@@ -164,11 +163,9 @@ public class DaoFactoryFacade {
     public VenueManagerDao getVenueManagerDao() {
         if (venueManagerDao == null) {
             venueManagerDao = new VenueManagerDaoFactory().getVenueManagerDao(this.persistenceType);
-            if (this.persistenceType == PersistenceType.MYSQL) {
-                ((ObservableDao) venueManagerDao).addObserver(mysqlToCsvObserver);
-            } else {
-                ((ObservableDao) venueManagerDao).addObserver(csvToMysqlObserver);
-            }
+            // Connect the appropriate sync observer using ObserverFactory
+            DaoObserver syncObserver = getSyncObserver();
+            ((ObservableDao) venueManagerDao).addObserver(syncObserver);
         }
         return venueManagerDao;
     }
@@ -186,11 +183,9 @@ public class DaoFactoryFacade {
     public VenueDao getVenueDao() {
         if (venueDao == null) {
             venueDao = new VenueDaoFactory().getVenueDao(this.persistenceType);
-            if (this.persistenceType == PersistenceType.MYSQL) {
-                ((ObservableDao) venueDao).addObserver(mysqlToCsvObserver);
-            } else {
-                ((ObservableDao) venueDao).addObserver(csvToMysqlObserver);
-            }
+            // Connect the appropriate sync observer using ObserverFactory
+            DaoObserver syncObserver = getSyncObserver();
+            ((ObservableDao) venueDao).addObserver(syncObserver);
         }
         return venueDao;
     }
@@ -200,20 +195,71 @@ public class DaoFactoryFacade {
      * <p>
      * This method implements lazy initialization and caching. If no BookingDao
      * exists, it creates one using the appropriate factory and configures
-     * the cross-persistence synchronization observer.
+     * BOTH the cross-persistence synchronization observer AND the notification observer.
+     * </p>
+     * <p>
+     * <strong>Observer Pattern:</strong> BookingDao has TWO observers:
+     * <ul>
+     *   <li>CrossPersistenceSyncObserver - for MySQL ↔ CSV synchronization</li>
+     *   <li>NotificationBookingObserver - for automatic notification creation</li>
+     * </ul>
      * </p>
      *
-     * @return A BookingDao instance with synchronization capabilities
+     * @return A BookingDao instance with synchronization and notification capabilities
      */
     public BookingDao getBookingDao() {
         if (bookingDao == null) {
             bookingDao = new BookingDaoFactory().getBookingDao(this.persistenceType);
-            if (this.persistenceType == PersistenceType.MYSQL) {
-                ((ObservableDao) bookingDao).addObserver(mysqlToCsvObserver);
-            } else {
-                ((ObservableDao) bookingDao).addObserver(csvToMysqlObserver);
-            }
+
+            // Observer 1: Sync observer for cross-persistence synchronization
+            DaoObserver syncObserver = getSyncObserver();
+            ((ObservableDao) bookingDao).addObserver(syncObserver);
+
+            // Observer 2: Notification observer for automatic notification generation
+            DaoObserver notificationObserver = observerFactory.getNotificationBookingObserver();
+            ((ObservableDao) bookingDao).addObserver(notificationObserver);
         }
         return bookingDao;
+    }
+
+    /**
+     * Gets a NotificationDao instance configured for the current persistence type.
+     * <p>
+     * This method implements lazy initialization and caching. If no NotificationDao
+     * exists, it creates one using the appropriate factory and configures
+     * the cross-persistence synchronization observer.
+     * </p>
+     *
+     * @return A NotificationDao instance with synchronization capabilities
+     */
+    public NotificationDao getNotificationDao() {
+        if (notificationDao == null) {
+            notificationDao = new NotificationDaoFactory().getNotificationDao(this.persistenceType);
+            // Connect the appropriate sync observer using ObserverFactory
+            DaoObserver syncObserver = getSyncObserver();
+            notificationDao.addObserver(syncObserver);
+        }
+        return notificationDao;
+    }
+
+    // ========================================================================
+    // PRIVATE HELPER METHODS
+    // ========================================================================
+
+    /**
+     * Gets the appropriate sync observer based on current persistence type.
+     * <p>
+     * <strong>Polymorphic Solution:</strong> This method uses the ObserverFactory
+     * to get the correct CrossPersistenceSyncObserver based on the persistence type.
+     * </p>
+     *
+     * @return The appropriate sync observer (MySQL→CSV or CSV→MySQL)
+     */
+    private DaoObserver getSyncObserver() {
+        if (this.persistenceType == PersistenceType.MYSQL) {
+            return observerFactory.getMySqlToCsvObserver();
+        } else {
+            return observerFactory.getCsvToMySqlObserver();
+        }
     }
 }

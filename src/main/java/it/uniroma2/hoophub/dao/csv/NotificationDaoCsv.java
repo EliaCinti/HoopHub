@@ -1,69 +1,59 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.dao.NotificationDAO;
+import it.uniroma2.hoophub.beans.NotificationBean;
+import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
 import it.uniroma2.hoophub.model.NotificationType;
 import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.patterns.observer.DaoOperation;
+import it.uniroma2.hoophub.utilities.CsvUtilities;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 /**
- * CSV implementation of the NotificationDAO interface.
+ * CSV implementation of NotificationDao.
  * <p>
- * This class provides data access operations for Notification entities stored in CSV files.
- * It extends {@link AbstractCsvDao} to leverage common functionality like file initialization,
- * ID generation, and validation, eliminating code duplication.
+ * Manages Notification data in CSV file.
  * </p>
  * <p>
- * <strong>CSV File Structure (notifications.csv):</strong>
- * <pre>
- * id,user_id,user_type,type,message,related_booking_id,is_read,created_at
- * 1,john_doe,FAN,BOOKING_APPROVED,Your booking has been approved,5,false,2025-11-02T10:30:00
- * 2,manager1,VENUE_MANAGER,BOOKING_REQUESTED,New booking request received,6,false,2025-11-02T11:00:00
- * </pre>
- * </p>
- * <p>
- * <strong>Design Pattern:</strong> This DAO handles notifications for both Fans and VenueManagers,
- * using the user_id (username) and user_type fields to distinguish between them. No circular
- * dependencies are created since notifications only store IDs/usernames, not full objects.
- * </p>
- * <p>
- * <strong>Thread Safety:</strong> All public methods are synchronized to prevent concurrent
- * modification issues when multiple threads access the CSV file.
- * </p>
- * <p>
- * <strong>Note:</strong> The NotificationDAO interface uses Long for IDs (for MySQL compatibility),
- * but user_id is stored as a String (username) in the CSV implementation. The interface methods
- * that take Long userId are interpreted as hash codes or unique identifiers for users.
+ * <strong>Design Patterns:</strong>
+ * <ul>
+ *   <li><strong>Factory</strong>: Created via NotificationDaoFactory</li>
+ *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
+ *   <li><strong>Builder</strong>: Uses Notification.Builder for object construction</li>
+ *   <li><strong>Template Method</strong>: Extends AbstractCsvDao</li>
+ * </ul>
  * </p>
  *
- * @see NotificationDAO Interface defining the contract
- * @see AbstractCsvDao Base class providing common CSV functionality
- * @see Notification Domain model representing a notification
+ * @see NotificationDao
  */
-public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDAO {
+public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDao {
 
-    // ========== CSV CONFIGURATION ==========
+    // ========== CSV FILE CONFIGURATION ==========
 
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "notifications.csv";
     private static final String[] CSV_HEADER = {
-            "id", "user_id", "user_type", "type", "message",
+            "id", "username", "user_type", "notification_type", "message",
             "related_booking_id", "is_read", "created_at"
     };
+
+    // ========== CONSTANTS ==========
+    private static final String NOTIFICATION = "Notification";
+    private static final String USERNAME = "Username";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     // ========== COLUMN INDICES ==========
 
     private static final int COL_ID = 0;
-    private static final int COL_USER_ID = 1;
+    private static final int COL_USERNAME = 1;
     private static final int COL_USER_TYPE = 2;
-    private static final int COL_TYPE = 3;
+    private static final int COL_NOTIFICATION_TYPE = 3;
     private static final int COL_MESSAGE = 4;
     private static final int COL_RELATED_BOOKING_ID = 5;
     private static final int COL_IS_READ = 6;
@@ -72,15 +62,9 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
     // ========== CONSTRUCTOR ==========
 
     /**
-     * Constructs a new NotificationDaoCsv and initializes the CSV file.
+     * Constructs a new NotificationDaoCsv.
      * <p>
-     * The parent constructor ({@link AbstractCsvDao}) handles:
-     * <ul>
-     *   <li>Creating the File object</li>
-     *   <li>Creating parent directories if needed</li>
-     *   <li>Initializing the CSV file with headers if it doesn't exist</li>
-     *   <li>Setting up the logger</li>
-     * </ul>
+     * Initializes the CSV file if it doesn't exist (handled by AbstractCsvDao).
      * </p>
      */
     public NotificationDaoCsv() {
@@ -92,485 +76,254 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDA
         return CSV_HEADER;
     }
 
-    // ========== PUBLIC METHODS (NotificationDAO Interface Implementation) ==========
+    // ========== PUBLIC DAO METHODS ==========
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * If the notification has no ID, a new ID is automatically generated using
-     * {@link AbstractCsvDao#getNextId(int)}.
-     * </p>
-     */
     @Override
-    public synchronized Notification save(Notification notification) throws DAOException {
-        validateNotNull(notification, "Notification");
+    public synchronized void saveNotification(NotificationBean notificationBean) throws DAOException {
+        validateNotNull(notificationBean, "NotificationBean");
 
         // Generate ID if not present
-        long id = notification.getId() != null ? notification.getId() : getNextId(COL_ID);
+        int id = notificationBean.getId() == 0 ? (int) getNextId(COL_ID) : notificationBean.getId();
 
         String[] newRow = {
                 String.valueOf(id),
-                String.valueOf(notification.getUserId()),
-                notification.getUserType().name(),
-                notification.getType().name(),
-                notification.getMessage(),
-                notification.getRelatedBookingId() != null ?
-                        String.valueOf(notification.getRelatedBookingId()) : "",
-                String.valueOf(notification.isRead()),
-                notification.getCreatedAt().toString()
+                notificationBean.getUsername(),
+                notificationBean.getUserType().name(),
+                notificationBean.getType().name(),
+                notificationBean.getMessage(),
+                notificationBean.getRelatedBookingId() == 0 ? "" : String.valueOf(notificationBean.getRelatedBookingId()),
+                String.valueOf(notificationBean.isRead()),
+                notificationBean.getCreatedAt().format(DATE_TIME_FORMATTER)
         };
 
         CsvUtilities.writeFile(csvFile, newRow);
 
-        // Return notification with generated ID
-        return new Notification.Builder()
-                .from(notification)
-                .id(id)
-                .build();
+        notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(id), notificationBean);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized Optional<Notification> findById(Long id) throws DAOException {
+    public synchronized Notification retrieveNotification(int id) throws DAOException {
         validatePositiveId(id);
 
         String[] row = findRowByValue(COL_ID, String.valueOf(id));
         if (row == null) {
-            return Optional.empty();
+            return null;
         }
 
-        return Optional.of(mapRowToNotification(row));
+        return mapRowToNotification(row);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized List<Notification> findByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
+    public synchronized List<Notification> getNotificationsForUser(String username, UserType userType) throws DAOException {
+        validateNotNullOrEmpty(username, USERNAME);
+        validateNotNull(userType, "UserType");
 
         List<Notification> notifications = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (Long.parseLong(row[COL_USER_ID]) == userId) {
+            if (row[COL_USERNAME].equals(username) &&
+                    row[COL_USER_TYPE].equals(userType.name())) {
                 notifications.add(mapRowToNotification(row));
             }
         }
 
-        // Sort by created_at descending (most recent first)
-        notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
+        // Sort by createdAt descending (newest first)
+        notifications.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
 
         logger.log(Level.FINE, "Retrieved {0} notifications for user {1}",
-                new Object[]{notifications.size(), userId});
+                new Object[]{notifications.size(), username});
         return notifications;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized List<Notification> findUnreadByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
+    public synchronized List<Notification> getUnreadNotificationsForUser(String username, UserType userType) throws DAOException {
+        validateNotNullOrEmpty(username, USERNAME);
+        validateNotNull(userType, "UserType");
 
         List<Notification> notifications = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (Long.parseLong(row[COL_USER_ID]) == userId &&
+            if (row[COL_USERNAME].equals(username) &&
+                    row[COL_USER_TYPE].equals(userType.name()) &&
                     !Boolean.parseBoolean(row[COL_IS_READ])) {
                 notifications.add(mapRowToNotification(row));
             }
         }
 
-        notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
+        // Sort by createdAt descending (newest first)
+        notifications.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
 
         logger.log(Level.FINE, "Retrieved {0} unread notifications for user {1}",
-                new Object[]{notifications.size(), userId});
+                new Object[]{notifications.size(), username});
         return notifications;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized List<Notification> findByUserIdAndType(Long userId, NotificationType type)
-            throws DAOException {
-        validatePositiveId(userId);
-        validateNotNull(type, "NotificationType");
-
-        List<Notification> notifications = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Long.parseLong(row[COL_USER_ID]) == userId &&
-                    row[COL_TYPE].equals(type.name())) {
-                notifications.add(mapRowToNotification(row));
-            }
-        }
-
-        notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
-
-        logger.log(Level.FINE, "Retrieved {0} {1} notifications for user {2}",
-                new Object[]{notifications.size(), type, userId});
-        return notifications;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized List<Notification> findByBookingId(Long bookingId) throws DAOException {
-        validatePositiveId(bookingId);
-
-        List<Notification> notifications = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (!row[COL_RELATED_BOOKING_ID].isEmpty() &&
-                    Long.parseLong(row[COL_RELATED_BOOKING_ID]) == bookingId) {
-                notifications.add(mapRowToNotification(row));
-            }
-        }
-
-        notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
-
-        logger.log(Level.FINE, "Retrieved {0} notifications for booking {1}",
-                new Object[]{notifications.size(), bookingId});
-        return notifications;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized int countUnreadByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        int count = 0;
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Long.parseLong(row[COL_USER_ID]) == userId &&
-                    !Boolean.parseBoolean(row[COL_IS_READ])) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized boolean markAsRead(Long notificationId) throws DAOException {
+    public synchronized void markAsRead(int notificationId) throws DAOException {
         validatePositiveId(notificationId);
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (Long.parseLong(row[COL_ID]) == notificationId) {
+            if (Integer.parseInt(row[COL_ID]) == notificationId) {
                 row[COL_IS_READ] = "true";
                 found = true;
                 break;
             }
         }
 
-        if (found) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-            logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
+        if (!found) {
+            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
+                    NOTIFICATION, "mark as read", notificationId));
         }
 
-        return found;
+        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+
+        logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
+
+        // Create a bean for notification (we don't need to full object for update notification)
+        NotificationBean bean = new NotificationBean.Builder()
+                .id(notificationId)
+                .isRead(true)
+                .build();
+
+        notifyObservers(DaoOperation.UPDATE, NOTIFICATION, String.valueOf(notificationId), bean);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized int markAllAsReadByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
+    public synchronized void markAllAsReadForUser(String username, UserType userType) throws DAOException {
+        validateNotNullOrEmpty(username, USERNAME);
+        validateNotNull(userType, "UserType");
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
-        int count = 0;
+        boolean anyUpdated = false;
 
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (Long.parseLong(row[COL_USER_ID]) == userId &&
+            if (row[COL_USERNAME].equals(username) &&
+                    row[COL_USER_TYPE].equals(userType.name()) &&
                     !Boolean.parseBoolean(row[COL_IS_READ])) {
                 row[COL_IS_READ] = "true";
-                count++;
+                anyUpdated = true;
             }
         }
 
-        if (count > 0) {
+        if (anyUpdated) {
             CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-            logger.log(Level.INFO, "Marked {0} notifications as read for user {1}",
-                    new Object[]{count, userId});
+            logger.log(Level.INFO, "Marked all notifications as read for user {0}", username);
         }
-
-        return count;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public synchronized int markAsReadByBookingAndUser(Long bookingId, Long userId)
-            throws DAOException {
+    public synchronized void deleteNotification(int notificationId) throws DAOException {
+        validatePositiveId(notificationId);
+
+        boolean found = deleteById(notificationId, COL_ID);
+
+        if (!found) {
+            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
+                    NOTIFICATION, "deletion", notificationId));
+        }
+
+        logger.log(Level.INFO, "Notification deleted successfully: {0}", notificationId);
+        notifyObservers(DaoOperation.DELETE, NOTIFICATION, String.valueOf(notificationId), null);
+    }
+
+    @Override
+    public synchronized void deleteNotificationsByBooking(int bookingId) throws DAOException {
         validatePositiveId(bookingId);
-        validatePositiveId(userId);
+
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> remainingData = new ArrayList<>();
+
+        // Keep header
+        if (!data.isEmpty()) {
+            remainingData.add(data.getFirst());
+        }
+
+        // Filter out notifications related to this booking
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            String relatedBookingIdStr = row[COL_RELATED_BOOKING_ID];
+
+            // Keep the row if it's not related to this booking
+            if (relatedBookingIdStr.isEmpty() || Integer.parseInt(relatedBookingIdStr) != bookingId) {
+                remainingData.add(row);
+            }
+        }
+
+        // Update file only if something was deleted
+        if (remainingData.size() < data.size()) {
+            CsvUtilities.updateFile(csvFile, CSV_HEADER, remainingData);
+            logger.log(Level.INFO, "Deleted notifications for booking: {0}", bookingId);
+        }
+    }
+
+    @Override
+    public synchronized int getUnreadCount(String username, UserType userType) throws DAOException {
+        validateNotNullOrEmpty(username, USERNAME);
+        validateNotNull(userType, "UserType");
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         int count = 0;
 
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (!row[COL_RELATED_BOOKING_ID].isEmpty() &&
-                    Long.parseLong(row[COL_RELATED_BOOKING_ID]) == bookingId &&
-                    Long.parseLong(row[COL_USER_ID]) == userId &&
+            if (row[COL_USERNAME].equals(username) &&
+                    row[COL_USER_TYPE].equals(userType.name()) &&
                     !Boolean.parseBoolean(row[COL_IS_READ])) {
-                row[COL_IS_READ] = "true";
                 count++;
             }
         }
 
-        if (count > 0) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-            logger.log(Level.INFO, "Marked {0} notifications as read for booking {1} and user {2}",
-                    new Object[]{count, bookingId, userId});
-        }
-
         return count;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized boolean update(Notification notification) throws DAOException {
-        validateNotNull(notification, "Notification");
-        if (notification.getId() == null) {
-            throw new IllegalArgumentException("Notification ID cannot be null for update");
-        }
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Long.parseLong(row[COL_ID]) == notification.getId()) {
-                row[COL_USER_ID] = String.valueOf(notification.getUserId());
-                row[COL_USER_TYPE] = notification.getUserType().name();
-                row[COL_TYPE] = notification.getType().name();
-                row[COL_MESSAGE] = notification.getMessage();
-                row[COL_RELATED_BOOKING_ID] = notification.getRelatedBookingId() != null ?
-                        String.valueOf(notification.getRelatedBookingId()) : "";
-                row[COL_IS_READ] = String.valueOf(notification.isRead());
-                // Note: created_at is not updated (immutable timestamp)
-                found = true;
-                break;
-            }
-        }
-
-        if (found) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-            logger.log(Level.INFO, "Notification updated successfully: {0}", notification.getId());
-        }
-
-        return found;
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation uses the {@link AbstractCsvDao#deleteById(long, int)} helper method
-     * to eliminate code duplication and ensure correct CSV file handling.
-     * </p>
-     */
-    @Override
-    public synchronized boolean deleteById(Long id) throws DAOException {
-        validatePositiveId(id);
-
-        boolean found = deleteById(id, COL_ID);
-
-        if (found) {
-            logger.log(Level.INFO, "Notification deleted successfully: {0}", id);
-        }
-
-        return found;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized int deleteByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        List<String[]> toKeep = new ArrayList<>();
-
-        // Keep header
-        toKeep.add(data.getFirst());
-
-        int count = 0;
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Long.parseLong(row[COL_USER_ID]) == userId) {
-                count++;
-            } else {
-                toKeep.add(row);
-            }
-        }
-
-        if (count > 0) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, toKeep);
-            logger.log(Level.INFO, "Deleted {0} notifications for user {1}",
-                    new Object[]{count, userId});
-        }
-
-        return count;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized int deleteReadByUserId(Long userId) throws DAOException {
-        validatePositiveId(userId);
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        List<String[]> toKeep = new ArrayList<>();
-
-        // Keep header
-        toKeep.add(data.getFirst());
-
-        int count = 0;
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Long.parseLong(row[COL_USER_ID]) == userId &&
-                    Boolean.parseBoolean(row[COL_IS_READ])) {
-                count++;
-            } else {
-                toKeep.add(row);
-            }
-        }
-
-        if (count > 0) {
-            CsvUtilities.updateFile(csvFile, CSV_HEADER, toKeep);
-            logger.log(Level.INFO, "Deleted {0} read notifications for user {1}",
-                    new Object[]{count, userId});
-        }
-
-        return count;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized List<Notification> findAll() throws DAOException {
-        List<Notification> notifications = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            notifications.add(mapRowToNotification(data.get(i)));
-        }
-
-        notifications.sort((n1, n2) -> n2.getCreatedAt().compareTo(n1.getCreatedAt()));
-
-        logger.log(Level.FINE, "Retrieved {0} notifications", notifications.size());
-        return notifications;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized List<Notification> findRecentByUserId(Long userId, int limit)
-            throws DAOException {
-        validatePositiveId(userId);
-        if (limit <= 0) {
-            throw new IllegalArgumentException("Limit must be positive");
-        }
-
-        List<Notification> allNotifications = findByUserId(userId);
-
-        // Return only the first 'limit' notifications (already sorted by date desc)
-        List<Notification> recentNotifications = allNotifications.stream()
-                .limit(limit)
-                .collect(Collectors.toList());
-
-        logger.log(Level.FINE, "Retrieved {0} recent notifications for user {1}",
-                new Object[]{recentNotifications.size(), userId});
-        return recentNotifications;
     }
 
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps CSV row data to a Notification domain object.
-     * <p>
-     * This method constructs a Notification using the Builder pattern, parsing all fields
-     * from the CSV row including timestamps and enum types.
-     * </p>
+     * Maps a CSV row to a Notification domain object.
      *
-     * @param row Array containing notification data
-     * @return A fully constructed Notification object
-     * @throws DAOException If there's an error parsing data or constructing the Notification
+     * @param row The CSV row data
+     * @return A Notification object
+     * @throws DAOException If the row data is invalid or cannot be parsed
      */
     private Notification mapRowToNotification(String[] row) throws DAOException {
         try {
-            Long relatedBookingId = null;
-            if (!row[COL_RELATED_BOOKING_ID].isEmpty()) {
-                relatedBookingId = Long.parseLong(row[COL_RELATED_BOOKING_ID]);
-            }
+            int id = Integer.parseInt(row[COL_ID]);
+            String username = row[COL_USERNAME];
+            UserType userType = UserType.valueOf(row[COL_USER_TYPE]);
+            NotificationType notificationType = NotificationType.valueOf(row[COL_NOTIFICATION_TYPE]);
+            String message = row[COL_MESSAGE];
+            String relatedBookingIdStr = row[COL_RELATED_BOOKING_ID];
+            int relatedBookingId = relatedBookingIdStr.isEmpty() ? 0 : Integer.parseInt(relatedBookingIdStr);
+            boolean isRead = Boolean.parseBoolean(row[COL_IS_READ]);
+            LocalDateTime createdAt = LocalDateTime.parse(row[COL_CREATED_AT], DATE_TIME_FORMATTER);
 
             return new Notification.Builder()
-                    .id(Long.parseLong(row[COL_ID]))
-                    .userId(Long.parseLong(row[COL_USER_ID]))
-                    .userType(UserType.valueOf(row[COL_USER_TYPE]))
-                    .type(NotificationType.valueOf(row[COL_TYPE]))
-                    .message(row[COL_MESSAGE])
+                    .id(id)
+                    .username(username)
+                    .userType(userType)
+                    .type(notificationType)
+                    .message(message)
                     .relatedBookingId(relatedBookingId)
-                    .isRead(Boolean.parseBoolean(row[COL_IS_READ]))
-                    .createdAt(LocalDateTime.parse(row[COL_CREATED_AT]))
+                    .isRead(isRead)
+                    .createdAt(createdAt)
                     .build();
-        } catch (IllegalArgumentException e) {
-            // Catches NumberFormatException (subclass) and other IllegalArgumentExceptions
-            throw new DAOException("Error parsing notification data: " + e.getMessage(), e);
+
+        } catch (Exception e) {
+            throw new DAOException("Error mapping notification data from CSV row", e);
         }
     }
 }
