@@ -124,7 +124,7 @@ package "Controller Layer" {
         + acceptBookingRequest(managerUsername: String, bookingId: int): void
         + rejectBookingRequest(managerUsername: String, bookingId: int): void
         + getManagerNotifications(managerUsername: String): List<NotificationBean>
-        + markNotificationAsRead(notificationId: Long): void
+        + markNotificationAsRead(notificationId: int): void
         - applyBookingFilters(bookings: List<Booking>, filters: FilterCriteria): List<Booking>
         - validateVenueOwnership(manager: VenueManager, venue: Venue): boolean
         - convertVenueToBean(venue: Venue): VenueBean
@@ -141,7 +141,7 @@ package "Controller Layer" {
         + getBookingDetails(bookingId: int): BookingBean
         + cancelBooking(fanUsername: String, bookingId: int): void
         + getFanNotifications(fanUsername: String): List<NotificationBean>
-        + markNotificationAsRead(notificationId: Long): void
+        + markNotificationAsRead(notificationId: int): void
         - applyBookingFilters(bookings: List<Booking>, filters: FilterCriteria): List<Booking>
         - validateBookingOwnership(fan: Fan, booking: Booking): boolean
         - convertBookingToBean(booking: Booking): BookingBean
@@ -217,9 +217,9 @@ package "DAO Interfaces" {
 
     interface NotificationDao <<interface>> {
         + saveNotification(notificationBean: NotificationBean): void
-        + getNotificationsForUser(userId: Long, userType: UserType): List<Notification>
-        + markAsRead(notificationId: Long): void
-        + deleteNotification(id: Long): void
+        + getNotificationsForUser(username: String, userType: UserType): List<Notification>
+        + markAsRead(notificationId: int): void
+        + deleteNotification(id: int): void
     }
 }
 
@@ -255,12 +255,12 @@ package "Bean Layer (DTO)" {
     }
 
     class NotificationBean <<bean>> {
-        + id: Long
-        + userId: Long
+        + id: int
+        + username: String
         + userType: UserType
         + type: NotificationType
         + message: String
-        + relatedBookingId: Long
+        + relatedBookingId: int
         + isRead: boolean
         + createdAt: LocalDateTime
         __
@@ -351,12 +351,12 @@ package "Entity Layer (Model)" {
     }
 
     class Notification <<entity>> {
-        - id: Long
-        - userId: Long
+        - id: int
+        - username: String
         - userType: UserType
         - type: NotificationType
         - message: String
-        - relatedBookingId: Long
+        - relatedBookingId: int
         - isRead: boolean
         - createdAt: LocalDateTime
         __

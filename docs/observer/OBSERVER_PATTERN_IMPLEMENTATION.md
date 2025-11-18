@@ -9,7 +9,7 @@ Implementazione completa del **Pattern Observer** per le notifiche automatiche, 
 ## 📦 FILE CREATI
 
 ### 1. **Model/Enum**
-- ✅ `NotificationType.java` - Enum per tipi di notifica (NEW_BOOKING_REQUEST, BOOKING_CONFIRMED, BOOKING_REJECTED, etc.)
+- ✅ `NotificationType.java` - Enum per tipi di notifica (BOOKING_REQUESTED, BOOKING_APPROVED, BOOKING_REJECTED, BOOKING_CANCELLED)
 
 ### 2. **Bean (DTO)**
 - ✅ `NotificationBean.java` - Data Transfer Object con Builder pattern
@@ -71,8 +71,7 @@ Come richiesto dal professore:
 ```java
 // NotificationDaoFactory - Polimorfismo per persistenza
 public NotificationDao getNotificationDao(PersistenceType persistenceType) {
-    return switch (persistenceType) {  // ← SWITCH/CASE POLIMORF
-O
+    return switch (persistenceType) {  // ← SWITCH/CASE POLIMORFO
         case CSV -> createNotificationDaoCsv();
         case MYSQL -> createNotificationDaoMySql();
     };
@@ -86,6 +85,37 @@ public DaoObserver getObserver(ObserverType observerType, PersistenceType persis
     };
 }
 ```
+
+---
+
+## 🗄️ SCHEMA DATABASE
+
+La tabella `notifications` nel database MySQL ha la seguente struttura:
+
+```sql
+CREATE TABLE notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id VARCHAR(50) NOT NULL,                                    -- Username (String)
+    user_type ENUM('FAN', 'VENUE_MANAGER') NOT NULL,
+    type ENUM('BOOKING_REQUESTED', 'BOOKING_APPROVED',               -- Tipi notifica
+              'BOOKING_REJECTED', 'BOOKING_CANCELLED') NOT NULL,
+    message TEXT NOT NULL,
+    related_booking_id INT DEFAULT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_notification_user
+        FOREIGN KEY (user_id) REFERENCES users(username)
+        ON DELETE CASCADE,
+    CONSTRAINT fk_notification_booking
+        FOREIGN KEY (related_booking_id) REFERENCES bookings(id)
+        ON DELETE SET NULL
+);
+```
+
+**Note importanti:**
+- `user_id` contiene lo **username** (VARCHAR), non un ID numerico
+- `type` usa valori ENUM allineati con `NotificationType.java`
+- `related_booking_id` è INT (come booking.id)
 
 ---
 
@@ -121,9 +151,9 @@ Subject (BookingDao)
 
 ### **4. Information Expert** ✅
 `NotificationBookingObserver` ha tutte le info necessarie:
-- BookingBean (da evento INSERT)
-- Booking Model (da evento UPDATE)
+- BookingBean (da evento INSERT/UPDATE)
 - DaoFactoryFacade (per recuperare VenueDao, NotificationDao)
+- Nessuna conversione username→ID necessaria (usa String direttamente)
 
 ### **5. Creator** ✅
 `ObserverFactory` crea gli observer (ha i dati necessari e li gestisce)
@@ -150,13 +180,18 @@ Subject (BookingDao)
    └─┬ Observer 2: NotificationBookingObserver ┐
      └────────────────────────────────────────┘
         ↓ onAfterInsert()
-        ↓ crea NotificationBean per VenueManager
+        ↓ Recupera VenueManager username da Venue
+        ↓ Crea NotificationBean:
+        ↓   - username: venueManagerUsername (String)
+        ↓   - type: BOOKING_REQUESTED
+        ↓   - message: "New booking request..."
         ↓ NotificationDao.saveNotification()
            ↓ salva notifica
            ↓ notifyObservers() → sync MySQL ↔ CSV
 ```
 
 **ZERO chiamate tra controller!** ✅
+**ZERO conversioni username→ID!** ✅
 
 ### **Scenario 2: VenueManager accetta booking**
 
@@ -167,9 +202,9 @@ Subject (BookingDao)
    ↓ usa
 3. VenueManager.confirmBooking() (business logic)
    ↓ cambia status
-4. BookingDao.updateBookingStatus(id, CONFIRMED)
+4. BookingDao.updateBooking(bookingBean)
    ↓ aggiorna e poi
-5. BookingDao.notifyObservers(UPDATE, "Booking", id, booking)
+5. BookingDao.notifyObservers(UPDATE, "Booking", id, bookingBean)
    ↓ ┌──────────────────────────────────┐
    ├─┤ Observer 1: CrossPersistenceSync │
    │ └──────────────────────────────────┘
@@ -179,12 +214,16 @@ Subject (BookingDao)
      └────────────────────────────────────────┘
         ↓ onAfterUpdate()
         ↓ vede status = CONFIRMED
-        ↓ crea NotificationBean per Fan
+        ↓ Crea NotificationBean per Fan:
+        ↓   - username: bookingBean.getFanUsername() (String)
+        ↓   - type: BOOKING_APPROVED
+        ↓   - message: "Great news! Your booking has been APPROVED!"
         ↓ NotificationDao.saveNotification()
            ↓ salva notifica
 ```
 
 **ZERO chiamate tra controller!** ✅
+**Username usato direttamente senza conversione!** ✅
 
 ---
 
@@ -234,20 +273,29 @@ bookingDao.saveBooking(bookingBean);
 
 // Verifica che la notifica sia stata creata AUTOMATICAMENTE
 NotificationDao notificationDao = DaoFactoryFacade.getInstance().getNotificationDao();
-List<Notification> notifications = notificationDao.getNotificationsForUser(venueManagerId, UserType.VENUE_MANAGER);
-// Dovrebbe contenere 1 notifica di tipo NEW_BOOKING_REQUEST
+List<Notification> notifications = notificationDao.getNotificationsForUser(
+    "venue_manager_username",  // ← Username diretto (String)
+    UserType.VENUE_MANAGER
+);
+// Dovrebbe contenere 1 notifica di tipo BOOKING_REQUESTED
 ```
 
 ### **Test 3: Accetta booking e verifica notifica per Fan**
 ```java
 // VenueManager accetta
+BookingBean bookingBean = // ... recupera booking
+bookingBean.setStatus(BookingStatus.CONFIRMED);
+
 BookingDao bookingDao = DaoFactoryFacade.getInstance().getBookingDao();
-bookingDao.updateBookingStatus(bookingId, BookingStatus.CONFIRMED);
+bookingDao.updateBooking(bookingBean);
 
 // Verifica notifica per Fan
 NotificationDao notificationDao = DaoFactoryFacade.getInstance().getNotificationDao();
-List<Notification> fanNotifications = notificationDao.getNotificationsForUser(fanId, UserType.FAN);
-// Dovrebbe contenere 1 notifica di tipo BOOKING_CONFIRMED
+List<Notification> fanNotifications = notificationDao.getNotificationsForUser(
+    "testfan",  // ← Username Fan (String)
+    UserType.FAN
+);
+// Dovrebbe contenere 1 notifica di tipo BOOKING_APPROVED
 ```
 
 ---
@@ -262,6 +310,7 @@ List<Notification> fanNotifications = notificationDao.getNotificationsForUser(fa
 | **ISPW Compliance** | ❌ No pattern richiesti | ✅ Tutti i pattern richiesti |
 | **Testabilità** | Media | Alta (mock observer) |
 | **Estendibilità** | Bassa | Alta (aggiungi observer) |
+| **ID Management** | Confuso (username→Long) | Pulito (usa String username) |
 
 ---
 
@@ -273,7 +322,7 @@ mvn clean compile
 ```
 
 ### **2. Se compila con successo**
-- Commit su branch `claude/implement-observer-notification-pattern`
+- Commit su branch `claude/add-plantuml-vopc-diagram-...`
 - Push per testing
 - Merge su `main` dopo verifica
 
@@ -293,6 +342,9 @@ mvn clean compile
 
 **Q: Come funziona l'ObserverFactory?**
 > È un Singleton che combina Factory pattern per creare observer. Cachea le istanze per evitare duplicazioni e fornisce metodi polimorfici con switch/case per selezione runtime.
+
+**Q: Perché non usi Long ID per gli utenti?**
+> Nel sistema HoopHub, gli utenti sono identificati da **username** (String), non da ID numerici. Il database usa `user_id VARCHAR(50)` che contiene lo username. NotificationBookingObserver usa direttamente gli username senza conversioni, mantenendo il codice semplice e allineato allo schema database.
 
 **Q: Quali pattern GoF hai implementato?**
 > - **Observer** (BookingDao → Observers)
@@ -316,8 +368,8 @@ mvn clean compile
 
 | Componente | Stato | Pattern Applicati |
 |------------|-------|-------------------|
-| NotificationType | ✅ | Enum |
-| NotificationBean | ✅ | Builder, DTO |
+| NotificationType | ✅ | Enum (BOOKING_REQUESTED, BOOKING_APPROVED, etc.) |
+| NotificationBean | ✅ | Builder, DTO (username: String, id: int) |
 | NotificationDao | ✅ | Interface, Observer |
 | NotificationDaoCsv | ✅ | Template Method, Observer |
 | NotificationDaoMySql | ✅ | Template Method, Observer |
@@ -336,7 +388,7 @@ mvn clean compile
 - **Principi**: GRASP (Larman)
 - **Corso**: ISPW - Ingegneria del Software e Progettazione Web
 - **Implementazione**: Claude Code + Elia Cinti
-- **Data**: 2025-11-17
+- **Data**: 2025-01-18
 
 ---
 
