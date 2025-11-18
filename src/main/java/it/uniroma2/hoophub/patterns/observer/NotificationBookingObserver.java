@@ -5,7 +5,6 @@ import it.uniroma2.hoophub.beans.NotificationBean;
 import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.BookingStatus;
 import it.uniroma2.hoophub.model.NotificationType;
 import it.uniroma2.hoophub.model.UserType;
@@ -133,7 +132,7 @@ public class NotificationBookingObserver implements DaoObserver {
      * Handles notification creation when a booking is deleted.
      * <p>
      * Currently not implemented. Could be used to notify both
-     * Fan and VenueManager if a booking is cancelled.
+     * Fan and VenueManager if a booking is canceled.
      * </p>
      *
      * @param entityType The type of entity
@@ -154,7 +153,7 @@ public class NotificationBookingObserver implements DaoObserver {
      * <p>
      * This method:
      * 1. Retrieves the Venue from VenueDao
-     * 2. Gets the VenueManager username
+     * 2. Get the VenueManager username
      * 3. Creates and saves NotificationBean with username directly
      * </p>
      *
@@ -196,7 +195,7 @@ public class NotificationBookingObserver implements DaoObserver {
      * 1. Uses Fan username directly from booking
      * 2. Determines notification type based on booking status
      * 3. Creates appropriate message
-     * 4. Saves NotificationBean
+     * 4. Save NotificationBean
      * </p>
      *
      * @param bookingBean The booking bean object

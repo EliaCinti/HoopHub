@@ -398,7 +398,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         }
     }
 
-    private void validateUsernameInput(String username) {
+    @Override
+    protected void validateUsernameInput(String username) {
         if (username == null || username.trim().isEmpty()) {
             throw new IllegalArgumentException(ERR_NULL_USERNAME);
         }

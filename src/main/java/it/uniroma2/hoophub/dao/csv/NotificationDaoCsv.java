@@ -190,7 +190,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
         logger.log(Level.INFO, "Notification marked as read: {0}", notificationId);
 
-        // Create a bean for notification (we don't need full object for update notification)
+        // Create a bean for notification (we don't need to full object for update notification)
         NotificationBean bean = new NotificationBean.Builder()
                 .id(notificationId)
                 .isRead(true)
@@ -248,7 +248,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
         // Keep header
         if (!data.isEmpty()) {
-            remainingData.add(data.get(0));
+            remainingData.add(data.getFirst());
         }
 
         // Filter out notifications related to this booking

@@ -237,7 +237,7 @@ public class DaoFactoryFacade {
             notificationDao = new NotificationDaoFactory().getNotificationDao(this.persistenceType);
             // Connect the appropriate sync observer using ObserverFactory
             DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) notificationDao).addObserver(syncObserver);
+            notificationDao.addObserver(syncObserver);
         }
         return notificationDao;
     }
