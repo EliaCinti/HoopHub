@@ -171,9 +171,8 @@ public class SignUpController extends AbstractController {
     private UserBean convertUserToBean(User user) {
         UserType userType = user.getUserType();
 
-        if (userType == UserType.FAN) {
-            Fan fan = (Fan) user;
-            return new FanBean.Builder()
+        return switch (user) {
+            case Fan fan -> new FanBean.Builder()
                     .username(fan.getUsername())
                     .fullName(fan.getFullName())
                     .gender(fan.getGender())
@@ -181,9 +180,7 @@ public class SignUpController extends AbstractController {
                     .favTeam(fan.getFavTeam())
                     .birthday(fan.getBirthday())
                     .build();
-        } else if (userType == UserType.VENUE_MANAGER) {
-            VenueManager manager = (VenueManager) user;
-            return new VenueManagerBean.Builder()
+            case VenueManager manager -> new VenueManagerBean.Builder()
                     .username(manager.getUsername())
                     .fullName(manager.getFullName())
                     .gender(manager.getGender())
@@ -191,14 +188,13 @@ public class SignUpController extends AbstractController {
                     .companyName(manager.getCompanyName())
                     .phoneNumber(manager.getPhoneNumber())
                     .build();
-        }
-
-        // Fallback to basic UserBean
-        return new UserBean.Builder<>()
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .gender(user.getGender())
-                .type(userType.toString())
-                .build();
+            case null -> throw new IllegalArgumentException("User bean cannot be null");
+            default -> new UserBean.Builder<>()
+                    .username(user.getUsername())
+                    .fullName(user.getFullName())
+                    .gender(user.getGender())
+                    .type(userType.toString())
+                    .build();
+        };
     }
 }
