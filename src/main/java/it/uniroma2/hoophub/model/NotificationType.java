@@ -18,16 +18,16 @@ public enum NotificationType {
      * Recipients: VenueManager who owns the venue.
      * </p>
      */
-    NEW_BOOKING_REQUEST("New Booking Request"),
+    BOOKING_REQUESTED("Booking Requested"),
 
     /**
-     * Notification sent to Fan when their booking is confirmed by the VenueManager.
+     * Notification sent to Fan when their booking is approved by the VenueManager.
      * <p>
      * Triggered when: VenueManager accepts a pending booking request.
      * Recipients: Fan who made the booking.
      * </p>
      */
-    BOOKING_CONFIRMED("Booking Confirmed"),
+    BOOKING_APPROVED("Booking Approved"),
 
     /**
      * Notification sent to Fan when their booking is rejected by the VenueManager.

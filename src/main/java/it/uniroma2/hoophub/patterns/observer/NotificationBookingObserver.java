@@ -176,7 +176,7 @@ public class NotificationBookingObserver implements DaoObserver {
         NotificationBean notification = new NotificationBean.Builder()
             .username(venueManagerUsername)
             .userType(UserType.VENUE_MANAGER)
-            .type(NotificationType.NEW_BOOKING_REQUEST)
+            .type(NotificationType.BOOKING_REQUESTED)
             .message(message)
             .relatedBookingId(bookingBean.getId())
             .isRead(false)
@@ -210,9 +210,9 @@ public class NotificationBookingObserver implements DaoObserver {
         String message;
 
         if (bookingBean.getStatus() == BookingStatus.CONFIRMED) {
-            notificationType = NotificationType.BOOKING_CONFIRMED;
+            notificationType = NotificationType.BOOKING_APPROVED;
             message = String.format(
-                "Great news! Your booking for %s vs %s has been CONFIRMED!",
+                "Great news! Your booking for %s vs %s has been APPROVED!",
                 bookingBean.getHomeTeam().getDisplayName(),
                 bookingBean.getAwayTeam().getDisplayName()
             );

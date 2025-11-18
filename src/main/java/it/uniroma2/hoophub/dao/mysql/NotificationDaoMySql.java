@@ -39,28 +39,28 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
     // ========== SQL Queries ==========
     private static final String SQL_INSERT_NOTIFICATION =
-            "INSERT INTO notifications (username, user_type, notification_type, message, " +
+            "INSERT INTO notifications (user_id, user_type, type, message, " +
                     "related_booking_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     private static final String SQL_SELECT_NOTIFICATION =
-            "SELECT id, username, user_type, notification_type, message, related_booking_id, " +
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
                     "is_read, created_at FROM notifications WHERE id = ?";
 
     private static final String SQL_SELECT_NOTIFICATIONS_BY_USER =
-            "SELECT id, username, user_type, notification_type, message, related_booking_id, " +
-                    "is_read, created_at FROM notifications WHERE username = ? AND user_type = ? " +
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
+                    "is_read, created_at FROM notifications WHERE user_id = ? AND user_type = ? " +
                     "ORDER BY created_at DESC";
 
     private static final String SQL_SELECT_UNREAD_NOTIFICATIONS =
-            "SELECT id, username, user_type, notification_type, message, related_booking_id, " +
-                    "is_read, created_at FROM notifications WHERE username = ? AND user_type = ? " +
+            "SELECT id, user_id, user_type, type, message, related_booking_id, " +
+                    "is_read, created_at FROM notifications WHERE user_id = ? AND user_type = ? " +
                     "AND is_read = FALSE ORDER BY created_at DESC";
 
     private static final String SQL_UPDATE_MARK_AS_READ =
             "UPDATE notifications SET is_read = TRUE WHERE id = ?";
 
     private static final String SQL_UPDATE_ALL_AS_READ =
-            "UPDATE notifications SET is_read = TRUE WHERE username = ? AND user_type = ? AND is_read = FALSE";
+            "UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND user_type = ? AND is_read = FALSE";
 
     private static final String SQL_DELETE_NOTIFICATION =
             "DELETE FROM notifications WHERE id = ?";
@@ -69,7 +69,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             "DELETE FROM notifications WHERE related_booking_id = ?";
 
     private static final String SQL_COUNT_UNREAD =
-            "SELECT COUNT(*) FROM notifications WHERE username = ? AND user_type = ? AND is_read = FALSE";
+            "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND user_type = ? AND is_read = FALSE";
 
 
     // ========== Constants ==========
@@ -366,9 +366,9 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
      */
     private Notification mapResultSetToNotification(ResultSet rs) throws SQLException, DAOException {
         int id = rs.getInt("id");
-        String username = rs.getString("username");
+        String username = rs.getString("user_id");
         UserType userType = UserType.valueOf(rs.getString("user_type"));
-        NotificationType notificationType = NotificationType.valueOf(rs.getString("notification_type"));
+        NotificationType notificationType = NotificationType.valueOf(rs.getString("type"));
         String message = rs.getString("message");
         int relatedBookingId = rs.getInt("related_booking_id");
         // If was NULL, getInt returns 0 and wasNull() returns true
