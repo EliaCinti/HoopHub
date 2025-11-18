@@ -211,16 +211,17 @@ class Booking <<entity>> {
 }
 
 class Notification <<entity>> {
-    - id: String
-    - userId: String
+    - id: int
+    - username: String
     - userType: UserType
     - type: NotificationType
     - message: String
-    - relatedBookingId: String
+    - relatedBookingId: int
     - isRead: boolean
     - createdAt: LocalDateTime
     __
     + markAsRead(): Notification
+    + isUnread(): boolean
 }
 
 ' ============================================================
