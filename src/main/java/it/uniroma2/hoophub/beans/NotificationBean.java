@@ -15,12 +15,12 @@ import java.time.LocalDateTime;
  * @author Elia Cinti
  */
 public class NotificationBean {
-    private Long id;
-    private Long userId;
+    private int id;
+    private String username;
     private UserType userType;
     private NotificationType type;
     private String message;
-    private Long relatedBookingId;
+    private int relatedBookingId;
     private boolean isRead;
     private LocalDateTime createdAt;
 
@@ -29,7 +29,7 @@ public class NotificationBean {
      */
     private NotificationBean(Builder builder) {
         this.id = builder.id;
-        this.userId = builder.userId;
+        this.username = builder.username;
         this.userType = builder.userType;
         this.type = builder.type;
         this.message = builder.message;
@@ -42,22 +42,22 @@ public class NotificationBean {
      * Builder class for constructing NotificationBean instances.
      */
     public static class Builder {
-        private Long id;
-        private Long userId;
+        private int id;
+        private String username;
         private UserType userType;
         private NotificationType type;
         private String message;
-        private Long relatedBookingId;
+        private int relatedBookingId;
         private boolean isRead = false;
         private LocalDateTime createdAt = LocalDateTime.now();
 
-        public Builder id(Long id) {
+        public Builder id(int id) {
             this.id = id;
             return this;
         }
 
-        public Builder userId(Long userId) {
-            this.userId = userId;
+        public Builder username(String username) {
+            this.username = username;
             return this;
         }
 
@@ -76,7 +76,7 @@ public class NotificationBean {
             return this;
         }
 
-        public Builder relatedBookingId(Long relatedBookingId) {
+        public Builder relatedBookingId(int relatedBookingId) {
             this.relatedBookingId = relatedBookingId;
             return this;
         }
@@ -100,12 +100,12 @@ public class NotificationBean {
     // GETTERS
     // ========================================================================
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 
-    public Long getUserId() {
-        return userId;
+    public String getUsername() {
+        return username;
     }
 
     public UserType getUserType() {
@@ -120,7 +120,7 @@ public class NotificationBean {
         return message;
     }
 
-    public Long getRelatedBookingId() {
+    public int getRelatedBookingId() {
         return relatedBookingId;
     }
 
@@ -136,12 +136,12 @@ public class NotificationBean {
     // SETTERS
     // ========================================================================
 
-    public void setId(Long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public void setUserType(UserType userType) {
@@ -156,7 +156,7 @@ public class NotificationBean {
         this.message = message;
     }
 
-    public void setRelatedBookingId(Long relatedBookingId) {
+    public void setRelatedBookingId(int relatedBookingId) {
         this.relatedBookingId = relatedBookingId;
     }
 

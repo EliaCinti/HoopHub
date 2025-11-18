@@ -74,12 +74,12 @@ public class NotificationBookingObserver implements DaoObserver {
 
         try {
             BookingBean bookingBean = (BookingBean) entity;
-            
+
             logger.log(Level.INFO, "NOTIFICATION OBSERVER: New booking created (ID: {0}), notifying VenueManager", entityId);
-            
+
             // Create notification for VenueManager
             createVenueManagerNotification(bookingBean);
-            
+
         } catch (ClassCastException e) {
             logger.log(Level.SEVERE, "Invalid entity type for booking observer", e);
         } catch (Exception e) {
@@ -96,7 +96,7 @@ public class NotificationBookingObserver implements DaoObserver {
      *
      * @param entityType The type of entity (should be "Booking")
      * @param entityId The booking ID
-     * @param entity The Booking Model object (UPDATE uses Model, not Bean)
+     * @param entity The BookingBean object
      */
     @Override
     public void onAfterUpdate(String entityType, String entityId, Object entity) {
@@ -111,17 +111,17 @@ public class NotificationBookingObserver implements DaoObserver {
         }
 
         try {
-            Booking booking = (Booking) entity;
-            BookingStatus status = booking.getStatus();
-            
+            BookingBean bookingBean = (BookingBean) entity;
+            BookingStatus status = bookingBean.getStatus();
+
             // Only notify Fan if booking was CONFIRMED or REJECTED
             if (status == BookingStatus.CONFIRMED || status == BookingStatus.REJECTED) {
-                logger.log(Level.INFO, "NOTIFICATION OBSERVER: Booking status changed to {0} (ID: {1}), notifying Fan", 
+                logger.log(Level.INFO, "NOTIFICATION OBSERVER: Booking status changed to {0} (ID: {1}), notifying Fan",
                     new Object[]{status, entityId});
-                
-                createFanNotification(booking);
+
+                createFanNotification(bookingBean);
             }
-            
+
         } catch (ClassCastException e) {
             logger.log(Level.SEVERE, "Invalid entity type for booking observer", e);
         } catch (Exception e) {
@@ -155,8 +155,7 @@ public class NotificationBookingObserver implements DaoObserver {
      * This method:
      * 1. Retrieves the Venue from VenueDao
      * 2. Gets the VenueManager username
-     * 3. Converts username to userId (hash code for now)
-     * 4. Creates and saves NotificationBean
+     * 3. Creates and saves NotificationBean with username directly
      * </p>
      *
      * @param bookingBean The booking data
@@ -164,81 +163,82 @@ public class NotificationBookingObserver implements DaoObserver {
      */
     private void createVenueManagerNotification(BookingBean bookingBean) throws DAOException {
         NotificationDao notificationDao = DaoFactoryFacade.getInstance().getNotificationDao();
-        
-        // Get VenueManager ID from Venue
-        Long venueManagerId = getVenueManagerIdForVenue(bookingBean.getVenueId());
-        
+
+        // Get VenueManager username from Venue
+        String venueManagerUsername = getVenueManagerUsernameForVenue(bookingBean.getVenueId());
+
         String message = String.format(
             "New booking request for %s vs %s on %s at venue",
             bookingBean.getHomeTeam().getDisplayName(),
             bookingBean.getAwayTeam().getDisplayName(),
             bookingBean.getGameDate()
         );
-        
+
         NotificationBean notification = new NotificationBean.Builder()
-            .userId(venueManagerId)
+            .username(venueManagerUsername)
             .userType(UserType.VENUE_MANAGER)
             .type(NotificationType.NEW_BOOKING_REQUEST)
             .message(message)
-            .relatedBookingId((long) bookingBean.getId())
+            .relatedBookingId(bookingBean.getId())
             .isRead(false)
             .createdAt(LocalDateTime.now())
             .build();
-        
+
         notificationDao.saveNotification(notification);
-        
-        logger.log(Level.INFO, "Notification created for VenueManager (ID: {0})", venueManagerId);
+
+        logger.log(Level.INFO, "Notification created for VenueManager: {0}", venueManagerUsername);
     }
 
     /**
      * Creates a notification for the Fan when their booking is confirmed/rejected.
      * <p>
      * This method:
-     * 1. Converts Fan username to userId
+     * 1. Uses Fan username directly from booking
      * 2. Determines notification type based on booking status
      * 3. Creates appropriate message
      * 4. Saves NotificationBean
      * </p>
      *
-     * @param booking The booking model object
+     * @param bookingBean The booking bean object
      * @throws DAOException if there's an error saving the notification
      */
-    private void createFanNotification(Booking booking) throws DAOException {
+    private void createFanNotification(BookingBean bookingBean) throws DAOException {
         NotificationDao notificationDao = DaoFactoryFacade.getInstance().getNotificationDao();
-        
-        Long fanId = getFanIdByUsername(booking.getFanUsername());
-        
+
+        String fanUsername = bookingBean.getFanUsername();
+
         NotificationType notificationType;
         String message;
-        
-        if (booking.getStatus() == BookingStatus.CONFIRMED) {
+
+        if (bookingBean.getStatus() == BookingStatus.CONFIRMED) {
             notificationType = NotificationType.BOOKING_CONFIRMED;
             message = String.format(
-                "Great news! Your booking for %s has been CONFIRMED!",
-                booking.getMatchup()
+                "Great news! Your booking for %s vs %s has been CONFIRMED!",
+                bookingBean.getHomeTeam().getDisplayName(),
+                bookingBean.getAwayTeam().getDisplayName()
             );
         } else {
             notificationType = NotificationType.BOOKING_REJECTED;
             message = String.format(
-                "Sorry, your booking for %s has been REJECTED.",
-                booking.getMatchup()
+                "Sorry, your booking for %s vs %s has been REJECTED.",
+                bookingBean.getHomeTeam().getDisplayName(),
+                bookingBean.getAwayTeam().getDisplayName()
             );
         }
-        
+
         NotificationBean notification = new NotificationBean.Builder()
-            .userId(fanId)
+            .username(fanUsername)
             .userType(UserType.FAN)
             .type(notificationType)
             .message(message)
-            .relatedBookingId((long) booking.getId())
+            .relatedBookingId(bookingBean.getId())
             .isRead(false)
             .createdAt(LocalDateTime.now())
             .build();
-        
+
         notificationDao.saveNotification(notification);
-        
-        logger.log(Level.INFO, "Notification created for Fan {0} (ID: {1})", 
-            new Object[]{booking.getFanUsername(), fanId});
+
+        logger.log(Level.INFO, "Notification created for Fan: {0}", fanUsername);
     }
 
     // ========================================================================
@@ -246,60 +246,18 @@ public class NotificationBookingObserver implements DaoObserver {
     // ========================================================================
 
     /**
-     * Retrieves the VenueManager ID for a given venue.
+     * Retrieves the VenueManager username for a given venue.
      * <p>
-     * Uses VenueDao to get the venue, then extracts the manager's username
-     * and converts it to a Long ID using hashCode.
-     * </p>
-     * <p>
-     * <strong>Note:</strong> This uses username.hashCode() as a temporary solution.
-     * In production, you should have a proper User ID mapping table.
+     * Uses VenueDao to get the venue, then extracts the manager's username.
      * </p>
      *
      * @param venueId The venue ID
-     * @return The VenueManager's user ID (hashCode of username)
+     * @return The VenueManager's username
      * @throws DAOException if venue is not found
      */
-    private Long getVenueManagerIdForVenue(int venueId) throws DAOException {
+    private String getVenueManagerUsernameForVenue(int venueId) throws DAOException {
         VenueDao venueDao = DaoFactoryFacade.getInstance().getVenueDao();
         Venue venue = venueDao.retrieveVenue(venueId);
-        String managerUsername = venue.getVenueManagerUsername();
-        
-        // Convert username to Long ID
-        // TODO: Replace with proper User ID lookup from database
-        return convertUsernameToId(managerUsername);
-    }
-
-    /**
-     * Converts a Fan username to a Long user ID.
-     * <p>
-     * <strong>Note:</strong> This uses username.hashCode() as a temporary solution.
-     * In production, you should have a proper User ID mapping table.
-     * </p>
-     *
-     * @param username The fan's username
-     * @return The fan's user ID (hashCode of username)
-     */
-    private Long getFanIdByUsername(String username) {
-        return convertUsernameToId(username);
-    }
-
-    /**
-     * Temporary helper to convert username to Long ID using hashCode.
-     * <p>
-     * <strong>TODO:</strong> Replace this with a proper UserDao lookup:
-     * <pre>
-     * UserDao userDao = DaoFactoryFacade.getInstance().getUserDao();
-     * User user = userDao.retrieveUser(username);
-     * return user.getId();
-     * </pre>
-     * </p>
-     *
-     * @param username The username to convert
-     * @return Long ID based on username hashCode
-     */
-    private Long convertUsernameToId(String username) {
-        // This ensures a consistent positive Long value
-        return Math.abs((long) username.hashCode());
+        return venue.getVenueManagerUsername();
     }
 }

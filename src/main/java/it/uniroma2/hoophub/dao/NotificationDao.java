@@ -45,10 +45,10 @@ public interface NotificationDao extends ObservableDao {
      * Retrieves a notification by its unique identifier.
      *
      * @param id The notification ID
-     * @return The Notification model object
-     * @throws DAOException If the notification is not found or there is a database error
+     * @return The Notification model object, or null if not found
+     * @throws DAOException If there is a database error
      */
-    Notification retrieveNotification(Long id) throws DAOException;
+    Notification retrieveNotification(int id) throws DAOException;
 
     /**
      * Retrieves all notifications for a specific user.
@@ -57,22 +57,22 @@ public interface NotificationDao extends ObservableDao {
      * (newest first) to provide a natural inbox-like experience.
      * </p>
      *
-     * @param userId The user's unique identifier
+     * @param username The user's username
      * @param userType The type of user (FAN or VENUE_MANAGER)
      * @return List of notifications for the user, newest first
      * @throws DAOException If there is an error retrieving notifications
      */
-    List<Notification> getNotificationsForUser(Long userId, UserType userType) throws DAOException;
+    List<Notification> getNotificationsForUser(String username, UserType userType) throws DAOException;
 
     /**
      * Retrieves all unread notifications for a specific user.
      *
-     * @param userId The user's unique identifier
+     * @param username The user's username
      * @param userType The type of user (FAN or VENUE_MANAGER)
      * @return List of unread notifications, newest first
      * @throws DAOException If there is an error retrieving notifications
      */
-    List<Notification> getUnreadNotificationsForUser(Long userId, UserType userType) throws DAOException;
+    List<Notification> getUnreadNotificationsForUser(String username, UserType userType) throws DAOException;
 
     /**
      * Marks a notification as read.
@@ -84,16 +84,16 @@ public interface NotificationDao extends ObservableDao {
      * @param notificationId The ID of the notification to mark as read
      * @throws DAOException If the notification is not found or there is a database error
      */
-    void markAsRead(Long notificationId) throws DAOException;
+    void markAsRead(int notificationId) throws DAOException;
 
     /**
      * Marks all notifications for a user as read.
      *
-     * @param userId The user's unique identifier
+     * @param username The user's username
      * @param userType The type of user (FAN or VENUE_MANAGER)
      * @throws DAOException If there is an error updating notifications
      */
-    void markAllAsReadForUser(Long userId, UserType userType) throws DAOException;
+    void markAllAsReadForUser(String username, UserType userType) throws DAOException;
 
     /**
      * Deletes a notification by ID.
@@ -105,7 +105,7 @@ public interface NotificationDao extends ObservableDao {
      * @param notificationId The ID of the notification to delete
      * @throws DAOException If the notification is not found or there is a database error
      */
-    void deleteNotification(Long notificationId) throws DAOException;
+    void deleteNotification(int notificationId) throws DAOException;
 
     /**
      * Deletes all notifications for a specific booking.
@@ -117,7 +117,7 @@ public interface NotificationDao extends ObservableDao {
      * @param bookingId The booking ID
      * @throws DAOException If there is an error deleting notifications
      */
-    void deleteNotificationsByBooking(Long bookingId) throws DAOException;
+    void deleteNotificationsByBooking(int bookingId) throws DAOException;
 
     /**
      * Gets the count of unread notifications for a user.
@@ -125,10 +125,10 @@ public interface NotificationDao extends ObservableDao {
      * Used for displaying notification badges in the UI.
      * </p>
      *
-     * @param userId The user's unique identifier
+     * @param username The user's username
      * @param userType The type of user (FAN or VENUE_MANAGER)
      * @return The number of unread notifications
      * @throws DAOException If there is an error counting notifications
      */
-    int getUnreadCount(Long userId, UserType userType) throws DAOException;
+    int getUnreadCount(String username, UserType userType) throws DAOException;
 }
