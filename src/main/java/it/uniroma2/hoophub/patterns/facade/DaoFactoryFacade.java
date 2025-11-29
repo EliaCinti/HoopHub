@@ -40,6 +40,7 @@ import it.uniroma2.hoophub.patterns.observer.ObservableDao;
  * ensuring optimal performance while maintaining consistency.
  * </p>
  */
+@SuppressWarnings("java:S6548") // Singleton pattern is required for this Facade
 public class DaoFactoryFacade {
     private static DaoFactoryFacade instance;
 

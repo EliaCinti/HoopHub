@@ -12,12 +12,16 @@ public class UIHelper {
         // Utility class
     }
 
+    private static final String INFO_MESSAGE = "info-message";
+    private static final String ERROR_MESSAGE = "error-message";
+    private static final String SUCCESS_MESSAGE = "success-message";
+
     /**
      * Displays a temporary message on a label with fade animation.
      */
     public static void showMessage(Label label, String message) {
-        label.getStyleClass().removeAll("error-mesage", "success-mesage");
-        label.getStyleClass().add("info-message"); // CSS Class
+        label.getStyleClass().removeAll(ERROR_MESSAGE, SUCCESS_MESSAGE);
+        label.getStyleClass().add(INFO_MESSAGE); // CSS Class
         new LabelDuration().duration(label, message);
     }
 
@@ -26,8 +30,8 @@ public class UIHelper {
      * Applies the 'error-message' CSS class.
      */
     public static void showError(Label label, String errorMessage) {
-        label.getStyleClass().removeAll("info-message", "success-message");
-        label.getStyleClass().add("error-message");  // CSS class
+        label.getStyleClass().removeAll(INFO_MESSAGE, SUCCESS_MESSAGE);
+        label.getStyleClass().add(ERROR_MESSAGE);  // CSS class
         new LabelDuration().duration(label, errorMessage);
     }
 
@@ -36,8 +40,8 @@ public class UIHelper {
      * Applies the 'success-message' CSS class.
      */
     public static void showSuccess(Label label, String successMessage) {
-        label.getStyleClass().removeAll("info-message", "error-message");
-        label.getStyleClass().add("success-message");  // CSS class
+        label.getStyleClass().removeAll(INFO_MESSAGE, ERROR_MESSAGE);
+        label.getStyleClass().add(SUCCESS_MESSAGE);  // CSS class
         new LabelDuration().duration(label, successMessage);
     }
 }

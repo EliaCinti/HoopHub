@@ -1,12 +1,12 @@
 /* ========================================================================
    HoopHub - Reusable Components
-   Componenti riutilizzabili con effetti glassmorphism avanzati
+   Componenti riutilizzabili con effetti glass morphism avanzati
    ======================================================================== */
 
 /* ========= Layout Components ========= */
 
 .card {
-    /* Glassmorphism effect */
+    /* Glass morphism effect */
     -fx-background-color: rgba(22, 26, 34, 0.20);
     -fx-background-radius: 32;
     -fx-border-color: rgba(255, 255, 255, 0.18);
@@ -58,7 +58,7 @@
 /* ========= Form Controls ========= */
 
 .text-field, .password-field, .text-area {
-    /* Glassmorphism inputs */
+    /* Glass morphism inputs */
     -fx-background-color: rgba(255, 255, 255, 0.08);
     -fx-background-radius: 24;  /* Super arrotondato */
     -fx-border-color: rgba(255, 255, 255, 0.15);

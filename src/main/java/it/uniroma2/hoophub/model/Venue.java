@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Represents a Venue entity.
@@ -201,7 +200,7 @@ public class Venue {
         // Returns a new list, protecting the internal map
         return bookingsByDate.values().stream()
                 .flatMap(List::stream)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -292,7 +291,7 @@ public class Venue {
     }
 
     /**
-     * Private setter for city.
+     * Private setter for the city.
      * Only called by updateVenueDetails().
      */
     private void setCity(String city) {

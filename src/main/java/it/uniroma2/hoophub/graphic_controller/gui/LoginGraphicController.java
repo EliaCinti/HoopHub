@@ -66,10 +66,10 @@ public class LoginGraphicController {
 
             navigateToHomepage(userBean);
         } catch (DAOException e) {
-            logger.log(Level.SEVERE, "Error while logging in: " + usernameText, e);
+            logger.log(Level.SEVERE, e, () -> "Error while logging in: " + usernameText);
             UIHelper.showError(msgLabel, "Login failed: " + e.getMessage());
         } catch (UserSessionException e) {
-            logger.log(Level.INFO, "User already logged in: " + usernameText, e);
+            logger.log(Level.INFO, e, () -> "User already logged in: " + usernameText);
             UIHelper.showError(msgLabel, "User already logged in");
         }
     }

@@ -6,7 +6,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Represents a Fan entity.
@@ -84,7 +83,7 @@ public class Fan extends User {
 
     /**
      * Cancels a booking by ID.
-     * Called by: FanController when user clicks "Cancel booking"
+     * Called by: FanController when a user clicks "Cancel booking"
      *
      * @param bookingId The ID of the booking to cancel.
      * @return true if cancellation was successful, false otherwise.
@@ -136,7 +135,7 @@ public class Fan extends User {
     public List<Booking> getFavoriteTeamBookings() {
         return bookingList.stream()
                 .filter(b -> b.isFavoriteTeamPlaying(favTeam))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -277,7 +276,7 @@ public class Fan extends User {
     private List<Booking> filterBookingsByDateCondition(java.util.function.Predicate<Booking> condition) {
         return bookingList.stream()
                 .filter(condition)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ========================================================================

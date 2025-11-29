@@ -264,8 +264,7 @@ public class CliLoginGraphicController extends CliGraphicController {
      * Handles session exceptions during login.
      */
     private void handleSessionException(String username, UserSessionException e) {
-        LOGGER.log(Level.INFO, "User already logged in: " + username, e);
-        printError(USER_ALREADY_LOGGED_MSG);
+        LOGGER.log(Level.INFO, e, () -> "User already logged in: " + username);        printError(USER_ALREADY_LOGGED_MSG);
         printInfo(LOGOUT_FIRST_MSG);
         printNewLine();
     }

@@ -7,7 +7,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Represents a VenueManager entity.
@@ -75,7 +74,7 @@ public class VenueManager extends User {
      * @throws VenueCapacityExceededException   if the venue is full.
      */
     public void confirmBooking(Booking booking, Fan fan, Venue venue)
-            throws BookingNotAllowedException, VenueCapacityExceededException {
+            throws BookingNotAllowedException {
 
         // 1. Validate business rules
         validateVenueOwnership(venue);
@@ -149,7 +148,7 @@ public class VenueManager extends User {
     public List<Venue> getVenuesByType(VenueType type) {
         return managedVenues.stream()
                 .filter(v -> v.getType() == type)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ========================================================================
@@ -295,7 +294,7 @@ public class VenueManager extends User {
         return managedVenues.stream()
                 .flatMap(venue -> venue.getAllBookings().stream())
                 .filter(booking -> booking.getStatus() == status)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     // ========================================================================

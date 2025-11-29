@@ -28,6 +28,7 @@ import java.util.List;
  *
  * @author Elia Cinti
  */
+@SuppressWarnings("java:S6548") // Singleton pattern is required
 public class ObserverFactory {
 
     /**

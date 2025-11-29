@@ -75,23 +75,20 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
     /**
      * Executes the complete sign-up use case.
-     * If the user types 'back', returns to login screen.
+     * If the user types 'back', returns to log in screen.
      */
     @Override
     public void execute() {
-        Optional<UserBean> registeredUser = performSignUp();
-
-        if (registeredUser.isPresent()) {
-            navigateToHomepage(registeredUser.get());
-        }
-        // If empty, either cancelled or chose to go back to login
+        // Esegue performSignUp e, SOLO SE restituisce un utente (Optional non vuoto),
+        // passa quell'utente al metodo navigateToHomepage.
+        performSignUp().ifPresent(this::navigateToHomepage);
     }
 
     /**
      * Performs the sign-up operation with input validation.
      * Flow: collect common credentials → select user type → collect type-specific info
      *
-     * @return Optional containing the registered UserBean, or empty if cancelled
+     * @return Optional containing the registered UserBean, or empty if canceled
      */
     private Optional<UserBean> performSignUp() {
         printTitle(TITLE);
@@ -129,7 +126,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
      *
      * @param username The username (already collected)
      * @param password The password (already collected)
-     * @return Optional containing the registered UserBean, or empty if cancelled
+     * @return Optional containing the registered UserBean, or empty if canceled
      */
     private Optional<UserBean> performFanSignUp(String username, String password) {
         printInfo("Complete your Fan profile:");
@@ -156,7 +153,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
      *
      * @param username The username (already collected)
      * @param password The password (already collected)
-     * @return Optional containing the registered UserBean, or empty if cancelled
+     * @return Optional containing the registered UserBean, or empty if canceled
      */
     private Optional<UserBean> performVenueManagerSignUp(String username, String password) {
         printInfo("Complete your Venue Manager profile:");
@@ -172,8 +169,8 @@ public class CliSignUpGraphicController extends CliGraphicController {
     }
 
     /**
-     * Handles the back/cancel command by returning to login.
-     * Simply returns empty to exit signup and return to caller (login screen).
+     * Handles the back/cancel command by returning to log in.
+     * Simply return empty to exit signup and return to caller (login screen).
      */
     private Optional<UserBean> handleBackOrCancel() {
         printInfo(SIGNUP_CANCELLED_MSG);
@@ -184,7 +181,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
     /**
      * Reads and validates user type selection (1=Fan, 2=VenueManager).
      *
-     * @return Optional containing 1 for Fan or 2 for VenueManager, or empty if cancelled
+     * @return Optional containing 1 for Fan or 2 for VenueManager, or empty if canceled
      */
     private Optional<Integer> readUserType() {
         while (true) {
@@ -222,15 +219,11 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
             if (username.isEmpty()) {
                 printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
-            if (username.length() < 3) {
+            } else if (username.length() < 3) {
                 printWarning(INVALID_USERNAME_MSG);
-                continue;
+            } else {
+                return Optional.of(username);
             }
-
-            return Optional.of(username);
         }
     }
 
@@ -247,27 +240,21 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
             if (password.isEmpty()) {
                 printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
-            if (password.length() < 6) {
+            } else if (password.length() < 6) {
                 printWarning(INVALID_PASSWORD_MSG);
-                continue;
+            } else {
+                String confirmPassword = readInput(CONFIRM_PASSWORD_PROMPT);
+
+                if (isBackOrCancelCommand(confirmPassword)) {
+                    return Optional.empty();
+                }
+
+                if (!password.equals(confirmPassword)) {
+                    printWarning(PASSWORD_MISMATCH_MSG);
+                } else {
+                    return Optional.of(password);
+                }
             }
-
-            // Confirm password
-            String confirmPassword = readInput(CONFIRM_PASSWORD_PROMPT);
-
-            if (isBackOrCancelCommand(confirmPassword)) {
-                return Optional.empty();
-            }
-
-            if (!password.equals(confirmPassword)) {
-                printWarning(PASSWORD_MISMATCH_MSG);
-                continue;
-            }
-
-            return Optional.of(password);
         }
     }
 
@@ -275,20 +262,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
      * Reads and validates full name input.
      */
     private Optional<String> readFullName() {
-        while (true) {
-            String fullName = readInput(FULL_NAME_PROMPT);
-
-            if (isBackOrCancelCommand(fullName)) {
-                return Optional.empty();
-            }
-
-            if (fullName.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
-            return Optional.of(fullName);
-        }
+        return readGenericNonEmptyInput(FULL_NAME_PROMPT);
     }
 
     /**
@@ -304,17 +278,15 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
             if (gender.isEmpty()) {
                 printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
+            } else {
+                String normalizedGender = normalizeGender(gender);
 
-            // Normalize gender input
-            String normalizedGender = normalizeGender(gender);
-            if (normalizedGender == null) {
-                printWarning(INVALID_GENDER_MSG);
-                continue;
+                if (normalizedGender == null) {
+                    printWarning(INVALID_GENDER_MSG);
+                } else {
+                    return Optional.of(normalizedGender);
+                }
             }
-
-            return Optional.of(normalizedGender);
         }
     }
 
@@ -323,14 +295,12 @@ public class CliSignUpGraphicController extends CliGraphicController {
      */
     private String normalizeGender(String gender) {
         String lower = gender.toLowerCase();
-        if ("m".equals(lower) || "male".equals(lower)) {
-            return "Male";
-        } else if ("f".equals(lower) || "female".equals(lower)) {
-            return "Female";
-        } else if ("other".equals(lower)) {
-            return "Other";
-        }
-        return null;
+        return switch (lower) {
+            case "m", "male" -> "Male";
+            case "f", "female" -> "Female";
+            case "other" -> "Other";
+            default -> null;
+        };
     }
 
     /**
@@ -389,40 +359,14 @@ public class CliSignUpGraphicController extends CliGraphicController {
      * Reads and validates company name input (VenueManager).
      */
     private Optional<String> readCompanyName() {
-        while (true) {
-            String companyName = readInput(COMPANY_NAME_PROMPT);
-
-            if (isBackOrCancelCommand(companyName)) {
-                return Optional.empty();
-            }
-
-            if (companyName.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
-            return Optional.of(companyName);
-        }
+        return readGenericNonEmptyInput(COMPANY_NAME_PROMPT);
     }
 
     /**
      * Reads and validates phone number input (VenueManager).
      */
     private Optional<String> readPhoneNumber() {
-        while (true) {
-            String phoneNumber = readInput(PHONE_NUMBER_PROMPT);
-
-            if (isBackOrCancelCommand(phoneNumber)) {
-                return Optional.empty();
-            }
-
-            if (phoneNumber.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
-            return Optional.of(phoneNumber);
-        }
+        return readGenericNonEmptyInput(PHONE_NUMBER_PROMPT);
     }
 
     /**
@@ -516,7 +460,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
      * Handles DAO exceptions during sign-up.
      */
     private void handleDAOException(String username, DAOException e) {
-        LOGGER.log(Level.WARNING, "Sign up failed for user: " + username, e);
+        LOGGER.log(Level.WARNING, e, () -> "Sign up failed for user: " + username);
         printError(String.format(SIGNUP_FAILED_MSG, e.getMessage()));
         printNewLine();
     }
@@ -525,14 +469,15 @@ public class CliSignUpGraphicController extends CliGraphicController {
      * Handles session exceptions during sign-up.
      */
     private void handleSessionException(String username, UserSessionException e) {
-        LOGGER.log(Level.WARNING, "Session error during sign up: " + username, e);
+        LOGGER.log(Level.WARNING, e, () -> "Session error during sign up: " + username);
         printError(String.format(SIGNUP_FAILED_MSG, e.getMessage()));
         printNewLine();
     }
 
     /**
      * Navigates to the appropriate homepage after successful registration.
-     * Since dashboards are not yet implemented, logs out the user and returns to login.
+     * Since dashboards are not yet implemented, logs out the user and returns to log in.
+     * @TODO qui dobbiamo avere la scelta della homepage da caricare
      */
     private void navigateToHomepage(UserBean userBean) {
         printInfo(LOADING_DASHBOARD_MSG);
@@ -551,7 +496,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
             LOGGER.log(Level.SEVERE, "Error during logout after signup", e);
         }
 
-        // Clear screen before returning to login
+        // Clear the screen before returning to log in
         clearScreen();
 
         // Exit signup - caller (login screen) will show again
@@ -563,5 +508,28 @@ public class CliSignUpGraphicController extends CliGraphicController {
     private boolean isBackOrCancelCommand(String input) {
         return BACK_COMMAND.equalsIgnoreCase(input) ||
                 CANCEL_COMMAND.equalsIgnoreCase(input);
+    }
+
+    /**
+     * Generic helper to read a non-empty string input.
+     * Eliminates duplication across readFullName, readCompanyName, and readPhoneNumber.
+     *
+     * @param prompt The prompt message to display
+     * @return Optional containing the input, or empty if canceled
+     */
+    private Optional<String> readGenericNonEmptyInput(String prompt) {
+        while (true) {
+            String input = readInput(prompt);
+
+            if (isBackOrCancelCommand(input)) {
+                return Optional.empty();
+            }
+
+            if (input.isEmpty()) {
+                printWarning(EMPTY_INPUT_MSG);
+            } else {
+                return Optional.of(input);
+            }
+        }
     }
 }
