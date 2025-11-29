@@ -3,7 +3,7 @@ package it.uniroma2.hoophub.dao.mysql;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
-import it.uniroma2.hoophub.dao.utility_dao.BookingDaoHelper;
+import it.uniroma2.hoophub.dao.helper_dao.BookingDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
@@ -124,11 +124,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
                          Statement.RETURN_GENERATED_KEYS)) {
 
-                stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
-                stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-                stmt.setString(3, bookingBean.getHomeTeam().name());
-                stmt.setString(4, bookingBean.getAwayTeam().name());
-                stmt.setInt(5, bookingBean.getVenueId());
+                setCommonStatementParameters(stmt, bookingBean);
                 stmt.setString(6, bookingBean.getFanUsername());
                 stmt.setString(7, bookingBean.getStatus().name());
                 stmt.setBoolean(8, bookingBean.isNotified());
@@ -141,7 +137,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during booking save", e);
             throw new DAOException("Error saving booking", e);
         }
     }
@@ -170,7 +165,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during booking retrieval", e);
             throw new DAOException("Error retrieving booking", e);
         }
     }
@@ -195,7 +189,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval", e);
             throw new DAOException("Error retrieving all bookings", e);
         }
     }
@@ -224,7 +217,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval by fan", e);
             throw new DAOException("Error retrieving bookings by fan", e);
         }
     }
@@ -255,7 +247,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval by venue", e);
             throw new DAOException("Error retrieving bookings by venue", e);
         }
     }
@@ -290,7 +281,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval by venue manager", e);
             throw new DAOException("Error retrieving bookings by venue manager", e);
         }
     }
@@ -321,7 +311,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval by date", e);
             throw new DAOException("Error retrieving bookings by date", e);
         }
     }
@@ -354,7 +343,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during bookings retrieval by status", e);
             throw new DAOException("Error retrieving bookings by status", e);
         }
     }
@@ -385,7 +373,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return bookings;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during unnotified bookings retrieval", e);
             throw new DAOException("Error retrieving unnotified bookings", e);
         }
     }
@@ -401,11 +388,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
 
-                stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
-                stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
-                stmt.setString(3, bookingBean.getHomeTeam().name());
-                stmt.setString(4, bookingBean.getAwayTeam().name());
-                stmt.setInt(5, bookingBean.getVenueId());
+                setCommonStatementParameters(stmt, bookingBean);
                 stmt.setString(6, bookingBean.getStatus().name());
                 stmt.setBoolean(7, bookingBean.isNotified());
                 stmt.setInt(8, bookingBean.getId());
@@ -420,7 +403,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during booking update", e);
             throw new DAOException("Error updating booking", e);
         }
     }
@@ -448,7 +430,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during booking deletion", e);
             throw new DAOException("Error deleting booking", e);
         }
     }
@@ -459,24 +440,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     @Override
     public boolean bookingExists(int bookingId) throws DAOException {
         validateIdInput(bookingId);
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS)) {
-
-                stmt.setInt(1, bookingId);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(1) > 0;
-                    }
-                    return false;
-                }
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during booking existence check", e);
-            throw new DAOException("Error checking booking existence", e);
-        }
+        return existsById(conn -> conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS), bookingId);
     }
 
     /**
@@ -495,7 +459,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 return 1;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during next booking ID retrieval", e);
             throw new DAOException("Error getting next booking ID", e);
         }
     }
@@ -606,5 +569,20 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         if (status == null) {
             throw new IllegalArgumentException(ERR_NULL_STATUS);
         }
+    }
+
+    /**
+     * Sets the common parameters for INSERT and UPDATE statements.
+     * Reduces code duplication between saveBooking and updateBooking.
+     * * @param stmt The PreparedStatement to populate
+     * @param bookingBean The source of data
+     * @throws SQLException If parameter setting fails
+     */
+    private void setCommonStatementParameters(PreparedStatement stmt, BookingBean bookingBean) throws SQLException {
+        stmt.setDate(1, Date.valueOf(bookingBean.getGameDate()));
+        stmt.setTime(2, Time.valueOf(bookingBean.getGameTime()));
+        stmt.setString(3, bookingBean.getHomeTeam().name());
+        stmt.setString(4, bookingBean.getAwayTeam().name());
+        stmt.setInt(5, bookingBean.getVenueId());
     }
 }

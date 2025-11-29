@@ -3,13 +3,14 @@ package it.uniroma2.hoophub.dao.csv;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
+import it.uniroma2.hoophub.dao.helper_dao.VenueDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
+import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.VenueType;
 
@@ -95,7 +96,10 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                 // Create parent directories if needed
                 File parentDir = venueTeamsFile.getParentFile();
                 if (parentDir != null && !parentDir.exists()) {
-                    parentDir.mkdirs();
+                    boolean created = parentDir.mkdirs();
+                    if (!created) {
+                        logger.log(Level.SEVERE, "CRITICAL: Impossible to create directory for venue teams: {0}", parentDir.getAbsolutePath());
+                    }
                 }
 
                 // Create file with header using updateFile
@@ -497,14 +501,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             DaoLoadingContext.startLoading(venueKey);
             try {
                 // Load the COMPLETE VenueManager (not a stub)
-                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-                VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
-                VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
-
-                if (venueManager == null) {
-                    logger.log(Level.SEVERE, "VenueManager not found for venue mapping: {0}", managerUsername);
-                    throw new DAOException("VenueManager not found: " + managerUsername);
-                }
+                VenueManager venueManager = VenueDaoHelper.loadVenueManager(managerUsername);
 
                 // Build the venue with COMPLETE manager
                 Venue venue = new Venue.Builder()

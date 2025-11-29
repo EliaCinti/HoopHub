@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.dao.utility_dao;
+package it.uniroma2.hoophub.dao.helper_dao;
 
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;

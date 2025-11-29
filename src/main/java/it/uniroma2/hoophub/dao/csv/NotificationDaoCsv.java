@@ -7,7 +7,7 @@ import it.uniroma2.hoophub.model.Notification;
 import it.uniroma2.hoophub.model.NotificationType;
 import it.uniroma2.hoophub.model.UserType;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
+import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

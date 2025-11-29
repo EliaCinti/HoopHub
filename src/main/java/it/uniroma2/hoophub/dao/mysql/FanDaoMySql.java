@@ -128,7 +128,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during fan save", e);
             throw new DAOException("Error saving fan", e);
         } finally {
             resetAutoCommit(conn);
@@ -161,7 +160,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during fan retrieval", e);
             throw new DAOException("Error retrieving fan", e);
         }
     }
@@ -185,7 +183,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                 return fans;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during fans retrieval", e);
             throw new DAOException("Error retrieving all fans", e);
         }
     }
@@ -233,7 +230,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during fan update", e);
             throw new DAOException("Error updating fan", e);
         } finally {
             resetAutoCommit(conn);
@@ -280,7 +276,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during fan deletion", e);
             throw new DAOException("Error deleting fan", e);
         } finally {
             resetAutoCommit(conn);

@@ -119,7 +119,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notification save", e);
             throw new DAOException("Error saving notification", e);
         }
     }
@@ -145,7 +144,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notification retrieval", e);
             throw new DAOException("Error retrieving notification", e);
         }
     }
@@ -178,7 +176,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 return notifications;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notifications retrieval by user", e);
             throw new DAOException("Error retrieving notifications by user", e);
         }
     }
@@ -211,7 +208,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 return notifications;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during unread notifications retrieval", e);
             throw new DAOException("Error retrieving unread notifications", e);
         }
     }
@@ -246,7 +242,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notification update", e);
             throw new DAOException("Error marking notification as read", e);
         }
     }
@@ -274,7 +269,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during mark all as read", e);
             throw new DAOException("Error marking all notifications as read", e);
         }
     }
@@ -302,7 +296,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notification deletion", e);
             throw new DAOException("Error deleting notification", e);
         }
     }
@@ -326,7 +319,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                         new Object[]{affectedRows, bookingId});
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during notifications deletion by booking", e);
             throw new DAOException("Error deleting notifications by booking", e);
         }
     }
@@ -354,7 +346,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during unread count retrieval", e);
             throw new DAOException("Error getting unread notification count", e);
         }
     }
@@ -364,7 +355,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     /**
      * Maps ResultSet to Notification.
      */
-    private Notification mapResultSetToNotification(ResultSet rs) throws SQLException, DAOException {
+    private Notification mapResultSetToNotification(ResultSet rs) throws SQLException {
         int id = rs.getInt("id");
         String username = rs.getString("user_id");
         UserType userType = UserType.valueOf(rs.getString("user_type"));

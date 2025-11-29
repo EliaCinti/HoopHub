@@ -6,6 +6,8 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.exception.DAOException;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -166,6 +168,38 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
         }
     }
 
+    /**
+     * Functional interface to create a PreparedStatement safely.
+     */
+    @FunctionalInterface
+    protected interface PreparedStatementProvider {
+        PreparedStatement create(Connection conn) throws SQLException;
+    }
+
+    /**
+     * Checks if an entity exists by its ID using a provider to create the statement.
+     * Removes SQL Injection warnings by delegating statement creation to the concrete class.
+     *
+     * @param provider The provider that creates the PreparedStatement (e.g., via lambda)
+     * @param id The ID to check
+     * @return true if the count is greater than 0, false otherwise
+     * @throws DAOException If a database error occurs
+     */
+    protected boolean existsById(PreparedStatementProvider provider, int id) throws DAOException {
+        try {
+            Connection conn = ConnectionFactory.getConnection();
+            // Qui chiamiamo il provider invece di fare prepareStatement(string)
+            try (PreparedStatement stmt = provider.create(conn)) {
+                stmt.setInt(1, id); // Impostiamo l'ID comune a tutti
+                try (ResultSet rs = stmt.executeQuery()) {
+                    return rs.next() && rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            throw new DAOException("Error checking existence by ID", e);
+        }
+    }
+
     // ========== TRANSACTION HELPERS ==========
 
     /**
@@ -192,33 +226,10 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
 
     /**
      * Executes a database operation within a transaction.
-     * <p>
-     * This method handles all transaction boilerplate:
-     * <ul>
-     *   <li>Gets connection and disables auto-commit</li>
-     *   <li>Executes the operation</li>
-     *   <li>Commits on success</li>
-     *   <li>Rolls back on error</li>
-     *   <li>Resets auto-commit in finally block</li>
-     * </ul>
-     * </p>
-     * <p>
-     * <strong>Example usage:</strong>
-     * <pre>
-     * executeInTransaction(conn -> {
-     *     // Your SQL operations here
-     *     stmt.execute();
-     *     return result;
-     * }, "Error saving entity");
-     * </pre>
-     * </p>
-     *
-     * @param <T> The return type of the operation
-     * @param operation The operation to execute
-     * @param errorMessage Error message to use if operation fails
-     * @return The result of the operation
-     * @throws DAOException If the operation fails
+     * The return value is generic to support both void and returning operations.
+     * Suppressed warning because some callers (like void ops) intentionally ignore the result.
      */
+    @SuppressWarnings("UnusedReturnValue")
     protected <T> T executeInTransaction(TransactionOperation<T> operation, String errorMessage) throws DAOException {
         Connection conn = null;
         try {
@@ -232,7 +243,6 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, errorMessage, e);
             throw new DAOException(errorMessage, e);
         } finally {
             resetAutoCommit(conn);
@@ -249,6 +259,7 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
      * @param errorMessage Error message to use if operation fails
      * @throws DAOException If the operation fails
      */
+    @SuppressWarnings("SameParameterValue")
     protected void executeInTransactionVoid(TransactionOperation<Void> operation, String errorMessage) throws DAOException {
         executeInTransaction(operation, errorMessage);
     }

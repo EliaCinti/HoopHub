@@ -104,7 +104,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during user validation", e);
             throw new DAOException("Error validating user credentials", e);
         }
     }
@@ -145,7 +144,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during user save", e);
             throw new DAOException("Error saving user", e);
         }
     }
@@ -183,11 +181,10 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                                 rs.getString("user_type")
                         };
                     }
-                    return null;
+                    return new String[0];
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during user retrieval", e);
             throw new DAOException("Error retrieving user", e);
         }
     }
@@ -213,7 +210,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during username check", e);
             throw new DAOException("Error checking username availability", e);
         }
     }
@@ -248,7 +244,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during user update", e);
             throw new DAOException("Error updating user", e);
         }
     }
@@ -281,7 +276,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during user deletion", e);
             throw new DAOException("Error deleting user", e);
         }
     }

@@ -4,6 +4,7 @@ import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
+import it.uniroma2.hoophub.dao.helper_dao.VenueDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
@@ -19,7 +20,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -143,7 +143,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue save", e);
             throw new DAOException("Error saving venue", e);
         }
     }
@@ -173,7 +172,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue retrieval", e);
             throw new DAOException("Error retrieving venue", e);
         }
     }
@@ -197,7 +195,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 return venues;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venues retrieval", e);
             throw new DAOException("Error retrieving all venues", e);
         }
     }
@@ -228,7 +225,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 return venues;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venues retrieval by manager", e);
             throw new DAOException("Error retrieving venues by manager", e);
         }
     }
@@ -259,7 +255,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 return venues;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venues retrieval by city", e);
             throw new DAOException("Error retrieving venues by city", e);
         }
     }
@@ -297,7 +292,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue update", e);
             throw new DAOException("Error updating venue", e);
         }
     }
@@ -326,7 +320,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue deletion", e);
             throw new DAOException("Error deleting venue", e);
         }
     }
@@ -337,24 +330,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     @Override
     public boolean venueExists(int venueId) throws DAOException {
         validateIdInput(venueId);
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_VENUE_EXISTS)) {
-
-                stmt.setInt(1, venueId);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(1) > 0;
-                    }
-                    return false;
-                }
-            }
-        } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue existence check", e);
-            throw new DAOException("Error checking venue existence", e);
-        }
+        return existsById(conn -> conn.prepareStatement(SQL_CHECK_VENUE_EXISTS), venueId);
     }
 
     /**
@@ -377,103 +353,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 return 1;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during next venue ID retrieval", e);
             throw new DAOException("Error getting next venue ID", e);
-        }
-    }
-
-    // ========== PRIVATE HELPER METHODS ==========
-
-    /**
-     * Maps ResultSet to Venue.
-     * <p>
-     * Uses {@link DaoLoadingContext} to prevent circular loops:
-     * If already loading → return Venue with VenueManager (break cycle).
-     * Otherwise → load complete VenueManager via VenueManagerDao (Facade pattern).
-     * </p>
-     */
-    private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {
-        String managerUsername = rs.getString("venue_manager_username");
-        int venueId = rs.getInt("id");
-        String venueKey = "Venue:" + venueId;
-
-        // Check if we're in a circular loading situation
-        if (DaoLoadingContext.isLoading(venueKey)) {
-            // Break the cycle by loading VenueManager without its managed venues
-            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-            VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
-            VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
-
-            if (venueManager == null) {
-                throw new DAOException("VenueManager not found: " + managerUsername);
-            }
-
-            Venue venue = new Venue.Builder()
-                    .id(venueId)
-                    .name(rs.getString("name"))
-                    .type(VenueType.valueOf(rs.getString("type")))
-                    .address(rs.getString("address"))
-                    .city(rs.getString("city"))
-                    .maxCapacity(rs.getInt("max_capacity"))
-                    .venueManager(venueManager)
-                    .build();
-
-            Set<TeamNBA> teams = retrieveVenueTeams(venueId);
-            for (TeamNBA team : teams) {
-                venue.addTeam(team);
-            }
-
-            return venue;
-        }
-
-        // Mark this venue as being loaded
-        DaoLoadingContext.startLoading(venueKey);
-        try {
-            // Retrieve the full VenueManager object using DaoFactoryFacade (Factory pattern)
-            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-            VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
-            VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
-
-            if (venueManager == null) {
-                logger.log(Level.SEVERE, "VenueManager not found for venue mapping: {0}", managerUsername);
-                throw new DAOException("VenueManager not found: " + managerUsername);
-            }
-
-            // Build the venue with COMPLETE manager
-            Venue venue = new Venue.Builder()
-                    .id(venueId)
-                    .name(rs.getString("name"))
-                    .type(VenueType.valueOf(rs.getString("type")))
-                    .address(rs.getString("address"))
-                    .city(rs.getString("city"))
-                    .maxCapacity(rs.getInt("max_capacity"))
-                    .venueManager(venueManager)
-                    .build();
-
-            // Load associated teams
-            Set<TeamNBA> teams = retrieveVenueTeams(venueId);
-            for (TeamNBA team : teams) {
-                venue.addTeam(team);
-            }
-
-            return venue;
-        } finally {
-            // Always clean up the loading context
-            DaoLoadingContext.finishLoading(venueKey);
-        }
-    }
-
-    // ========== VALIDATION METHODS ==========
-
-    private void validateVenueBeanInput(VenueBean venueBean) {
-        if (venueBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE_BEAN);
-        }
-    }
-
-    private void validateCityInput(String city) {
-        if (city == null || city.trim().isEmpty()) {
-            throw new IllegalArgumentException(ERR_NULL_CITY);
         }
     }
 
@@ -500,7 +380,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                         new Object[]{team.getDisplayName(), venueId});
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue team save", e);
             throw new DAOException("Error saving venue team association", e);
         }
     }
@@ -528,7 +407,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue team deletion", e);
             throw new DAOException("Error deleting venue team association", e);
         }
     }
@@ -549,19 +427,7 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 try (ResultSet rs = stmt.executeQuery()) {
                     while (rs.next()) {
                         String teamName = rs.getString("team_name");
-                        // Try multiple formats: display name, abbreviation, enum constant
-                        TeamNBA team = TeamNBA.fromDisplayName(teamName);
-                        if (team == null) {
-                            team = TeamNBA.fromAbbreviation(teamName);
-                        }
-                        if (team == null) {
-                            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
-                            try {
-                                team = TeamNBA.valueOf(teamName);
-                            } catch (IllegalArgumentException ignored) {
-                                // Not a valid enum constant
-                            }
-                        }
+                        TeamNBA team = resolveTeam(teamName);
                         if (team != null) {
                             teams.add(team);
                         } else {
@@ -576,7 +442,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 return teams;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue teams retrieval", e);
             throw new DAOException("Error retrieving venue teams", e);
         }
     }
@@ -598,8 +463,116 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                         new Object[]{affectedRows, venueId});
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during all venue teams deletion", e);
             throw new DAOException("Error deleting all venue teams", e);
         }
+    }
+
+    // ========== PRIVATE HELPER METHODS ==========
+
+    /**
+     * Maps ResultSet to Venue.
+     * Uses {@link DaoLoadingContext} to prevent circular loops.
+     */
+    private Venue mapResultSetToVenue(ResultSet rs) throws SQLException, DAOException {
+        String managerUsername = rs.getString("venue_manager_username");
+        int venueId = rs.getInt("id");
+        String venueKey = "Venue:" + venueId;
+
+        // Check if we're in a circular loading situation
+        if (DaoLoadingContext.isLoading(venueKey)) {
+            // Break the cycle by loading VenueManager (which will get a stub if needed)
+            DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+            VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
+            VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
+
+            if (venueManager == null) {
+                throw new DAOException("VenueManager not found: " + managerUsername);
+            }
+            return buildVenueWithTeams(venueId, rs, venueManager);
+        }
+
+        // Mark this venue as being loaded
+        DaoLoadingContext.startLoading(venueKey);
+        try {
+            // Load the COMPLETE VenueManager
+            VenueManager venueManager = VenueDaoHelper.loadVenueManager(managerUsername);
+            return buildVenueWithTeams(venueId, rs, venueManager);
+
+        } finally {
+            // Always clean up the loading context
+            DaoLoadingContext.finishLoading(venueKey);
+        }
+    }
+
+    /**
+     * Resolves a TeamNBA enum from a string using multiple strategies.
+     * Tries Display Name, Abbreviation, and finally Enum Constant Name.
+     *
+     * @param teamName The string representation of the team
+     * @return The TeamNBA enum or null if not found
+     */
+    private TeamNBA resolveTeam(String teamName) {
+        if (teamName == null || teamName.trim().isEmpty()) {
+            return null;
+        }
+
+        // 1. Try Display Name (e.g. "Los Angeles Lakers")
+        TeamNBA team = TeamNBA.fromDisplayName(teamName);
+        if (team != null) return team;
+
+        // 2. Try Abbreviation (e.g. "LAL")
+        team = TeamNBA.fromAbbreviation(teamName);
+        if (team != null) return team;
+
+        // 3. Try Enum Constant Name (e.g. "LOS_ANGELES_LAKERS")
+        try {
+            return TeamNBA.valueOf(teamName);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private void validateVenueBeanInput(VenueBean venueBean) {
+        if (venueBean == null) {
+            throw new IllegalArgumentException(ERR_NULL_VENUE_BEAN);
+        }
+    }
+
+    private void validateCityInput(String city) {
+        if (city == null || city.trim().isEmpty()) {
+            throw new IllegalArgumentException(ERR_NULL_CITY);
+        }
+    }
+
+    /**
+     * Helper method to build a Venue object and populate its teams.
+     * Centralizes object construction to eliminate code duplication.
+     *
+     * @param venueId The ID of the venue
+     * @param rs The ResultSet positioned at the current row
+     * @param venueManager The loaded VenueManager object
+     * @return The fully constructed Venue object
+     * @throws SQLException If a database access error occurs
+     * @throws DAOException If an error occurs, retrieving teams
+     */
+    private Venue buildVenueWithTeams(int venueId, ResultSet rs, VenueManager venueManager) throws SQLException, DAOException {
+        // Costruiamo l'oggetto base
+        Venue venue = new Venue.Builder()
+                .id(venueId)
+                .name(rs.getString("name"))
+                .type(VenueType.valueOf(rs.getString("type")))
+                .address(rs.getString("address"))
+                .city(rs.getString("city"))
+                .maxCapacity(rs.getInt("max_capacity"))
+                .venueManager(venueManager)
+                .build();
+
+        // Aggiungiamo i team
+        Set<TeamNBA> teams = retrieveVenueTeams(venueId);
+        for (TeamNBA team : teams) {
+            venue.addTeam(team);
+        }
+
+        return venue;
     }
 }

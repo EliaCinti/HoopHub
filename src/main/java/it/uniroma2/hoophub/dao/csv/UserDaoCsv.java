@@ -6,7 +6,7 @@ import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
+import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.PasswordUtils;
 
 import java.util.List;

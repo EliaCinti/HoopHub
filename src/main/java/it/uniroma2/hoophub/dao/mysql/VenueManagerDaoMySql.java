@@ -148,7 +148,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 }
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue manager retrieval", e);
             throw new DAOException("Error retrieving venue manager", e);
         }
     }
@@ -172,7 +171,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 return venueManagers;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venue managers retrieval", e);
             throw new DAOException("Error retrieving all venue managers", e);
         }
     }
@@ -217,7 +215,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during venue manager update", e);
             throw new DAOException("Error updating venue manager", e);
         } finally {
             resetAutoCommit(conn);
@@ -261,7 +258,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
-            logger.log(Level.SEVERE, "Database error during venue manager deletion", e);
             throw new DAOException("Error deleting venue manager", e);
         } finally {
             resetAutoCommit(conn);
@@ -304,7 +300,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 return venues;
             }
         } catch (SQLException e) {
-            logger.log(Level.SEVERE, "Database error during venues retrieval for manager", e);
             throw new DAOException("Error retrieving venues for venue manager", e);
         }
     }

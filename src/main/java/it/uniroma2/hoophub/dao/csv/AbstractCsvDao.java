@@ -2,7 +2,7 @@ package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
+import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 
 import java.io.File;
 import java.util.ArrayList;

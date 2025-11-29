@@ -3,12 +3,12 @@ package it.uniroma2.hoophub.dao.csv;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.VenueDao;
-import it.uniroma2.hoophub.dao.utility_dao.BookingDaoHelper;
+import it.uniroma2.hoophub.dao.helper_dao.BookingDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.*;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
+import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 
 import java.time.LocalDate;
