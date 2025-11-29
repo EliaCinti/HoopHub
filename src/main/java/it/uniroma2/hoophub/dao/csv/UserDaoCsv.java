@@ -6,7 +6,7 @@ import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.PasswordUtils;
 
 import java.util.List;
@@ -105,7 +105,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
     @Override
     public synchronized void validateUser(CredentialsBean credentials) throws DAOException {
         validateNotNull(credentials, "Credentials");
-        validateNotNullOrEmpty(credentials.getUsername(), "Username");
+        validateNotNullOrEmpty(credentials.getUsername(), CsvDaoConstants.USERNAME);
         validateNotNullOrEmpty(credentials.getPassword(), "Password");
 
         String[] userRow = findRowByValue(COL_USERNAME, credentials.getUsername());
@@ -145,7 +145,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
     @Override
     public synchronized void saveUser(UserBean userBean) throws DAOException {
         validateNotNull(userBean, "UserBean");
-        validateNotNullOrEmpty(userBean.getUsername(), "Username");
+        validateNotNullOrEmpty(userBean.getUsername(), CsvDaoConstants.USERNAME);
         validateNotNullOrEmpty(userBean.getPassword(), "Password");
         validateNotNullOrEmpty(userBean.getFullName(), "Full name");
         validateNotNullOrEmpty(userBean.getGender(), "Gender");
@@ -186,7 +186,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
      */
     @Override
     public synchronized String[] retrieveUser(String username) throws DAOException {
-        validateNotNullOrEmpty(username, "Username");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
         return findRowByValue(COL_USERNAME, username);
     }
 
@@ -195,7 +195,7 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
      */
     @Override
     public synchronized boolean isUsernameTaken(String username) throws DAOException {
-        validateNotNullOrEmpty(username, "Username");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
         String[] userRow = findRowByValue(COL_USERNAME, username);
         return userRow != null && userRow.length > 0;
     }

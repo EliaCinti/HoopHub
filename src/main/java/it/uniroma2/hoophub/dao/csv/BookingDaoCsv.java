@@ -2,13 +2,13 @@ package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
-import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.VenueDao;
+import it.uniroma2.hoophub.dao.utility_dao.BookingDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.*;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 
 import java.time.LocalDate;
@@ -165,17 +165,58 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         return bookings;
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * <strong>Implementation Note:</strong> This method performs an in-memory "JOIN" equivalent.
+     * It first retrieves all venues managed by the user, collects their IDs, and then
+     * filters all bookings that match those venue IDs.
+     * </p>
+     */
     @Override
     public synchronized List<Booking> retrieveBookingsByVenueManager(String venueManagerUsername) throws DAOException {
         validateNotNullOrEmpty(venueManagerUsername, "Venue manager username");
 
-        // NOTE: This requires querying VenueDao to find venues for this manager.
-        // To avoid circular dependency, we keep it simple: the service layer
-        // should handle this aggregation. For now, we return empty list.
-        // Alternative: Store venueManagerUsername in bookings.csv (denormalization)
+        // Step 1: Retrieve all venues managed by this manager using VenueDao
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        VenueDao venueDao = daoFactory.getVenueDao();
 
-        logger.log(Level.WARNING, "retrieveBookingsByVenueManager should be handled at service layer to avoid circular dependencies");
-        return new ArrayList<>();
+        List<Venue> managedVenues = venueDao.retrieveVenuesByManager(venueManagerUsername);
+
+        // Optimization: If no venues, return empty list immediately
+        if (managedVenues.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Step 2: Collect IDs of managed venues for fast lookup
+        List<Integer> managedVenueIds = new ArrayList<>();
+        for (Venue venue : managedVenues) {
+            managedVenueIds.add(venue.getId());
+        }
+
+        // Step 3: Retrieve all bookings and filter by venue ID
+        // Note: We use readAll directly instead of retrieveAllBookings to avoid building objects we might discard
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<Booking> matchingBookings = new ArrayList<>();
+
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            try {
+                int bookingVenueId = Integer.parseInt(row[COL_VENUE_ID]);
+
+                // Filter: Does this booking belong to one of the manager's venues?
+                if (managedVenueIds.contains(bookingVenueId)) {
+                    // Only map (and load heavy dependencies) if it's a match
+                    matchingBookings.add(mapRowToBooking(row));
+                }
+            } catch (NumberFormatException e) {
+                logger.log(Level.WARNING, "Skipping invalid booking row at index {0}", i);
+            }
+        }
+
+        logger.log(Level.FINE, "Retrieved {0} bookings for manager {1}",
+                new Object[]{matchingBookings.size(), venueManagerUsername});
+        return matchingBookings;
     }
 
     @Override
@@ -307,19 +348,14 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     /**
      * Maps a CSV row to a Booking domain object.
      * <p>
-     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
-     * to detect and prevent infinite loops when loading related entities. If a Fan or Venue is
-     * already being loaded in the current call stack (circular reference), it skips reloading
-     * to break the cycle.
-     * </p>
-     * <p>
-     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
-     * loads complete Fan and Venue objects with all real data by delegating to FanDao and VenueDao,
-     * ensuring that the returned Booking object is fully populated.
+     * <strong>Refactoring:</strong> The duplication has been removed by extracting the
+     * object retrieval and building logic into the {@link #loadAndBuildBooking} helper method.
+     * The circular dependency check now simply decides whether to wrap that call
+     * in a new loading context or not.
      * </p>
      *
      * @param row The CSV row data
-     * @return A Booking object with fully loaded Fan and Venue references
+     * @return A Booking object with loaded Fan and Venue references
      * @throws DAOException If the row data is invalid or cannot be parsed
      */
     private Booking mapRowToBooking(String[] row) throws DAOException {
@@ -332,69 +368,14 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
             // Check if we're in a circular loading situation
             if (DaoLoadingContext.isLoading(bookingKey)) {
-                // Break the cycle by loading Fan and Venue which will detect the cycle
-                // and return minimal objects (Fan with empty bookings, Venue with minimal data)
-                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-
-                FanDao fanDao = daoFactory.getFanDao();
-                Fan minimalFan = fanDao.retrieveFan(fanUsername);
-
-                VenueDao venueDao = daoFactory.getVenueDao();
-                Venue minimalVenue = venueDao.retrieveVenue(venueId);
-
-                if (minimalFan == null) {
-                    throw new DAOException("Fan not found for booking: " + fanUsername);
-                }
-                if (minimalVenue == null) {
-                    throw new DAOException("Venue not found for booking: " + venueId);
-                }
-
-                return new Booking.Builder(
-                        bookingId,
-                        LocalDate.parse(row[COL_GAME_DATE]),
-                        LocalTime.parse(row[COL_GAME_TIME]),
-                        TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
-                        TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
-                        minimalVenue,
-                        minimalFan
-                )
-                        .status(BookingStatus.valueOf(row[COL_STATUS]))
-                        .notified(Boolean.parseBoolean(row[COL_NOTIFIED]))
-                        .build();
+                // Already loading: just proceed to load/build (retrieveFan/Venue will handle their own cycles)
+                return loadAndBuildBooking(bookingId, fanUsername, venueId, row);
             }
 
-            // Mark this booking as being loaded
+            // Not loading: mark as loading, then proceed
             DaoLoadingContext.startLoading(bookingKey);
             try {
-                // Load COMPLETE Fan and Venue objects (not stubs)
-                DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-
-                FanDao fanDao = daoFactory.getFanDao();
-                Fan fan = fanDao.retrieveFan(fanUsername);
-
-                VenueDao venueDao = daoFactory.getVenueDao();
-                Venue venue = venueDao.retrieveVenue(venueId);
-
-                if (fan == null) {
-                    throw new DAOException("Fan not found for booking: " + fanUsername);
-                }
-                if (venue == null) {
-                    throw new DAOException("Venue not found for booking: " + venueId);
-                }
-
-                // Build Booking with COMPLETE Fan and Venue
-                return new Booking.Builder(
-                        bookingId,
-                        LocalDate.parse(row[COL_GAME_DATE]),
-                        LocalTime.parse(row[COL_GAME_TIME]),
-                        TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
-                        TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
-                        venue,
-                        fan
-                )
-                        .status(BookingStatus.valueOf(row[COL_STATUS]))
-                        .notified(Boolean.parseBoolean(row[COL_NOTIFIED]))
-                        .build();
+                return loadAndBuildBooking(bookingId, fanUsername, venueId, row);
             } finally {
                 // Always clean up the loading context
                 DaoLoadingContext.finishLoading(bookingKey);
@@ -403,5 +384,41 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         } catch (Exception e) {
             throw new DAOException("Error mapping booking data from CSV row", e);
         }
+    }
+
+    /**
+     * Helper method to retrieve dependencies and build the Booking object.
+     * <p>
+     * This centralizes the logic for loading the Fan and Venue and constructing
+     * the Booking entity, eliminating code duplication.
+     * </p>
+     *
+     * @param bookingId The ID of the booking
+     * @param fanUsername The username of the fan
+     * @param venueId The ID of the venue
+     * @param row The raw CSV row data containing other fields
+     * @return Fully constructed Booking object
+     * @throws DAOException If dependencies cannot be found
+     */
+    private Booking loadAndBuildBooking(int bookingId, String fanUsername, int venueId, String[] row) throws DAOException {
+        // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
+        BookingDaoHelper.BookingDependencies deps = BookingDaoHelper.loadDependencies(fanUsername, venueId);
+
+        Fan fan = deps.fan();
+        Venue venue = deps.venue();
+
+        // Build Booking with loaded Fan and Venue
+        return new Booking.Builder(
+                bookingId,
+                LocalDate.parse(row[COL_GAME_DATE]),
+                LocalTime.parse(row[COL_GAME_TIME]),
+                TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
+                TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
+                venue,
+                fan
+        )
+                .status(BookingStatus.valueOf(row[COL_STATUS]))
+                .notified(Boolean.parseBoolean(row[COL_NOTIFIED]))
+                .build();
     }
 }

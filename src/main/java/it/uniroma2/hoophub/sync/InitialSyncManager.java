@@ -5,6 +5,7 @@ import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.UserDao;
+import it.uniroma2.hoophub.dao.csv.CsvDaoConstants;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
@@ -14,11 +15,8 @@ import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.model.UserType;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -45,7 +43,7 @@ import java.util.logging.Logger;
 public class InitialSyncManager {
 
     private static final Logger logger = Logger.getLogger(InitialSyncManager.class.getName());
-
+    private static final String USERNAME_KEY = "username";
     /**
      * Performs a complete initial synchronization between primary and secondary persistence types.
      * <p>
@@ -97,17 +95,21 @@ public class InitialSyncManager {
      */
     private void clearCsvFiles() {
         try {
-            java.io.File dataDir = new java.io.File("data");
+            java.io.File dataDir = new java.io.File(CsvDaoConstants.CSV_BASE_DIR);
             if (!dataDir.exists()) {
-                dataDir.mkdirs();
+                boolean created = dataDir.mkdirs();
+                if (!created) {
+                    logger.log(Level.SEVERE, "Impossibile creare la directory: {0}", dataDir.getAbsolutePath());
+                    throw new IOException("Failed to create directory: " + dataDir.getAbsolutePath());
+                }
             }
 
             reinitializeCsvFile(new java.io.File(dataDir, "users.csv"),
-                    new String[]{"username", "password_hash", "full_name", "gender", "user_type"});
+                    new String[]{USERNAME_KEY, "password_hash", "full_name", "gender", "user_type"});
             reinitializeCsvFile(new java.io.File(dataDir, "fans.csv"),
-                    new String[]{"username", "fav_team", "birthday"});
+                    new String[]{USERNAME_KEY, "fav_team", "birthday"});
             reinitializeCsvFile(new java.io.File(dataDir, "venue_managers.csv"),
-                    new String[]{"username", "company_name", "phone_number"});
+                    new String[]{USERNAME_KEY, "company_name", "phone_number"});
             reinitializeCsvFile(new java.io.File(dataDir, "venues.csv"),
                     new String[]{"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"});
             reinitializeCsvFile(new java.io.File(dataDir, "bookings.csv"),
@@ -120,7 +122,7 @@ public class InitialSyncManager {
     }
 
     /**
-     * Reinitializes a CSV file with only its header row.
+     * Reinitialized a CSV file with only its header row.
      */
     private void reinitializeCsvFile(java.io.File file, String[] header) throws java.io.IOException {
         try (com.opencsv.CSVWriter writer = new com.opencsv.CSVWriter(new java.io.FileWriter(file))) {
@@ -171,7 +173,8 @@ public class InitialSyncManager {
                 factory.setPersistenceType(primary);
                 factory.getFanDao().saveFan(beanToSave);
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
-                logger.info("Sync Conflict: Different data for fan " + key + ". Primary source " + primary + " takes precedence.");
+                logger.log(Level.INFO, "Sync Conflict: Different data for fan {0}. Primary source {1} takes precedence.",
+                        new Object[]{key, primary});
                 FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getFanDao().updateFan(primaryFan, beanToUpdate);
@@ -220,7 +223,8 @@ public class InitialSyncManager {
                 factory.setPersistenceType(primary);
                 factory.getVenueManagerDao().saveVenueManager(bean);
             } else if (primaryVM != null && !primaryVM.isDataEquivalent(secondaryVM)) {
-                logger.info("Sync Conflict: Different data for venue manager " + key + ". Primary source " + primary + " takes precedence.");
+                logger.log(Level.INFO, "Sync Conflict: Different data for venue manager {0}. Primary source {1} takes precedence.",
+                        new Object[]{key, primary});
                 VenueManagerBean beanToUpdate = createVenueManagerBeanFromModel(primaryVM, factory, primary);
                 factory.setPersistenceType(secondary);
                 factory.getVenueManagerDao().updateVenueManager(primaryVM, beanToUpdate);
@@ -264,7 +268,8 @@ public class InitialSyncManager {
                 factory.setPersistenceType(primary);
                 factory.getVenueDao().saveVenue(bean);
             } else if (primaryVenue != null && !primaryVenue.equals(secondaryVenue)) {
-                logger.info("Sync Conflict: Different data for venue " + id + ". Primary source " + primary + " takes precedence.");
+                logger.log(Level.INFO, "Sync Conflict: Different data for venue {0}. Primary source {1} takes precedence.",
+                        new Object[]{id, primary});
                 VenueBean beanToUpdate = createVenueBeanFromModel(primaryVenue);
                 factory.setPersistenceType(secondary);
                 factory.getVenueDao().updateVenue(beanToUpdate);
@@ -315,7 +320,8 @@ public class InitialSyncManager {
                     factory.setPersistenceType(primary);
                     factory.getBookingDao().saveBooking(beanToSave);
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
-                    logger.info("Sync Conflict: Different data for booking " + id + ". Primary source " + primary + " takes precedence.");
+                    logger.log(Level.INFO, "Sync Conflict: Different data for booking {0}. Primary source {1} takes precedence.",
+                            new Object[]{id, primary});
                     BookingBean beanToUpdate = createBookingBeanFromModel(primaryBooking);
                     factory.setPersistenceType(secondary);
                     factory.getBookingDao().updateBooking(beanToUpdate);

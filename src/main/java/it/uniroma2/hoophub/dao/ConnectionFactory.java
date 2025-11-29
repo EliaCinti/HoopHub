@@ -99,11 +99,11 @@ public class ConnectionFactory {
         connection = DriverManager.getConnection(connectionUrl, user, pass);
 
         // Explicitly select the database schema using JDBC's setCatalog method
-        // This is more reliable than executing "USE database" as a SQL statement
+        // This is more reliable than executing "USE database" as an SQL statement
         String databaseName = extractDatabaseName(connectionUrl);
         if (databaseName != null && !databaseName.isEmpty()) {
             connection.setCatalog(databaseName);
-            logger.info("Database schema '" + databaseName + "' selected successfully");
+            logger.log(Level.INFO, "Database schema ''{0}'' selected successfully", databaseName);
         }
 
         logger.info("Database connection established successfully");

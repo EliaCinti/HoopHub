@@ -7,7 +7,7 @@ import it.uniroma2.hoophub.model.Notification;
 import it.uniroma2.hoophub.model.NotificationType;
 import it.uniroma2.hoophub.model.UserType;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,8 +45,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     // ========== CONSTANTS ==========
     private static final String NOTIFICATION = "Notification";
-    private static final String USERNAME = "Username";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String USER_TYPE = "UserType";
 
     // ========== COLUMN INDICES ==========
 
@@ -115,8 +115,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     @Override
     public synchronized List<Notification> getNotificationsForUser(String username, UserType userType) throws DAOException {
-        validateNotNullOrEmpty(username, USERNAME);
-        validateNotNull(userType, "UserType");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
+        validateNotNull(userType, USER_TYPE);
 
         List<Notification> notifications = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
@@ -140,8 +140,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     @Override
     public synchronized List<Notification> getUnreadNotificationsForUser(String username, UserType userType) throws DAOException {
-        validateNotNullOrEmpty(username, USERNAME);
-        validateNotNull(userType, "UserType");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
+        validateNotNull(userType, USER_TYPE);
 
         List<Notification> notifications = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
@@ -201,8 +201,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     @Override
     public synchronized void markAllAsReadForUser(String username, UserType userType) throws DAOException {
-        validateNotNullOrEmpty(username, USERNAME);
-        validateNotNull(userType, "UserType");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
+        validateNotNull(userType, USER_TYPE);
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean anyUpdated = false;
@@ -271,8 +271,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     @Override
     public synchronized int getUnreadCount(String username, UserType userType) throws DAOException {
-        validateNotNullOrEmpty(username, USERNAME);
-        validateNotNull(userType, "UserType");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
+        validateNotNull(userType, USER_TYPE);
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         int count = 0;

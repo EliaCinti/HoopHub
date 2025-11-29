@@ -1,0 +1,5 @@
+"username","password_hash","full_name","gender","user_type"
+"jane_smith","$2a$12$Eyn24rN8KDnujwtw.0jCGeP45QbfdSIKyG6/T4fOSk8xRXL.glkiG","Jane Smith","Female","FAN"
+"john_doe","$2a$12$ZOtmjpX6KxvDSpsFXpGCkOQDTkmjTNnJcwXUgnuXAnIkaCQaweGza","John Doe","Male","FAN"
+"sarah_owner","$2a$12$vmQ1k5CYQSn3b9g04//uMug/ILVPtDqbKHf1mlvjBqAQQR.JHxJ9W","Sarah Owner","Female","VENUE_MANAGER"
+"mike_manager","$2a$12$ZNQyTj/Yp3ZTLVAd3BlT3.ts1Hfsx0SIyXxl.t8sr.ctexrfk3isS","Mike Manager","Male","VENUE_MANAGER"

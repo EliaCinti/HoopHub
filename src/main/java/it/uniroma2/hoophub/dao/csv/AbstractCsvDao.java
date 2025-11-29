@@ -2,7 +2,7 @@ package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -35,6 +35,7 @@ import java.util.logging.Logger;
  * @see CsvUtilities
  */
 public abstract class AbstractCsvDao extends AbstractObservableDao {
+
 
     /**
      * Logger instance for this DAO (uses the concrete subclass name).
@@ -180,6 +181,45 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         }
 
         return new String[0];
+    }
+
+    /**
+     * Deletes a row where the specified column matches the given string value.
+     * Useful for deleting entities identified by a string (e.g., username).
+     *
+     * @param columnIndex The index of the column to check (e.g., COL_USERNAME)
+     * @param value The value to match (e.g., "mario_rossi")
+     * @return true if a row was found and deleted, false otherwise
+     * @throws DAOException If there is an error reading or writing the CSV file
+     */
+    protected synchronized boolean deleteByColumn(int columnIndex, String value) throws DAOException {
+        // Validazione input
+        if (value == null) {
+            return false;
+        }
+
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        // Start from index 1 to skip header
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            // Controllo bounds e match del valore
+            if (data.get(i).length > columnIndex && data.get(i)[columnIndex].equals(value)) {
+                data.remove(i);
+                found = true;
+                break;
+            }
+        }
+
+        if (found) {
+            // Scriviamo il file aggiornato.
+            // Nota: data contiene ancora header alla posizione 0 se non l'abbiamo rimosso.
+            // CsvUtilities.updateFile si aspetta i dati SENZA header (perché lo aggiunge lui),
+            // quindi passiamo la sublist dal secondo elemento in poi.
+            CsvUtilities.updateFile(csvFile, getHeader(), data.subList(1, data.size()));
+        }
+
+        return found;
     }
 
     /**

@@ -26,7 +26,10 @@ public final class CsvDaoConstants {
     /**
      * Base directory for all CSV files.
      */
-    public static final String CSV_BASE_DIR = "data/";
+    public static final String CSV_BASE_DIR = "db/csv/";
+
+    // ========== COMMON WORDS ==========
+    public static final String USERNAME = "Username";
 
     // ========== COMMON ERROR MESSAGES ==========
 
@@ -54,7 +57,7 @@ public final class CsvDaoConstants {
     public static final String ERR_ENTITY_NOT_FOUND = "%s not found: %s";
 
     /**
-     * Error message format for entity not found during specific operation.
+     * Error message format for entity not found during a specific operation.
      * Usage: String.format(ERR_ENTITY_NOT_FOUND_FOR_OP, "Booking", "update", id)
      */
     public static final String ERR_ENTITY_NOT_FOUND_FOR_OP = "%s not found for %s: %s";
@@ -73,17 +76,6 @@ public final class CsvDaoConstants {
      */
     public static final String ERR_CSV_INIT_FAILED = "Failed to initialize CSV file: %s";
 
-    // ========== COMMON COLUMN NAMES ==========
-
-    /**
-     * Standard column name for ID fields.
-     */
-    public static final String COL_NAME_ID = "id";
-
-    /**
-     * Standard column name for username fields.
-     */
-    public static final String COL_NAME_USERNAME = "username";
 
     // ========== CSV INDICES ==========
 
@@ -92,8 +84,4 @@ public final class CsvDaoConstants {
      */
     public static final int FIRST_DATA_ROW = 1;
 
-    /**
-     * Index of the header row.
-     */
-    public static final int HEADER_ROW = 0;
 }

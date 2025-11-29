@@ -11,7 +11,7 @@ import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.TeamNBA;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.UserType;
 
@@ -95,7 +95,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     @Override
     public synchronized void saveFan(FanBean fanBean) throws DAOException {
         validateNotNull(fanBean, "FanBean");
-        validateNotNullOrEmpty(fanBean.getUsername(), "Username");
+        validateNotNullOrEmpty(fanBean.getUsername(), CsvDaoConstants.USERNAME);
         validateNotNullOrEmpty(String.valueOf(fanBean.getFavTeam()), "Favorite team");
         validateNotNull(fanBean.getBirthday(), "Birthday");
 
@@ -126,7 +126,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
      */
     @Override
     public synchronized Fan retrieveFan(String username) throws DAOException {
-        validateNotNullOrEmpty(username, "Username");
+        validateNotNullOrEmpty(username, CsvDaoConstants.USERNAME);
 
         // Step 1: Retrieve common user data
         String[] userData = userDao.retrieveUser(username);
@@ -217,24 +217,13 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
     public synchronized void deleteFan(Fan fan) throws DAOException {
         validateNotNull(fan, "Fan");
 
-        // Step 1: Delete fan-specific data first
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            if (data.get(i)[COL_USERNAME].equals(fan.getUsername())) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
+        // Step 1: Delete fan-specific data using the generic method
+        boolean found = deleteByColumn(COL_USERNAME, fan.getUsername());
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
                     "Fan", "deletion", fan.getUsername()));
         }
-
-        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         // Step 2: Delete common user data
         userDao.deleteUser(fan);
@@ -250,7 +239,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
      * <p>
      * Uses {@link DaoLoadingContext} to prevent circular loops:
      * If already loading this fan → return with empty bookings list (break cycle).
-     * Otherwise → load complete bookings via BookingDao (Facade pattern).
+     * Otherwise, → load complete bookings via BookingDao (Facade pattern).
      * </p>
      *
      * @param userData Common user data [username, password_hash, full_name, gender, type]
@@ -279,7 +268,7 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
             // Mark this fan as being loaded
             DaoLoadingContext.startLoading(fanKey);
             try {
-                // Load COMPLETE list of bookings (not empty)
+                // Load the COMPLETE list of bookings (not empty)
                 DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
                 BookingDao bookingDao = daoFactory.getBookingDao();
                 List<Booking> bookings = bookingDao.retrieveBookingsByFan(username);

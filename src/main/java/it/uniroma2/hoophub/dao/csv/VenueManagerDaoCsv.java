@@ -10,7 +10,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
-import it.uniroma2.hoophub.utilities.CsvUtilities;
+import it.uniroma2.hoophub.dao.utility_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 import it.uniroma2.hoophub.model.UserType;
 
@@ -66,6 +66,7 @@ import java.util.logging.Level;
  */
 public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDao {
 
+    private static final String VENUE_MANAGER = "VenueManager";
     // ========== CSV CONFIGURATION ==========
 
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venue_managers.csv";
@@ -130,7 +131,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
 
         CsvUtilities.writeFile(csvFile, managerRow);
 
-        notifyObservers(DaoOperation.INSERT, "VenueManager", venueManagerBean.getUsername(), venueManagerBean);
+        notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManagerBean.getUsername(), venueManagerBean);
     }
 
     /**
@@ -190,7 +191,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
      */
     @Override
     public synchronized void updateVenueManager(VenueManager venueManager, UserBean userBean) throws DAOException {
-        validateNotNull(venueManager, "VenueManager");
+        validateNotNull(venueManager, VENUE_MANAGER);
         validateNotNull(userBean, "UserBean");
 
         // Step 1: Update common user data
@@ -213,50 +214,40 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "VenueManager", "update", venueManager.getUsername()));
+                    VENUE_MANAGER, "update", venueManager.getUsername()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "VenueManager updated successfully: {0}", venueManager.getUsername());
-        notifyObservers(DaoOperation.UPDATE, "VenueManager", venueManager.getUsername(), venueManager);
+        notifyObservers(DaoOperation.UPDATE, VENUE_MANAGER, venueManager.getUsername(), venueManager);
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * Deletes manager-specific data from CSV, then common user data via UserDao.
-     * Notifies observers (Observer pattern).
+     * <strong>Refactoring:</strong> Uses the generic {@link #deleteByColumn(int, String)} method
+     * from AbstractCsvDao to handle row deletion, improving code reuse and readability.
      * </p>
      */
     @Override
     public synchronized void deleteVenueManager(VenueManager venueManager) throws DAOException {
-        validateNotNull(venueManager, "VenueManager");
+        validateNotNull(venueManager, VENUE_MANAGER);
 
-        // Step 1: Delete venue manager-specific data first
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            if (data.get(i)[COL_USERNAME].equals(venueManager.getUsername())) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
+        // Step 1: Delete venue manager-specific data using generic method
+        // We delete by username column
+        boolean found = deleteByColumn(COL_USERNAME, venueManager.getUsername());
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    "VenueManager", "deletion", venueManager.getUsername()));
+                    VENUE_MANAGER, "deletion", venueManager.getUsername()));
         }
-
-        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         // Step 2: Delete common user data
         userDao.deleteUser(venueManager);
 
         logger.log(Level.INFO, "VenueManager deleted successfully: {0}", venueManager.getUsername());
-        notifyObservers(DaoOperation.DELETE, "VenueManager", venueManager.getUsername(), null);
+        notifyObservers(DaoOperation.DELETE, VENUE_MANAGER, venueManager.getUsername(), null);
     }
 
     /**
@@ -272,7 +263,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
      */
     @Override
     public synchronized List<Venue> getVenues(VenueManager venueManager) throws DAOException {
-        validateNotNull(venueManager, "VenueManager");
+        validateNotNull(venueManager, VENUE_MANAGER);
 
         // Use DaoFactoryFacade to get VenueDao (Factory pattern)
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
@@ -287,7 +278,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
      * <p>
      * Uses {@link DaoLoadingContext} to prevent circular loops:
      * If already loading this manager → return with empty venues list (break cycle).
-     * Otherwise → load complete managed venues via VenueDao (Facade pattern).
+     * Otherwise, → load complete managed venues via VenueDao (Facade pattern).
      * </p>
      *
      * @param userData Common user data [username, password_hash, full_name, gender, type]
@@ -315,7 +306,7 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
             // Mark this manager as being loaded
             DaoLoadingContext.startLoading(managerKey);
             try {
-                // Load COMPLETE list of managed venues (not empty)
+                // Load the COMPLETE list of managed venues (not empty)
                 DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
                 VenueDao venueDao = daoFactory.getVenueDao();
                 List<Venue> managedVenues = venueDao.retrieveVenuesByManager(username);
