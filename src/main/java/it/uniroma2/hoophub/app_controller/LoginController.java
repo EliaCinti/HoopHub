@@ -8,7 +8,7 @@ import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.UserType;
 
 import java.time.Instant;
 import java.time.Duration;

@@ -3,7 +3,7 @@ package it.uniroma2.hoophub.dao;
 import it.uniroma2.hoophub.beans.NotificationBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.patterns.observer.ObservableDao;
 
 import java.util.List;

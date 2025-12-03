@@ -13,7 +13,7 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.UserType;
 
 import java.io.IOException;
 import java.util.*;

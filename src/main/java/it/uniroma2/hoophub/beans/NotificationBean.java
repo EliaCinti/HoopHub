@@ -1,7 +1,7 @@
 package it.uniroma2.hoophub.beans;
 
-import it.uniroma2.hoophub.model.NotificationType;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.NotificationType;
+import it.uniroma2.hoophub.enums.UserType;
 import java.time.LocalDateTime;
 
 /**

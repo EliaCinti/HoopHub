@@ -1,5 +1,8 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.BookingStatus;
+import it.uniroma2.hoophub.enums.UserType;
+import it.uniroma2.hoophub.enums.VenueType;
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 import it.uniroma2.hoophub.exception.VenueCapacityExceededException;
 

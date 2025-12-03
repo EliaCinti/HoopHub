@@ -5,24 +5,29 @@ import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 import it.uniroma2.hoophub.exception.DAOException;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 /**
- * Utility class providing static methods to read and write CSV files. This class is designed to handle
- * common CSV operations such as reading all data, updating a file, and writing new records.
+ * Utility class providing static methods to read and write CSV files.
+ * <p>
+ * This implementation explicitly uses the <strong>Decorator Pattern</strong> for Java I/O streams:
+ * <ul>
+ * <li><strong>FileInputStream/FileOutputStream</strong>: Low-level byte stream (Component)</li>
+ * <li><strong>InputStreamReader/OutputStreamWriter</strong>: Bridge from bytes to characters (Decorator/Adapter)</li>
+ * <li><strong>BufferedReader/BufferedWriter</strong>: High-level buffering for performance (Concrete Decorator)</li>
+ * <li><strong>CSVReader/CSVWriter</strong>: Application-level abstraction</li>
+ * </ul>
+ * This layered approach ensures correct character set handling (UTF-8) and optimal performance.
+ * </p>
  */
 public class CsvUtilities {
-    /**
-     * Private constructor to prevent instantiation of this utility class.
-     */
+
     private CsvUtilities() {
-        /* no instance */
+        /* Utility class - no instance */
     }
 
     public static final String ERR_ACCESS = "Errore di I/O accedendo al file: %s";
@@ -30,17 +35,22 @@ public class CsvUtilities {
     public static final String ERR_MOVE_FILE = "Errore durante il trasferimento del file da %s a %s";
 
     /**
-     * Reads all rows from a specified CSV file and returns them as a list of string arrays.
-     * Each string array in the list represents a row from the CSV, where each element
-     * in the array represents a column value.
+     * Reads all rows from a specified CSV file.
+     * Uses the Decorator pattern to build a buffered character stream from a file byte stream.
      *
      * @param fd The CSV file to be read.
-     * @return A list of string arrays, where each array represents a row in the CSV file.
-     * @throws DAOException If there are any issues accessing or parsing the CSV file.
+     * @return A list of string arrays, where each array represents a row.
+     * @throws DAOException If access or parsing fails.
      */
     public static List<String[]> readAll(File fd) throws DAOException {
-        try (CSVReader reader = new CSVReader(new FileReader(fd))) {
+        // DECORATOR PATTERN: File -> FileInputStream -> InputStreamReader -> BufferedReader -> CSVReader
+        try (FileInputStream fis = new FileInputStream(fd);
+             InputStreamReader isr = new InputStreamReader(fis, StandardCharsets.UTF_8);
+             BufferedReader br = new BufferedReader(isr);
+             CSVReader reader = new CSVReader(br)) {
+
             return reader.readAll();
+
         } catch (IOException e) {
             throw new DAOException(String.format(ERR_ACCESS, fd), e);
         } catch (CsvException e) {
@@ -49,23 +59,36 @@ public class CsvUtilities {
     }
 
     /**
-     * Updates a CSV file by writing a new table of data to a temporary file, including a specified header.
-     * After successful writing, the temporary file replaces the original file.
-     * This method is synchronized to ensure thread safety when accessing the file system.
+     * Updates a CSV file by rewriting it entirely to a temp file first.
+     * Uses the Decorator pattern for efficient writing.
      *
-     * @param fd     The CSV file to update.
-     * @param header An array representing the header row, to be added at the beginning of the file.
-     * @param table  A list of string arrays, where each array represents a row in the updated CSV file.
-     * @throws DAOException If there are any issues writing to or replacing the original CSV file.
+     * @param fd     The original CSV file.
+     * @param header The header row (if needed).
+     * @param table  The data rows.
+     * @throws DAOException If writing fails.
      */
     public static synchronized void updateFile(File fd, String[] header, List<String[]> table) throws DAOException {
         File fdTmp = new File(fd.getAbsolutePath() + ".tmp");
-        try (CSVWriter writer = new CSVWriter(new FileWriter(fdTmp))) {
-            table.addFirst(header);  // Adding header as the first row
+
+        // DECORATOR PATTERN: File -> FileOutputStream -> OutputStreamWriter -> BufferedWriter -> CSVWriter
+        try (FileOutputStream fos = new FileOutputStream(fdTmp);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+             BufferedWriter bw = new BufferedWriter(osw);
+             CSVWriter writer = new CSVWriter(bw)) {
+
+            // Se header è specificato, scrivilo come prima riga
+            // Controllo opzionale: se la tabella contiene già header alla riga 0, evita di duplicarlo
+            if (header != null && (table.isEmpty() || !isHeaderPresent(table, header))) {
+                writer.writeNext(header);
+            }
+
             writer.writeAll(table);
+
         } catch (IOException e) {
             throw new DAOException(String.format(ERR_ACCESS, fdTmp), e);
         }
+
+        // Atomic move (replace)
         try {
             Files.move(fdTmp.toPath(), fd.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -74,17 +97,37 @@ public class CsvUtilities {
     }
 
     /**
-     * Writes a single record to the end of a specified CSV file.
+     * Appends a single record to the CSV file.
+     * Uses the Decorator pattern with append mode enabled.
      *
-     * @param fd          The CSV file to which the record will be appended.
-     * @param tableRecord An array of strings, each representing a column value of the record to be written.
-     * @throws DAOException If there is an error writing to the CSV file.
+     * @param fd          The CSV file.
+     * @param tableRecord The row data to append.
+     * @throws DAOException If writing fails.
      */
     public static synchronized void writeFile(File fd, String[] tableRecord) throws DAOException {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(fd, true))) {
+        // DECORATOR PATTERN con flag 'append = true' nel FileOutputStream
+        try (FileOutputStream fos = new FileOutputStream(fd, true);
+             OutputStreamWriter osw = new OutputStreamWriter(fos, StandardCharsets.UTF_8);
+             BufferedWriter bw = new BufferedWriter(osw);
+             CSVWriter writer = new CSVWriter(bw)) {
+
             writer.writeNext(tableRecord);
+
         } catch (IOException e) {
-            throw new DAOException(e.getMessage());
+            throw new DAOException(String.format(ERR_ACCESS, fd), e);
         }
+    }
+
+    /**
+     * Helper to check if the first row of data matches the header.
+     */
+    private static boolean isHeaderPresent(List<String[]> table, String[] header) {
+        if (table.isEmpty()) return false;
+        String[] firstRow = table.getFirst();
+        if (firstRow.length != header.length) return false;
+        for (int i = 0; i < header.length; i++) {
+            if (!firstRow[i].equals(header[i])) return false;
+        }
+        return true;
     }
 }

@@ -2,7 +2,7 @@ package it.uniroma2.hoophub.dao;
 
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.model.TeamNBA;
+import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import java.util.List;
 import java.util.Set;

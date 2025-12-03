@@ -5,8 +5,8 @@ import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
-import it.uniroma2.hoophub.model.NotificationType;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.NotificationType;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 
 import java.sql.Connection;

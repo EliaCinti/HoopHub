@@ -7,7 +7,7 @@ import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;
-import it.uniroma2.hoophub.model.TeamNBA;
+import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
 

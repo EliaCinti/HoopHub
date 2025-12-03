@@ -6,7 +6,7 @@ import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.session.SessionManager;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.UserType;
 
 import java.io.Serial;
 import java.util.Optional;

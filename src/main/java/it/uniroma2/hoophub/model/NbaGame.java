@@ -1,5 +1,7 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.TeamNBA;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Objects;

@@ -6,13 +6,13 @@ import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.dao.helper_dao.VenueDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
-import it.uniroma2.hoophub.model.TeamNBA;
+import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
-import it.uniroma2.hoophub.model.VenueType;
+import it.uniroma2.hoophub.enums.VenueType;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

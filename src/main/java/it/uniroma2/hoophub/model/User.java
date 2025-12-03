@@ -1,5 +1,7 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.UserType;
+
 import java.util.Objects;
 
 /**

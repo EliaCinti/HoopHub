@@ -4,6 +4,8 @@ import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.helper_dao.BookingDaoHelper;
+import it.uniroma2.hoophub.enums.BookingStatus;
+import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.*;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;

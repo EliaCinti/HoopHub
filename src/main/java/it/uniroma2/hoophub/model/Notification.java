@@ -1,5 +1,8 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.NotificationType;
+import it.uniroma2.hoophub.enums.UserType;
+
 import java.time.LocalDateTime;
 import java.util.Objects;
 

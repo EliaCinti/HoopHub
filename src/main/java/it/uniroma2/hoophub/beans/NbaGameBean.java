@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.beans;
 
-import it.uniroma2.hoophub.model.TeamNBA;
+import it.uniroma2.hoophub.enums.TeamNBA;
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -11,7 +11,7 @@ import java.time.LocalTime;
  * Used by the Boundary to display game information retrieved from the Controller.
  * </p>
  */
-public class GameNbaBean {
+public class NbaGameBean {
 
     private String gameId;
     private TeamNBA homeTeam;
@@ -23,7 +23,7 @@ public class GameNbaBean {
     /**
      * Private constructor used by the Builder.
      */
-    private GameNbaBean(Builder builder) {
+    private NbaGameBean(Builder builder) {
         this.gameId = builder.gameId;
         this.homeTeam = builder.homeTeam;
         this.awayTeam = builder.awayTeam;
@@ -73,8 +73,8 @@ public class GameNbaBean {
             return this;
         }
 
-        public GameNbaBean build() {
-            return new GameNbaBean(this);
+        public NbaGameBean build() {
+            return new NbaGameBean(this);
         }
     }
 

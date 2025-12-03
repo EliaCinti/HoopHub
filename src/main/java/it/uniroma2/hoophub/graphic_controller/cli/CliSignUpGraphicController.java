@@ -1,16 +1,16 @@
 package it.uniroma2.hoophub.graphic_controller.cli;
 
 import it.uniroma2.hoophub.app_controller.SignUpController;
+import it.uniroma2.hoophub.beans.CredentialsBean;
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
-import it.uniroma2.hoophub.model.TeamNBA;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.TeamNBA;
+import it.uniroma2.hoophub.enums.UserType;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,9 +19,8 @@ import java.util.logging.Logger;
  * CLI graphic controller for the sign-up use case.
  * <p>
  * Handles new user registration for both Fans and Venue Managers.
- * The user first provides common credentials (username, password),
- * then selects their account type, and finally provides role-specific information.
- * After successful registration, the user is automatically logged in.
+ * The flow collects common User data first (delegating validation to Beans),
+ * then specialized data based on the selected role.
  * </p>
  */
 public class CliSignUpGraphicController extends CliGraphicController {
@@ -43,9 +42,11 @@ public class CliSignUpGraphicController extends CliGraphicController {
     private static final String USER_TYPE_PROMPT = "Select account type:\n  1) Fan\n  2) Venue Manager\nYour choice: ";
     private static final String INVALID_CHOICE_MSG = "Invalid choice. Please enter 1 or 2";
 
-    // Fan-specific prompts
+    // Common User prompts
     private static final String FULL_NAME_PROMPT = "Full name (e.g., John Doe): ";
     private static final String GENDER_PROMPT = "Gender (M/F/Other): ";
+
+    // Fan-specific prompts
     private static final String FAVORITE_TEAM_PROMPT = "Favorite NBA team (e.g., Los Angeles Lakers): ";
     private static final String BIRTHDAY_PROMPT = "Birthday (YYYY-MM-DD): ";
 
@@ -54,12 +55,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
     private static final String PHONE_NUMBER_PROMPT = "Phone number: ";
 
     private static final String EMPTY_INPUT_MSG = "Input cannot be empty";
-    private static final String INVALID_USERNAME_MSG = "Username must be at least 3 characters";
-    private static final String INVALID_PASSWORD_MSG = "Password must be at least 6 characters";
     private static final String PASSWORD_MISMATCH_MSG = "Passwords do not match";
-    private static final String INVALID_GENDER_MSG = "Please enter M, F, or Other";
-    private static final String INVALID_TEAM_MSG = "Team not found. Please enter a valid NBA team name";
-    private static final String INVALID_DATE_MSG = "Invalid date format. Please use YYYY-MM-DD";
     private static final String SIGNUP_CANCELLED_MSG = "Sign up cancelled";
     private static final String SIGNUP_SUCCESS_MSG = "Account created successfully! Welcome, %s";
     private static final String SIGNUP_FAILED_MSG = "Sign up failed: %s";
@@ -75,20 +71,16 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
     /**
      * Executes the complete sign-up use case.
-     * If the user types 'back', returns to log in screen.
      */
     @Override
     public void execute() {
-        // Esegue performSignUp e, SOLO SE restituisce un utente (Optional non vuoto),
-        // passa quell'utente al metodo navigateToHomepage.
         performSignUp().ifPresent(this::navigateToHomepage);
     }
 
     /**
-     * Performs the sign-up operation with input validation.
-     * Flow: collect common credentials → select user type → collect type-specific info
-     *
-     * @return Optional containing the registered UserBean, or empty if canceled
+     * Performs the sign-up operation.
+     * LOGIC REFACTORED: Collects all COMMON User data first, then User Type, then Specifics.
+     * Validation is delegated to Bean classes.
      */
     private Optional<UserBean> performSignUp() {
         printTitle(TITLE);
@@ -98,45 +90,42 @@ public class CliSignUpGraphicController extends CliGraphicController {
         printInfo(CANCEL_INFO_MSG);
         printNewLine();
 
-        // Phase 1: Collect common credentials
+        // 1. Collect Common User Credentials & Info
         Optional<String> username = readUsername();
         if (username.isEmpty()) return handleBackOrCancel();
 
         Optional<String> password = readPassword();
         if (password.isEmpty()) return handleBackOrCancel();
 
-        printNewLine();
-
-        // Phase 2: Select user type
-        Optional<Integer> userType = readUserType();
-        if (userType.isEmpty()) return handleBackOrCancel();
-
-        printNewLine();
-
-        // Phase 3: Collect type-specific information and register
-        if (userType.get() == 1) {
-            return performFanSignUp(username.get(), password.get());
-        } else {
-            return performVenueManagerSignUp(username.get(), password.get());
-        }
-    }
-
-    /**
-     * Performs Fan-specific signup: collects Fan information and registers.
-     *
-     * @param username The username (already collected)
-     * @param password The password (already collected)
-     * @return Optional containing the registered UserBean, or empty if canceled
-     */
-    private Optional<UserBean> performFanSignUp(String username, String password) {
-        printInfo("Complete your Fan profile:");
-        printNewLine();
-
+        // Collect Name and Gender immediately (Common to User)
         Optional<String> fullName = readFullName();
         if (fullName.isEmpty()) return handleBackOrCancel();
 
         Optional<String> gender = readGender();
         if (gender.isEmpty()) return handleBackOrCancel();
+
+        printNewLine();
+
+        // 2. Select User Type
+        Optional<Integer> userType = readUserType();
+        if (userType.isEmpty()) return handleBackOrCancel();
+
+        printNewLine();
+
+        // 3. Collect Type-Specific Info and Register
+        if (userType.get() == 1) {
+            return performFanSignUp(username.get(), password.get(), fullName.get(), gender.get());
+        } else {
+            return performVenueManagerSignUp(username.get(), password.get(), fullName.get(), gender.get());
+        }
+    }
+
+    /**
+     * Performs Fan-specific signup: collects only Fan-specific info.
+     */
+    private Optional<UserBean> performFanSignUp(String username, String password, String fullName, String gender) {
+        printInfo("Complete your Fan profile:");
+        printNewLine();
 
         Optional<TeamNBA> favTeam = readFavoriteTeam();
         if (favTeam.isEmpty()) return handleBackOrCancel();
@@ -144,18 +133,13 @@ public class CliSignUpGraphicController extends CliGraphicController {
         Optional<LocalDate> birthday = readBirthday();
         if (birthday.isEmpty()) return handleBackOrCancel();
 
-        return attemptFanSignUp(username, password, fullName.get(),
-                gender.get(), favTeam.get(), birthday.get());
+        return attemptFanSignUp(username, password, fullName, gender, favTeam.get(), birthday.get());
     }
 
     /**
-     * Performs VenueManager-specific signup: collects VenueManager information and registers.
-     *
-     * @param username The username (already collected)
-     * @param password The password (already collected)
-     * @return Optional containing the registered UserBean, or empty if canceled
+     * Performs VenueManager-specific signup: collects only VenueManager-specific info.
      */
-    private Optional<UserBean> performVenueManagerSignUp(String username, String password) {
+    private Optional<UserBean> performVenueManagerSignUp(String username, String password, String fullName, String gender) {
         printInfo("Complete your Venue Manager profile:");
         printNewLine();
 
@@ -165,49 +149,34 @@ public class CliSignUpGraphicController extends CliGraphicController {
         Optional<String> phoneNumber = readPhoneNumber();
         if (phoneNumber.isEmpty()) return handleBackOrCancel();
 
-        return attemptVenueManagerSignUp(username, password, companyName.get(), phoneNumber.get());
+        return attemptVenueManagerSignUp(username, password, fullName, gender, companyName.get(), phoneNumber.get());
     }
 
-    /**
-     * Handles the back/cancel command by returning to log in.
-     * Simply return empty to exit signup and return to caller (login screen).
-     */
     private Optional<UserBean> handleBackOrCancel() {
         printInfo(SIGNUP_CANCELLED_MSG);
         printNewLine();
         return Optional.empty();
     }
 
-    /**
-     * Reads and validates user type selection (1=Fan, 2=VenueManager).
-     *
-     * @return Optional containing 1 for Fan or 2 for VenueManager, or empty if canceled
-     */
     private Optional<Integer> readUserType() {
         while (true) {
             String input = readInput(USER_TYPE_PROMPT);
 
-            if (isBackOrCancelCommand(input)) {
-                return Optional.empty();
-            }
-
+            if (isBackOrCancelCommand(input)) return Optional.empty();
             if (input.isEmpty()) {
                 printWarning(EMPTY_INPUT_MSG);
                 continue;
             }
 
-            if ("1".equals(input)) {
-                return Optional.of(1);
-            } else if ("2".equals(input)) {
-                return Optional.of(2);
-            } else {
-                printWarning(INVALID_CHOICE_MSG);
-            }
+            if ("1".equals(input)) return Optional.of(1);
+            if ("2".equals(input)) return Optional.of(2);
+            printWarning(INVALID_CHOICE_MSG);
         }
     }
 
     /**
      * Reads and validates username input.
+     * Uses CredentialsBean logic to validate syntax.
      */
     private Optional<String> readUsername() {
         while (true) {
@@ -217,18 +186,19 @@ public class CliSignUpGraphicController extends CliGraphicController {
                 return Optional.empty();
             }
 
-            if (username.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-            } else if (username.length() < 3) {
-                printWarning(INVALID_USERNAME_MSG);
-            } else {
+            try {
+                // Delegate syntax validation to the Bean
+                CredentialsBean.validateUsernameSyntax(username);
                 return Optional.of(username);
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
             }
         }
     }
 
     /**
      * Reads and validates password input.
+     * Uses CredentialsBean logic to validate syntax.
      */
     private Optional<String> readPassword() {
         while (true) {
@@ -238,100 +208,117 @@ public class CliSignUpGraphicController extends CliGraphicController {
                 return Optional.empty();
             }
 
-            if (password.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-            } else if (password.length() < 6) {
-                printWarning(INVALID_PASSWORD_MSG);
-            } else {
-                String confirmPassword = readInput(CONFIRM_PASSWORD_PROMPT);
+            try {
+                // Delegate syntax validation to the Bean (length/empty check)
+                CredentialsBean.validatePasswordSyntax(password);
 
-                if (isBackOrCancelCommand(confirmPassword)) {
-                    return Optional.empty();
-                }
+                // Password confirmation logic remains here (UI flow logic)
+                String confirmPassword = readInput(CONFIRM_PASSWORD_PROMPT);
+                if (isBackOrCancelCommand(confirmPassword)) return Optional.empty();
 
                 if (!password.equals(confirmPassword)) {
                     printWarning(PASSWORD_MISMATCH_MSG);
                 } else {
                     return Optional.of(password);
                 }
+
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
             }
         }
     }
 
     /**
      * Reads and validates full name input.
+     * Uses UserBean logic to validate syntax.
      */
     private Optional<String> readFullName() {
-        return readGenericNonEmptyInput(FULL_NAME_PROMPT);
-    }
-
-    /**
-     * Reads and validates gender input.
-     */
-    private Optional<String> readGender() {
         while (true) {
-            String gender = readInput(GENDER_PROMPT);
+            String fullName = readInput(FULL_NAME_PROMPT);
 
-            if (isBackOrCancelCommand(gender)) {
+            if (isBackOrCancelCommand(fullName)) {
                 return Optional.empty();
             }
 
-            if (gender.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-            } else {
-                String normalizedGender = normalizeGender(gender);
-
-                if (normalizedGender == null) {
-                    printWarning(INVALID_GENDER_MSG);
-                } else {
-                    return Optional.of(normalizedGender);
-                }
+            try {
+                // Delegate syntax validation to the Bean
+                UserBean.validateFullNameSyntax(fullName);
+                return Optional.of(fullName);
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
             }
         }
     }
 
     /**
-     * Normalizes gender input to standard format.
+     * Reads and validates gender input.
+     * Uses UserBean logic to validate syntax.
      */
-    private String normalizeGender(String gender) {
-        String lower = gender.toLowerCase();
-        return switch (lower) {
-            case "m", "male" -> "Male";
-            case "f", "female" -> "Female";
-            case "other" -> "Other";
-            default -> null;
-        };
+    private Optional<String> readGender() {
+        while (true) {
+            String genderInput = readInput(GENDER_PROMPT);
+
+            if (isBackOrCancelCommand(genderInput)) {
+                return Optional.empty();
+            }
+            try {
+                // 1. Syntactic Validation (Delegated to Bean)
+                UserBean.validateGenderSyntax(genderInput);
+                return Optional.of(genderInput);
+
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
+            }
+        }
+
     }
 
-    /**
-     * Reads and validates favorite team input.
-     */
     private Optional<TeamNBA> readFavoriteTeam() {
         while (true) {
-            String teamInput = readInput(FAVORITE_TEAM_PROMPT);
+            String teamInput = readInput(FAVORITE_TEAM_PROMPT + " (or type 'list' to see all)");
 
             if (isBackOrCancelCommand(teamInput)) {
                 return Optional.empty();
             }
 
-            if (teamInput.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
+            if (teamInput.equalsIgnoreCase("list")) {
+                printAvailableTeams();
                 continue;
             }
 
-            // Try to find team by display name
-            TeamNBA team = TeamNBA.fromDisplayName(teamInput);
-            if (team != null) {
-                return Optional.of(team);
-            }
+            try {
+                // 1. Validate Syntax (String level check)
+                FanBean.validateTeamSyntax(teamInput);
 
-            printWarning(INVALID_TEAM_MSG);
-            printInfo("Available teams: Lakers, Warriors, Celtics, Heat, Bulls, etc.");
+                // 2. Resolve (Model level lookup)
+                // Siccome la validazione usa fromInput, siamo sicuri che qui non tornerà null
+                TeamNBA team = TeamNBA.fromInput(teamInput);
+                return Optional.of(team);
+
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
+            }
         }
     }
 
     /**
+     * Prints the list of available NBA teams.
+     */
+    private void printAvailableTeams() {
+        printNewLine();
+        printInfo("--- AVAILABLE NBA TEAMS ---");
+        for (TeamNBA team : TeamNBA.values()) {
+            // Using String.format instead of System.out.printf to leverage the protected print() method
+            // Format: "LAL   - Los Angeles Lakers"
+            String line = String.format("%-5s - %s", team.getAbbreviation(), team.getDisplayName());
+            print(line);
+        }
+        printNewLine();
+    }
+
+    /**
      * Reads and validates birthday input.
+     * Delegates parsing and validation entirely to the Bean.
      */
     private Optional<LocalDate> readBirthday() {
         while (true) {
@@ -341,39 +328,28 @@ public class CliSignUpGraphicController extends CliGraphicController {
                 return Optional.empty();
             }
 
-            if (birthdayInput.isEmpty()) {
-                printWarning(EMPTY_INPUT_MSG);
-                continue;
-            }
-
             try {
-                LocalDate birthday = LocalDate.parse(birthdayInput);
-                return Optional.of(birthday);
-            } catch (DateTimeParseException e) {
-                printWarning(INVALID_DATE_MSG);
+                LocalDate date = FanBean.parseBirthday(birthdayInput);
+                return Optional.of(date);
+
+            } catch (IllegalArgumentException e) {
+                printWarning(e.getMessage());
             }
         }
     }
 
-    /**
-     * Reads and validates company name input (VenueManager).
-     */
     private Optional<String> readCompanyName() {
         return readGenericNonEmptyInput(COMPANY_NAME_PROMPT);
     }
 
-    /**
-     * Reads and validates phone number input (VenueManager).
-     */
     private Optional<String> readPhoneNumber() {
         return readGenericNonEmptyInput(PHONE_NUMBER_PROMPT);
     }
 
-    /**
-     * Attempts to register a Fan with the collected data.
-     */
+    // --- REGISTRATION LOGIC ---
+
     private Optional<UserBean> attemptFanSignUp(String username, String password, String fullName,
-                                             String gender, TeamNBA favTeam, LocalDate birthday) {
+                                                String gender, TeamNBA favTeam, LocalDate birthday) {
         try {
             FanBean fanBean = new FanBean.Builder()
                     .username(username)
@@ -385,12 +361,9 @@ public class CliSignUpGraphicController extends CliGraphicController {
                     .birthday(birthday)
                     .build();
 
-            // Register and auto-login using polymorphic signUp method
             UserBean registeredUser = signUpController.signUp(fanBean, true);
-
             displaySignUpSuccess(registeredUser);
             logSuccessfulSignUp(username);
-
             return Optional.of(registeredUser);
 
         } catch (DAOException e) {
@@ -400,30 +373,25 @@ public class CliSignUpGraphicController extends CliGraphicController {
         } catch (IllegalArgumentException e) {
             printError(SIGNUP_FAILED_MSG.formatted(e.getMessage()));
         }
-
         return Optional.empty();
     }
 
-    /**
-     * Attempts to register a VenueManager with the collected data.
-     */
-    private Optional<UserBean> attemptVenueManagerSignUp(String username, String password,
-                                                         String companyName, String phoneNumber) {
+    private Optional<UserBean> attemptVenueManagerSignUp(String username, String password, String fullName,
+                                                         String gender, String companyName, String phoneNumber) {
         try {
             VenueManagerBean venueManagerBean = new VenueManagerBean.Builder()
                     .username(username)
                     .password(password)
+                    .fullName(fullName)
+                    .gender(gender)
                     .type(UserType.VENUE_MANAGER.toString())
                     .companyName(companyName)
                     .phoneNumber(phoneNumber)
                     .build();
 
-            // Register and auto-login using polymorphic signUp method
             UserBean registeredUser = signUpController.signUp(venueManagerBean, true);
-
             displaySignUpSuccess(registeredUser);
             logSuccessfulSignUp(username);
-
             return Optional.of(registeredUser);
 
         } catch (DAOException e) {
@@ -433,13 +401,9 @@ public class CliSignUpGraphicController extends CliGraphicController {
         } catch (IllegalArgumentException e) {
             printError(SIGNUP_FAILED_MSG.formatted(e.getMessage()));
         }
-
         return Optional.empty();
     }
 
-    /**
-     * Displays success message after sign-up.
-     */
     private void displaySignUpSuccess(UserBean userBean) {
         printNewLine();
         String displayName = userBean.getFullName() != null && !userBean.getFullName().isEmpty()
@@ -449,41 +413,25 @@ public class CliSignUpGraphicController extends CliGraphicController {
         printNewLine();
     }
 
-    /**
-     * Logs successful sign-up attempt.
-     */
     private void logSuccessfulSignUp(String username) {
         LOGGER.log(Level.INFO, "New user registered via CLI: {0}", username);
     }
 
-    /**
-     * Handles DAO exceptions during sign-up.
-     */
     private void handleDAOException(String username, DAOException e) {
         LOGGER.log(Level.WARNING, e, () -> "Sign up failed for user: " + username);
         printError(String.format(SIGNUP_FAILED_MSG, e.getMessage()));
         printNewLine();
     }
 
-    /**
-     * Handles session exceptions during sign-up.
-     */
     private void handleSessionException(String username, UserSessionException e) {
         LOGGER.log(Level.WARNING, e, () -> "Session error during sign up: " + username);
         printError(String.format(SIGNUP_FAILED_MSG, e.getMessage()));
         printNewLine();
     }
 
-    /**
-     * Navigates to the appropriate homepage after successful registration.
-     * Since dashboards are not yet implemented, logs out the user and returns to log in.
-     * @TODO qui dobbiamo avere la scelta della homepage da caricare
-     */
     private void navigateToHomepage(UserBean userBean) {
         printInfo(LOADING_DASHBOARD_MSG);
         printNewLine();
-
-        // For now, just logout as dashboards are not implemented
         printWarning("Dashboard not yet implemented. You have been logged out.");
         printInfo("Please use the login option to access your account.");
         printNewLine();
@@ -495,36 +443,17 @@ public class CliSignUpGraphicController extends CliGraphicController {
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Error during logout after signup", e);
         }
-
-        // Clear the screen before returning to log in
         clearScreen();
-
-        // Exit signup - caller (login screen) will show again
     }
 
-    /**
-     * Checks if input is a back or cancel command.
-     */
     private boolean isBackOrCancelCommand(String input) {
-        return BACK_COMMAND.equalsIgnoreCase(input) ||
-                CANCEL_COMMAND.equalsIgnoreCase(input);
+        return BACK_COMMAND.equalsIgnoreCase(input) || CANCEL_COMMAND.equalsIgnoreCase(input);
     }
 
-    /**
-     * Generic helper to read a non-empty string input.
-     * Eliminates duplication across readFullName, readCompanyName, and readPhoneNumber.
-     *
-     * @param prompt The prompt message to display
-     * @return Optional containing the input, or empty if canceled
-     */
     private Optional<String> readGenericNonEmptyInput(String prompt) {
         while (true) {
             String input = readInput(prompt);
-
-            if (isBackOrCancelCommand(input)) {
-                return Optional.empty();
-            }
-
+            if (isBackOrCancelCommand(input)) return Optional.empty();
             if (input.isEmpty()) {
                 printWarning(EMPTY_INPUT_MSG);
             } else {

@@ -14,7 +14,7 @@ import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.patterns.observer.DaoObserver;
-import it.uniroma2.hoophub.model.UserType;
+import it.uniroma2.hoophub.enums.UserType;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -147,25 +147,29 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
                 case SyncConstants.FAN -> {
                     FanDao targetDao = getTargetFactory().getFanDao();
                     Fan fan = (Fan) entity;
+
                     UserBean userBean = new UserBean.Builder<>()
                             .username(fan.getUsername())
                             .fullName(fan.getFullName())
                             .gender(fan.getGender())
                             .type(UserType.FAN.toString())
-                            .password(null) // Password not updated through this flow
+                            // Password omessa intenzionalmente
                             .build();
+
                     targetDao.updateFan(fan, userBean);
                 }
                 case SyncConstants.VENUE_MANAGER -> {
                     VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
                     VenueManager venueManager = (VenueManager) entity;
+
                     UserBean userBean = new UserBean.Builder<>()
                             .username(venueManager.getUsername())
                             .fullName(venueManager.getFullName())
                             .gender(venueManager.getGender())
                             .type(UserType.VENUE_MANAGER.toString())
-                            .password(null)
+                            // Password omessa intenzionalmente
                             .build();
+
                     targetDao.updateVenueManager(venueManager, userBean);
                 }
                 case SyncConstants.VENUE -> {

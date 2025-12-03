@@ -1,5 +1,9 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.BookingStatus;
+import it.uniroma2.hoophub.enums.TeamNBA;
+import it.uniroma2.hoophub.enums.VenueType;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;

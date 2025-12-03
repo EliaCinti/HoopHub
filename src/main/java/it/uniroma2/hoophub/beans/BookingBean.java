@@ -1,7 +1,7 @@
 package it.uniroma2.hoophub.beans;
 
-import it.uniroma2.hoophub.model.TeamNBA;
-import it.uniroma2.hoophub.model.BookingStatus;
+import it.uniroma2.hoophub.enums.TeamNBA;
+import it.uniroma2.hoophub.enums.BookingStatus;
 import java.time.LocalDate;
 import java.time.LocalTime;
 

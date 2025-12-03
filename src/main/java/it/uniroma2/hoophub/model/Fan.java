@@ -1,5 +1,8 @@
 package it.uniroma2.hoophub.model;
 
+import it.uniroma2.hoophub.enums.BookingStatus;
+import it.uniroma2.hoophub.enums.TeamNBA;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 
 import java.time.LocalDate;

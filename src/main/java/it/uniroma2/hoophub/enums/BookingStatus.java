@@ -1,4 +1,4 @@
-package it.uniroma2.hoophub.model;
+package it.uniroma2.hoophub.enums;
 
 /**
  * Status of a booking
