@@ -17,8 +17,10 @@ module it.uniroma2.hoophub {
     exports it.uniroma2.hoophub.beans;
     exports it.uniroma2.hoophub.exception;
     exports it.uniroma2.hoophub.patterns.observer;
-    exports it.uniroma2.hoophub.utilities;
     opens it.uniroma2.hoophub.app_controller to javafx.fxml;
-    exports it.uniroma2.hoophub.dao.helper_dao;
     exports it.uniroma2.hoophub.enums;
+    exports it.uniroma2.hoophub.dao.helper_dao;
+    opens it.uniroma2.hoophub.dao.helper_dao to javafx.fxml;
+    exports it.uniroma2.hoophub.utilities;
+    opens it.uniroma2.hoophub.utilities to javafx.fxml;
 }
