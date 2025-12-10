@@ -6,7 +6,9 @@ import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -47,6 +49,11 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
      */
     protected final File csvFile;
 
+    // =================================================================================
+    // IDENTITY MAP (CACHE)
+    // =================================================================================
+    protected final Map<Object, Object> cache = new HashMap<>();
+
     /**
      * Constructs a new AbstractCsvDao with the specified file path.
      * <p>
@@ -65,6 +72,33 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         this.csvFile = new File(filePath);
         initializeCsvFile();
     }
+
+    // =================================================================================
+    // CACHE MANAGEMENT METHODS
+    // =================================================================================
+
+    @SuppressWarnings("unchecked")
+    protected <T> T getFromCache(Object key) {
+        return (T) cache.get(key);
+    }
+
+    protected void putInCache(Object key, Object entity) {
+        if (key != null && entity != null) {
+            cache.put(key, entity);
+        }
+    }
+
+    protected void removeFromCache(Object key) {
+        if (key != null) {
+            cache.remove(key);
+        }
+    }
+
+    public void clearCache() {
+        cache.clear();
+    }
+
+    // ---
 
     /**
      * Returns the CSV header for this entity.

@@ -1,7 +1,5 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
@@ -13,7 +11,6 @@ import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
-import it.uniroma2.hoophub.enums.UserType;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
@@ -93,28 +90,32 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
      * </p>
      */
     @Override
-    public synchronized void saveFan(FanBean fanBean) throws DAOException {
-        validateNotNull(fanBean, "FanBean");
-        validateNotNullOrEmpty(fanBean.getUsername(), CsvDaoConstants.USERNAME);
-        validateNotNullOrEmpty(String.valueOf(fanBean.getFavTeam()), "Favorite team");
-        validateNotNull(fanBean.getBirthday(), "Birthday");
+    public synchronized void saveFan(Fan fan) throws DAOException {
+        // 1. Validazione sul Model (invece che sulla Bean)
+        validateNotNull(fan, "Fan");
+        validateNotNullOrEmpty(fan.getUsername(), CsvDaoConstants.USERNAME);
+        // Per gli oggetti come Enum e LocalDate basta controllare che non siano null
+        validateNotNull(fan.getFavTeam(), "Favorite team");
+        validateNotNull(fan.getBirthday(), "Birthday");
 
-        // Set user type to FAN before saving
-        fanBean.setType(UserType.FAN.getType());
+        // Nota: Non serve settare il tipo manualmente.
+        // L'oggetto 'Fan' sa già di essere UserType.FAN.
 
-        // Step 1: Save common user data (username, password, full name, gender, type)
-        userDao.saveUser(fanBean);
+        // Step 1: Salviamo i dati comuni (User)
+        // Chiamiamo UserDao passando il model. Lui salverà username, hash, nome, ecc.
+        userDao.saveUser(fan);
 
-        // Step 2: Save fan-specific data
+        // Step 2: Salviamo i dati specifici del Fan nel file fans.csv
         String[] fanRow = {
-                fanBean.getUsername(),
-                String.valueOf(fanBean.getFavTeam()),
-                fanBean.getBirthday().toString()
+                fan.getUsername(),
+                fan.getFavTeam().name(),      // Convertiamo l'Enum in String
+                fan.getBirthday().toString()  // Convertiamo LocalDate in String (ISO-8601)
         };
 
         CsvUtilities.writeFile(csvFile, fanRow);
 
-        notifyObservers(DaoOperation.INSERT, "Fan", fanBean.getUsername(), fanBean);
+        // 3. Notifica Observer passando il Model
+        notifyObservers(DaoOperation.INSERT, "Fan", fan.getUsername(), fan);
     }
 
     /**
@@ -173,12 +174,11 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
      * </p>
      */
     @Override
-    public synchronized void updateFan(Fan fan, UserBean userBean) throws DAOException {
+    public synchronized void updateFan(Fan fan) throws DAOException {
         validateNotNull(fan, "Fan");
-        validateNotNull(userBean, "UserBean");
 
         // Step 1: Update common user data
-        userDao.updateUser(fan, userBean);
+        userDao.updateUser(fan);
 
         // Step 2: Update fan-specific data
         List<String[]> data = CsvUtilities.readAll(csvFile);

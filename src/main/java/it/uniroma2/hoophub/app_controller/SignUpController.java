@@ -13,6 +13,9 @@ import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
+import it.uniroma2.hoophub.utilities.PasswordUtils;
+
+import java.util.ArrayList;
 
 /**
  * SignUpController manages the registration process for new users.
@@ -66,17 +69,31 @@ public class SignUpController extends AbstractController {
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
         FanDao fanDao = daoFactory.getFanDao();
 
-        // Save the fan to persistence
-        fanDao.saveFan(fanBean);
+        // 1. BUSINESS LOGIC: Hash della password
+        String hashedPassword = PasswordUtils.hashPassword(fanBean.getPassword());
 
-        // Retrieve the complete Fan object from persistence
+        // 2. MODEL CREATION: Creiamo l'oggetto Fan completo (Model)
+        Fan newFan = new Fan.Builder()
+                .username(fanBean.getUsername())
+                .password(hashedPassword) // Passiamo la password GIÀ HASHATA
+                .fullName(fanBean.getFullName())
+                .gender(fanBean.getGender())
+                .favTeam(fanBean.getFavTeam())
+                .birthday(fanBean.getBirthday())
+                .build();
+
+        // 3. PERSISTENCE: Passiamo il Model al DAO
+        fanDao.saveFan(newFan); // Il DAO ora accetta Fan, non FanBean
+
+        // Nota: non serve più retrieveFan, perché newFan è già l'oggetto completo!
+        // Ma per coerenza con il flusso precedente e per sicurezza (es. trigger DB),
+        // potresti volerlo ricaricare. Se ti fidi del save, puoi usare direttamente newFan.
         Fan registeredFan = fanDao.retrieveFan(fanBean.getUsername());
 
         if (registeredFan == null) {
-            throw new DAOException("Fan was saved but could not be retrieved. Database inconsistency!");
+            throw new DAOException("Fan was saved but could not be retrieved.");
         }
 
-        // Optionally log in the user automatically
         if (autoLogin) {
             storeUserSession(registeredFan);
         }
@@ -91,28 +108,40 @@ public class SignUpController extends AbstractController {
      * logs the user in automatically after successful registration.
      * </p>
      *
-     * @param venueManagerBean The venue manager registration data
+     * @param vmBean The venue manager registration data
      * @param autoLogin If true, automatically logs in the user after registration
      * @return A UserBean containing the registered user's data
      * @throws DAOException If there is an error saving the venue manager data
      * @throws UserSessionException If autoLogin is true and session creation fails
      */
-    private UserBean signUpVenueManager(VenueManagerBean venueManagerBean, boolean autoLogin)
+    private UserBean signUpVenueManager(VenueManagerBean vmBean, boolean autoLogin)
             throws DAOException, UserSessionException {
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-        VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
+        VenueManagerDao vmDao = daoFactory.getVenueManagerDao();
 
-        // Save the venue manager to persistence
-        venueManagerDao.saveVenueManager(venueManagerBean);
+        // 1. Hash Password
+        String hashedPassword = PasswordUtils.hashPassword(vmBean.getPassword());
 
-        // Retrieve the complete VenueManager object from persistence
-        VenueManager registeredManager = venueManagerDao.retrieveVenueManager(venueManagerBean.getUsername());
+        // 2. Create Model
+        VenueManager newManager = new VenueManager.Builder()
+                .username(vmBean.getUsername())
+                .password(hashedPassword)
+                .fullName(vmBean.getFullName())
+                .gender(vmBean.getGender())
+                .companyName(vmBean.getCompanyName())
+                .phoneNumber(vmBean.getPhoneNumber())
+                .managedVenues(new ArrayList<>()) // Lista vuota iniziale
+                .build();
+
+        // 3. Save Model
+        vmDao.saveVenueManager(newManager);
+
+        VenueManager registeredManager = vmDao.retrieveVenueManager(vmBean.getUsername());
 
         if (registeredManager == null) {
-            throw new DAOException("VenueManager was saved but could not be retrieved. Database inconsistency!");
+            throw new DAOException("VenueManager saved but not retrieved.");
         }
 
-        // Optionally log in the user automatically
         if (autoLogin) {
             storeUserSession(registeredManager);
         }

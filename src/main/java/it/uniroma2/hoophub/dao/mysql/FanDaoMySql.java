@@ -1,7 +1,5 @@
 package it.uniroma2.hoophub.dao.mysql;
 
-import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
@@ -64,7 +62,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
             "DELETE FROM fans WHERE username = ?";
 
     // ========== Error messages ==========
-    private static final String ERR_NULL_FAN_BEAN = "FanBean cannot be null";
     private static final String ERR_NULL_FAN = "Fan cannot be null";
     private static final String ERR_FAN_NOT_FOUND = "Fan not found";
 
@@ -90,36 +87,46 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * <p>
      * This implementation performs two operations within a transaction:
      * <ol>
-     *   <li>Saves common user data via {@link UserDao#saveUser(UserBean)}</li>
      *   <li>Saves fan-specific data in the fans table</li>
      * </ol>
      * If either operation fails, the entire transaction is rolled back.
      * </p>
      */
     @Override
-    public void saveFan(FanBean fanBean) throws DAOException {
-        validateFanBeanInput(fanBean);
+    public void saveFan(Fan fan) throws DAOException { // Firma cambiata: prende Fan, non Bean
+        validateFanInput(fan); // Assumendo tu abbia un validatore per il model
 
         Connection conn = null;
         try {
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            // Save common user data first
-            userDao.saveUser(fanBean);
+            // 1. Save common user data first (delegate to UserDao)
+            // UserDao.saveUser ora si aspetta un oggetto User (e Fan è un User)
+            userDao.saveUser(fan);
 
-            // Then save fan-specific data
+            // 2. Save fan-specific data
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_FAN)) {
-                stmt.setString(1, fanBean.getUsername());
-                stmt.setString(2, fanBean.getFavTeam().name());
-                stmt.setDate(3, Date.valueOf(fanBean.getBirthday()));
+                stmt.setString(1, fan.getUsername());
+                // Leggiamo direttamente dal Model, non dalla Bean
+                stmt.setString(2, fan.getFavTeam().name());
+                stmt.setDate(3, java.sql.Date.valueOf(fan.getBirthday()));
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
                     conn.commit();
-                    logger.log(Level.INFO, "Fan saved successfully: {0}", fanBean.getUsername());
-                    notifyObservers(DaoOperation.INSERT, "Fan", fanBean.getUsername(), fanBean);
+
+                    // === CACHE PUT (Refactoring) ===
+                    // Non serve più ricostruire l'oggetto "newFanModel" dai pezzi della bean!
+                    // L'oggetto 'fan' passato come parametro è GIÀ il modello completo e corretto.
+                    // Lo mettiamo direttamente in cache.
+                    putInCache(fan, fan.getUsername());
+
+                    logger.log(Level.INFO, "Fan saved successfully: {0}", fan.getUsername());
+
+                    // Notifica Observer passando il Model (che è Serializable)
+                    notifyObservers(DaoOperation.INSERT, "Fan", fan.getUsername(), fan);
                 } else {
                     conn.rollback();
                     throw new DAOException("Failed to insert fan-specific data");
@@ -133,7 +140,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
             resetAutoCommit(conn);
         }
     }
-
     /**
      * {@inheritDoc}
      * <p>
@@ -146,6 +152,12 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     public Fan retrieveFan(String username) throws DAOException {
         validateUsernameInput(username);
 
+        // 1. CACHE CHECK (Identity Map)
+        Fan cachedFan = getFromCache(Fan.class, username);
+        if (cachedFan != null) {
+            return cachedFan;
+        }
+
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_FAN)) {
@@ -154,7 +166,12 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        return mapResultSetToFan(rs);
+                        Fan fan = mapResultSetToFan(rs);
+
+                        // 2. CACHE PUT
+                        putInCache(fan, username);
+
+                        return fan;
                     }
                     return null;
                 }
@@ -166,6 +183,10 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
     /**
      * {@inheritDoc}
+     * <p>
+     * Uses the Identity Map (Cache) pattern to ensure that if a Fan is already loaded
+     * in memory, the existing instance is returned instead of creating a new one.
+     * </p>
      */
     @Override
     public List<Fan> retrieveAllFans() throws DAOException {
@@ -177,12 +198,27 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                  ResultSet rs = stmt.executeQuery()) {
 
                 while (rs.next()) {
-                    fans.add(mapResultSetToFan(rs));
+                    String username = rs.getString("username");
+
+                    // 1. CACHE CHECK
+                    // Se l'oggetto è già in memoria, usiamo l'istanza esistente (Identity Map)
+                    Fan cachedFan = getFromCache(Fan.class, username);
+
+                    if (cachedFan != null) {
+                        fans.add(cachedFan);
+                    } else {
+                        // 2. LOAD & CACHE
+                        // Se non c'è, lo costruiamo dal ResultSet e lo cachiamo
+                        Fan fan = mapResultSetToFan(rs);
+                        putInCache(fan, username);
+                        fans.add(fan);
+                    }
                 }
 
                 return fans;
             }
         } catch (SQLException e) {
+            // Nota: il logger nel catch è stato rimosso come da refactoring code smells
             throw new DAOException("Error retrieving all fans", e);
         }
     }
@@ -192,26 +228,28 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
      * <p>
      * This implementation updates both:
      * <ul>
-     *   <li>Common user data via {@link UserDao#updateUser(it.uniroma2.hoophub.model.User, UserBean)}</li>
+     *   <li>Common user data via {@link UserDao#updateUser(it.uniroma2.hoophub.model.User)}</li>
      *   <li>Fan-specific data in the fans table</li>
      * </ul>
      * </p>
      */
     @Override
-    public void updateFan(Fan fan, UserBean userBean) throws DAOException {
+    public void updateFan(Fan fan) throws DAOException {
+        // Validiamo solo il modello
         validateFanInput(fan);
-        validateUserBeanInput(userBean);
 
         Connection conn = null;
         try {
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            // Update common user data first
-            userDao.updateUser(fan, userBean);
+            // 1. Aggiorna dati comuni (User)
+            // Chiama il NUOVO metodo di UserDao che accetta (User)
+            userDao.updateUser(fan);
 
-            // Then update fan-specific data
+            // 2. Aggiorna dati specifici (Fan)
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_FAN)) {
+                // Leggiamo i dati direttamente dal MODEL (fan)
                 stmt.setString(1, fan.getFavTeam().name());
                 stmt.setDate(2, Date.valueOf(fan.getBirthday()));
                 stmt.setString(3, fan.getUsername());
@@ -220,7 +258,14 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
 
                 if (affectedRows > 0) {
                     conn.commit();
+
+                    // === CACHE WRITE-THROUGH ===
+                    // Mettiamo in cache l'oggetto aggiornato (che è già 'fan')
+                    putInCache(fan, fan.getUsername());
+
                     logger.log(Level.INFO, "Fan updated successfully: {0}", fan.getUsername());
+
+                    // Notifichiamo l'observer passando il Model
                     notifyObservers(DaoOperation.UPDATE, "Fan", fan.getUsername(), fan);
                 } else {
                     conn.rollback();
@@ -239,11 +284,7 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     /**
      * {@inheritDoc}
      * <p>
-     * This implementation deletes in the correct order due to foreign key constraints:
-     * <ol>
-     *   <li>Delete fan-specific data from fans table</li>
-     *   <li>Delete common user data via {@link UserDao#deleteUser(it.uniroma2.hoophub.model.User)}</li>
-     * </ol>
+     * Removes the entity from the internal cache upon successful deletion.
      * </p>
      */
     @Override
@@ -266,6 +307,11 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     userDao.deleteUser(fan);
 
                     conn.commit();
+
+                    // === GESTIONE CACHE ===
+                    // Rimuoviamo l'oggetto dalla cache per mantenere la consistenza
+                    removeFromCache(Fan.class, fan.getUsername());
+
                     logger.log(Level.INFO, "Fan deleted successfully: {0}", fan.getUsername());
                     notifyObservers(DaoOperation.DELETE, "Fan", fan.getUsername(), null);
                 } else {
@@ -342,12 +388,6 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
     }
 
     // ========== VALIDATION METHODS ==========
-
-    private void validateFanBeanInput(FanBean fanBean) {
-        if (fanBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_FAN_BEAN);
-        }
-    }
 
     private void validateFanInput(Fan fan) {
         if (fan == null) {

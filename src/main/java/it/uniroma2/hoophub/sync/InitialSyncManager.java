@@ -1,9 +1,5 @@
 package it.uniroma2.hoophub.sync;
 
-import it.uniroma2.hoophub.beans.BookingBean;
-import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.VenueBean;
-import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.csv.CsvDaoConstants;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -13,7 +9,6 @@ import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
-import it.uniroma2.hoophub.enums.UserType;
 
 import java.io.IOException;
 import java.util.*;
@@ -165,19 +160,30 @@ public class InitialSyncManager {
             Fan secondaryFan = secondaryMap.get(key);
 
             if (primaryFan != null && secondaryFan == null) {
-                FanBean beanToSave = createFanBeanFromModel(primaryFan, factory, primary);
+                // CASO 1: Esiste solo su Primary -> Copia su Secondary
+                // Recuperiamo il modello completo (con password) dalla Primary
+                Fan fanToSave = retrieveCompleteFan(primaryFan, factory, primary);
+
                 factory.setPersistenceType(secondary);
-                factory.getFanDao().saveFan(beanToSave);
+                factory.getFanDao().saveFan(fanToSave); // Passiamo il Model!
+
             } else if (primaryFan == null && secondaryFan != null) {
-                FanBean beanToSave = createFanBeanFromModel(secondaryFan, factory, secondary);
+                // CASO 2: Esiste solo su Secondary -> Copia su Primary
+                // Recuperiamo il modello completo dalla Secondary
+                Fan fanToSave = retrieveCompleteFan(secondaryFan, factory, secondary);
+
                 factory.setPersistenceType(primary);
-                factory.getFanDao().saveFan(beanToSave);
+                factory.getFanDao().saveFan(fanToSave); // Passiamo il Model!
+
             } else if (primaryFan != null && !primaryFan.isDataEquivalent(secondaryFan)) {
+                // CASO 3: Conflitto -> Vince Primary
                 logger.log(Level.INFO, "Sync Conflict: Different data for fan {0}. Primary source {1} takes precedence.",
                         new Object[]{key, primary});
-                FanBean beanToUpdate = createFanBeanFromModel(primaryFan, factory, primary);
+
                 factory.setPersistenceType(secondary);
-                factory.getFanDao().updateFan(primaryFan, beanToUpdate);
+                // Per l'update non serve la password (aggiorniamo solo anagrafica),
+                // quindi possiamo passare direttamente l'oggetto primaryFan
+                factory.getFanDao().updateFan(primaryFan);
             }
         }
 
@@ -215,19 +221,27 @@ public class InitialSyncManager {
             VenueManager secondaryVM = secondaryMap.get(key);
 
             if (primaryVM != null && secondaryVM == null) {
-                VenueManagerBean bean = createVenueManagerBeanFromModel(primaryVM, factory, primary);
+                // CASO 1: Copia da Primary a Secondary
+                VenueManager vmToSave = retrieveCompleteVenueManager(primaryVM, factory, primary);
+
                 factory.setPersistenceType(secondary);
-                factory.getVenueManagerDao().saveVenueManager(bean);
+                factory.getVenueManagerDao().saveVenueManager(vmToSave); // Model-First
+
             } else if (primaryVM == null && secondaryVM != null) {
-                VenueManagerBean bean = createVenueManagerBeanFromModel(secondaryVM, factory, secondary);
+                // CASO 2: Copia da Secondary a Primary
+                VenueManager vmToSave = retrieveCompleteVenueManager(secondaryVM, factory, secondary);
+
                 factory.setPersistenceType(primary);
-                factory.getVenueManagerDao().saveVenueManager(bean);
+                factory.getVenueManagerDao().saveVenueManager(vmToSave); // Model-First
+
             } else if (primaryVM != null && !primaryVM.isDataEquivalent(secondaryVM)) {
+                // CASO 3: Conflitto -> Vince Primary (Update)
                 logger.log(Level.INFO, "Sync Conflict: Different data for venue manager {0}. Primary source {1} takes precedence.",
                         new Object[]{key, primary});
-                VenueManagerBean beanToUpdate = createVenueManagerBeanFromModel(primaryVM, factory, primary);
+
                 factory.setPersistenceType(secondary);
-                factory.getVenueManagerDao().updateVenueManager(primaryVM, beanToUpdate);
+                // Per l'update passiamo direttamente il model Primary (la password non serve aggiornarla qui)
+                factory.getVenueManagerDao().updateVenueManager(primaryVM);
             }
         }
     }
@@ -260,19 +274,25 @@ public class InitialSyncManager {
             Venue secondaryVenue = secondaryMap.get(id);
 
             if (primaryVenue != null && secondaryVenue == null) {
-                VenueBean bean = createVenueBeanFromModel(primaryVenue);
+                // CASO 1: Manca su Secondary -> Copia da Primary
+                // Passiamo direttamente il Model!
                 factory.setPersistenceType(secondary);
-                factory.getVenueDao().saveVenue(bean);
+                factory.getVenueDao().saveVenue(primaryVenue);
+
             } else if (primaryVenue == null && secondaryVenue != null) {
-                VenueBean bean = createVenueBeanFromModel(secondaryVenue);
+                // CASO 2: Manca su Primary -> Copia da Secondary
+                // Passiamo direttamente il Model!
                 factory.setPersistenceType(primary);
-                factory.getVenueDao().saveVenue(bean);
+                factory.getVenueDao().saveVenue(secondaryVenue);
+
             } else if (primaryVenue != null && !primaryVenue.equals(secondaryVenue)) {
+                // CASO 3: Conflitto -> Vince Primary (Update)
                 logger.log(Level.INFO, "Sync Conflict: Different data for venue {0}. Primary source {1} takes precedence.",
                         new Object[]{id, primary});
-                VenueBean beanToUpdate = createVenueBeanFromModel(primaryVenue);
+
                 factory.setPersistenceType(secondary);
-                factory.getVenueDao().updateVenue(beanToUpdate);
+                // Update diretto con il Model
+                factory.getVenueDao().updateVenue(primaryVenue);
             }
         }
     }
@@ -312,19 +332,25 @@ public class InitialSyncManager {
                 Booking secondaryBooking = secondaryMap.get(id);
 
                 if (primaryBooking != null && secondaryBooking == null) {
-                    BookingBean beanToSave = createBookingBeanFromModel(primaryBooking);
+                    // CASO 1: Esiste solo su Primary -> Salva su Secondary
+                    // Passiamo direttamente il Model!
                     factory.setPersistenceType(secondary);
-                    factory.getBookingDao().saveBooking(beanToSave);
+                    factory.getBookingDao().saveBooking(primaryBooking);
+
                 } else if (primaryBooking == null && secondaryBooking != null) {
-                    BookingBean beanToSave = createBookingBeanFromModel(secondaryBooking);
+                    // CASO 2: Esiste solo su Secondary -> Salva su Primary
+                    // Passiamo direttamente il Model!
                     factory.setPersistenceType(primary);
-                    factory.getBookingDao().saveBooking(beanToSave);
+                    factory.getBookingDao().saveBooking(secondaryBooking);
+
                 } else if (primaryBooking != null && !primaryBooking.isDataEquivalent(secondaryBooking)) {
+                    // CASO 3: Conflitto -> Vince Primary (Update)
                     logger.log(Level.INFO, "Sync Conflict: Different data for booking {0}. Primary source {1} takes precedence.",
                             new Object[]{id, primary});
-                    BookingBean beanToUpdate = createBookingBeanFromModel(primaryBooking);
+
                     factory.setPersistenceType(secondary);
-                    factory.getBookingDao().updateBooking(beanToUpdate);
+                    // Update diretto con il Model (nessuna bean necessaria)
+                    factory.getBookingDao().updateBooking(primaryBooking);
                 }
             }
         }
@@ -405,120 +431,63 @@ public class InitialSyncManager {
     }
 
     /**
-     * Creates a FanBean from a Fan model object for persistence operations.
-     * <p>
-     * This method retrieves the complete user information (including hashed password)
-     * from the source persistence and creates a properly formatted bean for saving
-     * or updating in the destination persistence.
-     * </p>
-     *
-     * @param fan The fan model object to convert
-     * @param factory The DAO factory facade for accessing persistence
-     * @param sourcePersistence The persistence type to retrieve user data from
-     * @return A FanBean with complete information for persistence operations
-     * @throws DAOException if user data retrieval fails
+     * Recupera un oggetto Fan completo (inclusa la password hashata) dalla persistenza sorgente.
+     * Necessario per le operazioni di SAVE che richiedono tutti i dati.
      */
-    private FanBean createFanBeanFromModel(Fan fan, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
+    private Fan retrieveCompleteFan(Fan fan, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
         PersistenceType originalType = factory.getPersistenceType();
         try {
+            // Switch alla persistenza sorgente per leggere i dati completi (inclusa password)
             factory.setPersistenceType(sourcePersistence);
             UserDao userDao = factory.getUserDao();
+
+            // retrieveUser restituisce l'array [username, hash, fullname, gender, type]
             String[] userInfo = userDao.retrieveUser(fan.getUsername());
             String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            return new FanBean.Builder()
+            // Ricostruiamo il Model completo
+            return new Fan.Builder()
                     .username(fan.getUsername())
-                    .password(hashedPassword)
+                    .password(hashedPassword) // Fondamentale per il salvataggio!
                     .fullName(fan.getFullName())
                     .gender(fan.getGender())
                     .birthday(fan.getBirthday())
                     .favTeam(fan.getFavTeam())
-                    .type("FAN")
                     .build();
         } finally {
+            // Ripristiniamo il tipo di persistenza originale
             factory.setPersistenceType(originalType);
         }
     }
 
     /**
-     * Creates a VenueManagerBean from a VenueManager model object for persistence operations.
-     * <p>
-     * This method retrieves the complete user information (including hashed password)
-     * from the source persistence and creates a properly formatted bean for saving
-     * or updating in the destination persistence.
-     * </p>
-     *
-     * @param vm The venue manager model object to convert
-     * @param factory The DAO factory facade for accessing persistence
-     * @param sourcePersistence The persistence type to retrieve user data from
-     * @return A VenueManagerBean with complete information for persistence operations
-     * @throws DAOException if user data retrieval fails
+     * Recupera un oggetto VenueManager completo (inclusa la password hashata) dalla persistenza sorgente.
+     * Necessario per le operazioni di SAVE che richiedono tutti i dati.
      */
-    private VenueManagerBean createVenueManagerBeanFromModel(VenueManager vm, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
+    private VenueManager retrieveCompleteVenueManager(VenueManager vm, DaoFactoryFacade factory, PersistenceType sourcePersistence) throws DAOException {
         PersistenceType originalType = factory.getPersistenceType();
         try {
+            // Switch alla persistenza sorgente per leggere i dati completi
             factory.setPersistenceType(sourcePersistence);
             UserDao userDao = factory.getUserDao();
+
             String[] userInfo = userDao.retrieveUser(vm.getUsername());
             String hashedPassword = (userInfo != null && userInfo.length > 1) ? userInfo[1] : "";
 
-            return new VenueManagerBean.Builder()
+            // Ricostruiamo il Model completo
+            return new VenueManager.Builder()
                     .username(vm.getUsername())
-                    .password(hashedPassword)
+                    .password(hashedPassword) // La password hashata è fondamentale
                     .fullName(vm.getFullName())
                     .gender(vm.getGender())
                     .companyName(vm.getCompanyName())
                     .phoneNumber(vm.getPhoneNumber())
-                    .type(UserType.VENUE_MANAGER.toString())
+                    // In fase di sync iniziale del manager, la lista venues può essere vuota.
+                    // Le venue verranno sincronizzate subito dopo dal metodo syncVenues.
+                    .managedVenues(new ArrayList<>())
                     .build();
         } finally {
             factory.setPersistenceType(originalType);
         }
-    }
-
-    /**
-     * Creates a VenueBean from a Venue model object.
-     * <p>
-     * This helper method extracts primitive values from the Venue model
-     * to create a lightweight Bean suitable for DAO operations.
-     * </p>
-     *
-     * @param venue The Venue model object
-     * @return A VenueBean with data from the model
-     */
-    private VenueBean createVenueBeanFromModel(Venue venue) {
-        return new VenueBean.Builder()
-                .id(venue.getId())
-                .name(venue.getName())
-                .type(venue.getType())
-                .address(venue.getAddress())
-                .city(venue.getCity())
-                .maxCapacity(venue.getMaxCapacity())
-                .venueManagerUsername(venue.getVenueManagerUsername())
-                .build();
-    }
-
-    /**
-     * Creates a BookingBean from a Booking model object.
-     * <p>
-     * This helper method extracts primitive values from the Booking model
-     * to create a lightweight Bean suitable for DAO operations.
-     * </p>
-     *
-     * @param booking The Booking model object
-     * @return A BookingBean with data from the model
-     */
-    private BookingBean createBookingBeanFromModel(Booking booking) {
-        return new BookingBean.Builder()
-                .id(booking.getId())
-                .gameDate(booking.getGameDate())
-                .gameTime(booking.getGameTime())
-                .homeTeam(booking.getHomeTeam())
-                .awayTeam(booking.getAwayTeam())
-                .venueId(booking.getVenueId())
-                .fanUsername(booking.getFanUsername())
-                .status(booking.getStatus())
-                .notified(booking.isNotified())
-                .build();
     }
 }

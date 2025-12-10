@@ -27,7 +27,6 @@ public class Venue {
     private String address;
     private String city;
     private int maxCapacity;
-
     private VenueManager venueManager;
     private final Set<TeamNBA> associatedTeams;
     private final Map<LocalDate, List<Booking>> bookingsByDate;
@@ -51,7 +50,7 @@ public class Venue {
         this.setVenueManager(builder.venueManager);
 
         // Initialize associated teams set (mutable set)
-        this.associatedTeams = new HashSet<>();
+        this.associatedTeams = new HashSet<>(builder.associatedTeams);
 
         // The map is initialized directly. There is no setBookingsByDate() method.
         this.bookingsByDate = new HashMap<>();
@@ -62,26 +61,23 @@ public class Venue {
     // ========================================================================
 
     /**
-     * Public business operation to update the Venue's core details.
-     * This is the ONLY way to modify these fields after construction.
-     *
-     * @param newName        The new name for the venue.
-     * @param newType        The new type for the venue.
-     * @param newAddress     The new street address.
-     * @param newCity        The new city.
-     * @param newMaxCapacity The new maximum capacity.
-     * @throws IllegalArgumentException if validation for new data fails.
+     * Aggiorna tutti i dettagli della Venue, incluse le squadre associate.
+     * Mantiene l'invariante: deve esserci sempre almeno una squadra.
      */
-    public void updateVenueDetails(String newName, VenueType newType, String newAddress, String newCity, int newMaxCapacity) {
-        // 1. Validate the new data
-        validateDetails(newName, newType, newAddress, newCity, newMaxCapacity);
+    public void updateVenueDetails(String newName, VenueType newType, String newAddress,
+                                   String newCity, int newMaxCapacity, Set<TeamNBA> newTeams) {
 
-        // 2. Mutate the state using private setters
+        // 1. Validazione
+        validateDetails(newName, newType, newAddress, newCity, newMaxCapacity, newTeams);
+
+        // 2. Mutazione Stato
         this.setName(newName);
         this.setType(newType);
         this.setAddress(newAddress);
         this.setCity(newCity);
         this.setMaxCapacity(newMaxCapacity);
+        this.associatedTeams.clear();
+        this.associatedTeams.addAll(newTeams);
     }
 
     /**
@@ -91,7 +87,6 @@ public class Venue {
      * @throws IllegalArgumentException if the manager is null.
      */
     public void assignNewManager(VenueManager newManager) {
-        // Delegate to private setter that contains validation
         this.setVenueManager(newManager);
     }
 
@@ -106,7 +101,7 @@ public class Venue {
         if (booking == null) {
             throw new IllegalArgumentException("Booking cannot be null");
         }
-        if (!booking.getVenue().equals(this)) {
+        if (booking.getVenueId() != this.id) {
             throw new IllegalArgumentException("Booking must be associated with this venue");
         }
         LocalDate gameDate = booking.getGameDate();
@@ -141,6 +136,10 @@ public class Venue {
     public boolean removeTeam(TeamNBA team) {
         if (team == null) {
             throw new IllegalArgumentException("Team cannot be null");
+        }
+        // Regola business: non puoi rimuovere l'ultimo team
+        if (associatedTeams.size() <= 1 && associatedTeams.contains(team)) {
+            throw new IllegalStateException("Cannot remove the last team. A venue must have at least one team.");
         }
         return associatedTeams.remove(team);
     }
@@ -333,6 +332,7 @@ public class Venue {
         private String city;
         private int maxCapacity;
         private VenueManager venueManager;
+        private final  Set<TeamNBA> associatedTeams = new HashSet<>();
 
         public Builder id(int id) {
             this.id = id;
@@ -369,6 +369,26 @@ public class Venue {
             return this;
         }
 
+        /**
+         * Adds a single team to the builder.
+         */
+        public Builder addTeam(TeamNBA team) {
+            if (team != null) {
+                this.associatedTeams.add(team);
+            }
+            return this;
+        }
+
+        /**
+         * Adds a collection of teams to the builder.
+         */
+        public Builder teams(Set<TeamNBA> teams) {
+            if (teams != null) {
+                this.associatedTeams.addAll(teams);
+            }
+            return this;
+        }
+
         public Venue build() {
             validate();
             return new Venue(this);
@@ -379,7 +399,7 @@ public class Venue {
          */
         private void validate() {
             // Use the static validation helper
-            validateDetails(name, type, address, city, maxCapacity);
+            validateDetails(name, type, address, city, maxCapacity, associatedTeams);
             // Specific validation for manager (must be present at build time)
             if (venueManager == null) {
                 throw new IllegalArgumentException("Venue manager cannot be null");
@@ -395,7 +415,7 @@ public class Venue {
      * Validates core venue details.
      * Static to be reusable by the Builder and updateVenueDetails.
      */
-    private static void validateDetails(String name, VenueType type, String address, String city, int maxCapacity) {
+    private static void validateDetails(String name, VenueType type, String address, String city, int maxCapacity, Set<TeamNBA> associatedTeams) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Venue name cannot be null or empty");
         }
@@ -413,6 +433,13 @@ public class Venue {
         }
         if (maxCapacity > 10000) {
             throw new IllegalArgumentException("Max capacity cannot exceed 10000");
+        }
+        if (associatedTeams.isEmpty()) {
+            throw new IllegalArgumentException("A venue must host at least one team.");
+        }
+        // Validazione specifica per FAN_CLUB (max 1 team)
+        if (type == VenueType.FAN_CLUB && associatedTeams.size() > 1) {
+            throw new IllegalStateException("FAN_CLUB venues can only have one associated team");
         }
     }
 

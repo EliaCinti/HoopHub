@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.helper_dao.BookingDaoHelper;
@@ -87,27 +86,49 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     // ========== PUBLIC DAO METHODS ==========
 
     @Override
-    public synchronized void saveBooking(BookingBean bookingBean) throws DAOException {
-        validateNotNull(bookingBean, "BookingBean");
+    public synchronized Booking saveBooking(Booking booking) throws DAOException {
+        validateNotNull(booking, BOOKING);
 
-        // Generate ID if not present
-        int id = bookingBean.getId() == 0 ? (int) getNextId(COL_ID) : bookingBean.getId();
+        // 1. Gestione ID: Se è 0, ne generiamo uno nuovo. Se è > 0 (es. da sync), lo manteniamo.
+        int id = booking.getId();
+        if (id == 0) {
+            id = (int) getNextId(COL_ID); // Metodo helper di AbstractCsvDao
+        }
 
+        // 2. Creazione dell'oggetto "Salvato" (con l'ID definitivo)
+        Booking savedBooking = new Booking.Builder(
+                id,
+                booking.getGameDate(),
+                booking.getGameTime(),
+                booking.getHomeTeam(),
+                booking.getAwayTeam(),
+                booking.getVenue(),
+                booking.getFan()
+        )
+                .status(booking.getStatus())
+                .notified(booking.isNotified())
+                .build();
+
+        // 3. Preparazione riga CSV leggendo dal NUOVO oggetto
         String[] newRow = {
-                String.valueOf(id),
-                bookingBean.getGameDate().toString(),
-                bookingBean.getGameTime().toString(),
-                String.valueOf(bookingBean.getHomeTeam()),
-                String.valueOf(bookingBean.getAwayTeam()),
-                String.valueOf(bookingBean.getVenueId()),
-                bookingBean.getFanUsername(),
-                bookingBean.getStatus().name(),
-                String.valueOf(bookingBean.isNotified())
+                String.valueOf(savedBooking.getId()),
+                savedBooking.getGameDate().toString(),
+                savedBooking.getGameTime().toString(),
+                savedBooking.getHomeTeam().name(), // Enum -> String
+                savedBooking.getAwayTeam().name(), // Enum -> String
+                String.valueOf(savedBooking.getVenue().getId()),
+                savedBooking.getFan().getUsername(),
+                savedBooking.getStatus().name(),
+                String.valueOf(savedBooking.isNotified())
         };
 
+        // 4. Scrittura su file
         CsvUtilities.writeFile(csvFile, newRow);
 
-        notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), bookingBean);
+        // 5. Notifica e Ritorno
+        notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), savedBooking);
+
+        return savedBooking;
     }
 
     @Override
@@ -285,9 +306,10 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     }
 
     @Override
-    public synchronized void updateBooking(BookingBean bookingBean) throws DAOException {
-        validateNotNull(bookingBean, "BookingBean");
-        validatePositiveId(bookingBean.getId());
+    public synchronized void updateBooking(Booking booking) throws DAOException {
+        // 1. Validazione sul Model
+        validateNotNull(booking, BOOKING);
+        validatePositiveId(booking.getId());
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
@@ -295,14 +317,17 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            if (Integer.parseInt(row[COL_ID]) == bookingBean.getId()) {
-                row[COL_GAME_DATE] = bookingBean.getGameDate().toString();
-                row[COL_GAME_TIME] = bookingBean.getGameTime().toString();
-                row[COL_HOME_TEAM] = String.valueOf(bookingBean.getHomeTeam());
-                row[COL_AWAY_TEAM] = String.valueOf(bookingBean.getAwayTeam());
-                row[COL_VENUE_ID] = String.valueOf(bookingBean.getVenueId());
-                row[COL_STATUS] = bookingBean.getStatus().name();
-                row[COL_NOTIFIED] = String.valueOf(bookingBean.isNotified());
+            // Cerchiamo la riga con l'ID corrispondente
+            if (Integer.parseInt(row[COL_ID]) == booking.getId()) {
+                // 2. Aggiornamento dati leggendo dal MODEL
+                row[COL_GAME_DATE] = booking.getGameDate().toString();
+                row[COL_GAME_TIME] = booking.getGameTime().toString();
+                row[COL_HOME_TEAM] = booking.getHomeTeam().name(); // Enum -> String
+                row[COL_AWAY_TEAM] = booking.getAwayTeam().name(); // Enum -> String
+                row[COL_VENUE_ID] = String.valueOf(booking.getVenueId());
+                row[COL_STATUS] = booking.getStatus().name();      // Enum -> String
+                row[COL_NOTIFIED] = String.valueOf(booking.isNotified());
+
                 found = true;
                 break;
             }
@@ -310,20 +335,31 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    BOOKING, "update", bookingBean.getId()));
+                    BOOKING, "update", booking.getId()));
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
-        logger.log(Level.INFO, "Booking updated successfully: {0}", bookingBean.getId());
-        notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(bookingBean.getId()), bookingBean);
+        logger.log(Level.INFO, "Booking updated successfully: {0}", booking.getId());
+
+        // 3. Notifica Observer passando il Model
+        notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
     }
 
     @Override
-    public synchronized void deleteBooking(int bookingId) throws DAOException {
-        validatePositiveId(bookingId);
+    public synchronized void deleteBooking(Booking booking) throws DAOException {
+        // 1. Validazione Model
+        validateNotNull(booking, BOOKING);
 
-        boolean found = deleteById(bookingId, COL_ID);
+        int bookingId = booking.getId();
+        // Validazione ID positivo (se non hai un helper dedicato, usa questo check diretto)
+        if (bookingId <= 0) {
+            throw new IllegalArgumentException("Invalid booking ID: " + bookingId);
+        }
+
+        // 2. Cancellazione dal CSV
+        // Usiamo deleteByColumn (metodo di AbstractCsvDao) passando la colonna ID e il valore
+        boolean found = deleteByColumn(COL_ID, String.valueOf(bookingId));
 
         if (!found) {
             throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
@@ -331,6 +367,8 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         }
 
         logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
+
+        // 3. Notifica Observer
         notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
     }
 

@@ -1,11 +1,16 @@
 package it.uniroma2.hoophub.app_controller;
 
 import it.uniroma2.hoophub.beans.CredentialsBean;
+import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.UserBean;
+import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
+import it.uniroma2.hoophub.model.Credentials;
+import it.uniroma2.hoophub.model.Fan;
 import it.uniroma2.hoophub.model.User;
+import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.enums.UserType;
@@ -63,99 +68,50 @@ public class LoginController extends AbstractController {
     }
 
     /**
-     * Attempts to log in a user using the provided credentials.
-     * It determines the user type, validates the credentials, retrieves the corresponding user data,
-     * and initiates a session for the user if authentication is successful.
-     * <p>
-     * <strong>Global Rate Limiting:</strong> After 3 failed login attempts (regardless of username),
-     * ALL subsequent login attempts are blocked for a waiting period of 30 * (attemptNumber - 3) seconds.
-     * This prevents both brute-force attacks and username enumeration attacks.
-     * Example: After 3 failed attempts, the 4th attempt requires waiting 30 seconds, the 5th requires
-     * 60 seconds, etc. The counter resets after a successful login or when the delay expires.
-     * </p>
-     * <p>
-     * <strong>Bean Pattern:</strong> This method accepts a CredentialsBean (input) and returns
-     * a UserBean (output), ensuring the boundary layer never accesses business logic from Model objects.
-     * Internally, the controller works with Model objects and converts them to Beans for the boundary.
-     * </p>
-     *
-     * @param credentials The credentials provided by the user, containing username, password, and user type.
-     * @return A UserBean containing user data without business logic, for boundary layer use.
-     * @throws DAOException         If there is an issue with data access, rate limit exceeded, or validation fails.
-     * @throws UserSessionException If the user is already logged in elsewhere, preventing a new session start.
+     * Esegue il login completo.
+     * @return UserBean popolato con i dati dell'utente loggato (per la GUI).
      */
-    public UserBean login(CredentialsBean credentials) throws DAOException, UserSessionException {
-        // Check rate limiting before attempting login (global check)
+    public UserBean login(CredentialsBean bean) throws DAOException, UserSessionException {
+        // 1. Rate Limiting Check
         checkRateLimit();
 
-        DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
-        UserDao userDao = daoFactoryFacade.getUserDao();
+        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
+        UserDao userDao = daoFactory.getUserDao();
 
         try {
-            userDao.validateUser(credentials);
-        } catch (DAOException e) {
-            // Login failed - increment global failed attempts counter
+            // 2. Bean -> Model (Credentials)
+            Credentials credentials = new Credentials.Builder()
+                    .username(bean.getUsername())
+                    .password(bean.getPassword())
+                    .build();
+
+            // 3. Validazione (Model-First) -> Restituisce UserType
+            UserType userType = userDao.validateUser(credentials);
+
+            // 4. Caricamento Profilo Completo
+            User user = null;
+            if (userType == UserType.FAN) {
+                user = daoFactory.getFanDao().retrieveFan(credentials.getUsername());
+            } else if (userType == UserType.VENUE_MANAGER) {
+                user = daoFactory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
+            }
+
+            if (user == null) {
+                throw new DAOException("User profile corrupted or not found: " + credentials.getUsername());
+            }
+
+            // 5. Successo: Reset tentativi e Login in Sessione
+            resetFailedAttempts();
+            storeUserSession(user);
+
+            // 6. Restituzione Bean alla GUI (così la GUI non deve chiamare SessionManager)
+            return convertUserToBean(user);
+
+        } catch (DAOException | IllegalArgumentException e) {
+            // Fallimento: Registra tentativo e rilancia
             recordFailedAttempt();
             throw e;
         }
-
-        User user = retrieveUserByType(credentials, daoFactoryFacade);
-
-        if (user == null) {
-            // inconsistenza in persistenza
-            recordFailedAttempt();
-            throw new DAOException("CRITICAL: User validated but not found in specific table. Inconsistency!");
-        }
-
-        // Login successful - reset global failed attempts counter
-        resetFailedAttempts();
-
-        // Store the Model in session (internal to controller)
-        storeUserSession(user);
-
-        // Convert Model → Bean for boundary layer
-        return convertUserToBean(user);
-    }
-
-    /**
-     * Factory method that retrieves the appropriate user type based on credentials.
-     * <p>
-     * <strong>Polymorphism:</strong> Uses switch expression with enum to dispatch to the
-     * appropriate DAO retrieval method. This provides type safety and compile-time exhaustiveness
-     * checking compared to string-based if-else chains.
-     * </p>
-     *
-     * @param credentials The user credentials containing the user type
-     * @param factory The DAO factory for data access
-     * @return The concrete User instance (Fan or VenueManager), or null
-     * @throws DAOException If there is an error retrieving user data
-     */
-    private User retrieveUserByType(CredentialsBean credentials, DaoFactoryFacade factory)
-            throws DAOException {
-
-        String typeString = credentials.getType();
-        if (typeString == null || typeString.isEmpty()) {
-            return null;
-        }
-
-        // Convert String to UserType enum for type-safe dispatching
-        UserType userType;
-        try {
-            userType = UserType.valueOf(typeString.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            // Invalid user type string
-            return null;
-        }
-
-        // POLYMORPHISM: Enum-based switch expression dispatches to the appropriate DAO method
-        // at runtime based on the UserType enum value. This replaces traditional if-else chains
-        // with a type-safe, exhaustive-checked approach that ensures all enum cases are handled.
-        // The Java compiler verifies that all UserType enum values have a corresponding case.
-        // Each case returns a different User subtype (Fan or VenueManager) polymorphically.
-        return switch (userType) {
-            case FAN -> factory.getFanDao().retrieveFan(credentials.getUsername());
-            case VENUE_MANAGER -> factory.getVenueManagerDao().retrieveVenueManager(credentials.getUsername());
-        };
     }
 
     /**
@@ -223,6 +179,36 @@ public class LoginController extends AbstractController {
     }
 
     /**
+     * Converte il Model in Bean specifico (FanBean o VenueManagerBean).
+     * Questo permette alla GUI di avere tutti i dati specifici (es. Squadra del cuore)
+     * senza dover conoscere il Model.
+     */
+    private UserBean convertUserToBean(User user) {
+        return switch (user) {
+            case Fan fan -> new FanBean.Builder()
+                    .username(fan.getUsername())
+                    .fullName(fan.getFullName())
+                    .gender(fan.getGender())
+                    .type(UserType.FAN.name())
+                    .favTeam(fan.getFavTeam())
+                    .birthday(fan.getBirthday())
+                    .build();
+
+            case VenueManager vm -> new VenueManagerBean.Builder()
+                    .username(vm.getUsername())
+                    .fullName(vm.getFullName())
+                    .gender(vm.getGender())
+                    .type(UserType.VENUE_MANAGER.name())
+                    .companyName(vm.getCompanyName())
+                    .phoneNumber(vm.getPhoneNumber())
+                    .build();
+
+            case null -> throw new IllegalArgumentException("User cannot be null");
+            default -> throw new IllegalStateException("Unexpected value: " + user);
+        };
+    }
+
+    /**
      * Stores user session information upon successful login.
      * This method ensures that the user's session is registered in the system,
      * allowing for session management and tracking.
@@ -233,29 +219,5 @@ public class LoginController extends AbstractController {
     @Override
     protected void storeUserSession(User user) throws UserSessionException {
         SessionManager.INSTANCE.login(user);
-    }
-
-    /**
-     * Converts a User Model object to the appropriate UserBean subtype for boundary layer consumption.
-     * <p>
-     * <strong>Polymorphism:</strong> Uses pattern matching with switch expression to determine
-     * the runtime type of the User and create the appropriate Bean subtype (FanBean or VenueManagerBean).
-     * This ensures type-specific data is properly transferred to the boundary layer.
-     * </p>
-     * <p>
-     * This method extracts only the necessary data from the Model and packages it
-     * into a Bean, preventing the boundary layer from accessing business logic methods.
-     * </p>
-     *
-     * @param user The User Model object to convert (Fan or VenueManager)
-     * @return A UserBean subtype containing only data (no business logic)
-     */
-    private UserBean convertUserToBean(User user) {
-        return new UserBean.Builder<>()
-                .username(user.getUsername())
-                .fullName(user.getFullName())
-                .gender(user.getGender())
-                .type(user.getUserType().toString())
-                .build();
     }
 }

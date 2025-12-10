@@ -1,10 +1,5 @@
 package it.uniroma2.hoophub.sync;
 
-import it.uniroma2.hoophub.beans.BookingBean;
-import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.UserBean;
-import it.uniroma2.hoophub.beans.VenueBean;
-import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.*;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Booking;
@@ -14,7 +9,6 @@ import it.uniroma2.hoophub.model.VenueManager;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 import it.uniroma2.hoophub.patterns.observer.DaoObserver;
-import it.uniroma2.hoophub.enums.UserType;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -100,19 +94,19 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
             switch (entityType) {
                 case SyncConstants.FAN -> {
                     FanDao targetDao = getTargetFactory().getFanDao();
-                    targetDao.saveFan((FanBean) entity);
+                    targetDao.saveFan((Fan) entity);
                 }
                 case SyncConstants.VENUE_MANAGER -> {
                     VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
-                    targetDao.saveVenueManager((VenueManagerBean) entity);
+                    targetDao.saveVenueManager((VenueManager) entity);
                 }
                 case SyncConstants.VENUE -> {
                     VenueDao targetDao = getTargetFactory().getVenueDao();
-                    targetDao.saveVenue((VenueBean) entity);
+                    targetDao.saveVenue((Venue) entity);
                 }
                 case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
-                    targetDao.saveBooking((BookingBean) entity);
+                    targetDao.saveBooking((Booking) entity);
                 }
                 default -> logger.log(Level.WARNING, "Sync INSERT not handled for entity type: {0}", entityType);
             }
@@ -146,43 +140,28 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
             switch (entityType) {
                 case SyncConstants.FAN -> {
                     FanDao targetDao = getTargetFactory().getFanDao();
+                    // L'oggetto 'entity' che arriva dall'Observer è già il Model aggiornato
                     Fan fan = (Fan) entity;
 
-                    UserBean userBean = new UserBean.Builder<>()
-                            .username(fan.getUsername())
-                            .fullName(fan.getFullName())
-                            .gender(fan.getGender())
-                            .type(UserType.FAN.toString())
-                            // Password omessa intenzionalmente
-                            .build();
-
-                    targetDao.updateFan(fan, userBean);
+                    targetDao.updateFan(fan);
                 }
                 case SyncConstants.VENUE_MANAGER -> {
                     VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
                     VenueManager venueManager = (VenueManager) entity;
 
-                    UserBean userBean = new UserBean.Builder<>()
-                            .username(venueManager.getUsername())
-                            .fullName(venueManager.getFullName())
-                            .gender(venueManager.getGender())
-                            .type(UserType.VENUE_MANAGER.toString())
-                            // Password omessa intenzionalmente
-                            .build();
-
-                    targetDao.updateVenueManager(venueManager, userBean);
+                    targetDao.updateVenueManager(venueManager);
                 }
                 case SyncConstants.VENUE -> {
                     VenueDao targetDao = getTargetFactory().getVenueDao();
                     Venue venue = (Venue) entity;
-                    VenueBean venueBean = createVenueBeanFromModel(venue);
-                    targetDao.updateVenue(venueBean);
+
+                    targetDao.updateVenue(venue);
                 }
                 case SyncConstants.BOOKING -> {
                     BookingDao targetDao = getTargetFactory().getBookingDao();
                     Booking booking = (Booking) entity;
-                    BookingBean bookingBean = createBookingBeanFromModel(booking);
-                    targetDao.updateBooking(bookingBean);
+
+                    targetDao.updateBooking(booking);
                 }
                 default -> logger.log(Level.WARNING, "Sync UPDATE not handled for entity type: {0}", entityType);
             }
@@ -266,59 +245,17 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
 
     private void deleteVenue(String entityId, DaoFactoryFacade factory) throws DAOException {
         int venueId = Integer.parseInt(entityId);
-        factory.getVenueDao().deleteVenue(venueId);
+        Venue venue = factory.getVenueDao().retrieveVenue(venueId);
+        if (venue != null) {
+            factory.getVenueDao().deleteVenue(venue);
+        }
     }
 
     private void deleteBooking(String entityId, DaoFactoryFacade factory) throws DAOException {
-        int bookingId = Integer.parseInt(entityId);
-        factory.getBookingDao().deleteBooking(bookingId);
-    }
-
-    // ========== Helper Methods for Bean Creation ==========
-
-    /**
-     * Creates a VenueBean from a Venue model object.
-     * <p>
-     * This helper method extracts primitive values from the Venue model
-     * to create a lightweight Bean suitable for DAO operations.
-     * </p>
-     *
-     * @param venue The Venue model object
-     * @return A VenueBean with data from the model
-     */
-    private VenueBean createVenueBeanFromModel(Venue venue) {
-        return new VenueBean.Builder()
-                .id(venue.getId())
-                .name(venue.getName())
-                .type(venue.getType())
-                .address(venue.getAddress())
-                .city(venue.getCity())
-                .maxCapacity(venue.getMaxCapacity())
-                .venueManagerUsername(venue.getVenueManagerUsername())
-                .build();
-    }
-
-    /**
-     * Creates a BookingBean from a Booking model object.
-     * <p>
-     * This helper method extracts primitive values from the Booking model
-     * to create a lightweight Bean suitable for DAO operations.
-     * </p>
-     *
-     * @param booking The Booking model object
-     * @return A BookingBean with data from the model
-     */
-    private BookingBean createBookingBeanFromModel(Booking booking) {
-        return new BookingBean.Builder()
-                .id(booking.getId())
-                .gameDate(booking.getGameDate())
-                .gameTime(booking.getGameTime())
-                .homeTeam(booking.getHomeTeam())
-                .awayTeam(booking.getAwayTeam())
-                .venueId(booking.getVenueId())
-                .fanUsername(booking.getFanUsername())
-                .status(booking.getStatus())
-                .notified(booking.isNotified())
-                .build();
+            int bookingId = Integer.parseInt(entityId);
+            Booking booking = factory.getBookingDao().retrieveBooking(bookingId);
+            if (booking != null) {
+                factory.getBookingDao().deleteBooking(booking);
+            }
     }
 }

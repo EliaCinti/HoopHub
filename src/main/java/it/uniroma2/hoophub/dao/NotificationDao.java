@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.dao;
 
-import it.uniroma2.hoophub.beans.NotificationBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Notification;
 import it.uniroma2.hoophub.enums.UserType;
@@ -11,18 +10,8 @@ import java.util.List;
 /**
  * Data Access Object interface for Notification entity operations.
  * <p>
- * This interface defines the contract for notification persistence operations
- * across different storage mechanisms (CSV, MySQL). It extends ObservableDao
- * to support the Observer pattern for cross-persistence synchronization.
- * </p>
- * <p>
- * Implementations of this interface must:
- * <ul>
- *   <li>Handle notification CRUD operations</li>
- *   <li>Support querying notifications by user and type</li>
- *   <li>Implement ObservableDao for synchronization</li>
- *   <li>Notify observers after data changes</li>
- * </ul>
+ * Defines the contract for notification persistence following the <strong>Model-First</strong>
+ * and <strong>Return the Entity</strong> patterns.
  * </p>
  *
  * @author Elia Cinti
@@ -32,14 +21,16 @@ public interface NotificationDao extends ObservableDao {
     /**
      * Saves a new notification to the persistence layer.
      * <p>
-     * After saving, this method MUST call notifyObservers(INSERT, ...)
-     * to trigger cross-persistence synchronization and business logic observers.
+     * Returns the saved Notification entity with the generated ID.
+     * Notifies observers (INSERT) for synchronization.
      * </p>
      *
-     * @param notificationBean The notification data to save
-     * @throws DAOException If there is an error during the save operation
+     * @param notification The notification model to save (without ID)
+     * @return The saved Notification with the generated ID
+     * @throws DAOException             If there is an error during the save operation
+     * @throws IllegalArgumentException If notification is null
      */
-    void saveNotification(NotificationBean notificationBean) throws DAOException;
+    Notification saveNotification(Notification notification) throws DAOException;
 
     /**
      * Retrieves a notification by its unique identifier.
@@ -52,10 +43,6 @@ public interface NotificationDao extends ObservableDao {
 
     /**
      * Retrieves all notifications for a specific user.
-     * <p>
-     * This method returns notifications in reverse chronological order
-     * (newest first) to provide a natural inbox-like experience.
-     * </p>
      *
      * @param username The user's username
      * @param userType The type of user (FAN or VENUE_MANAGER)
@@ -75,43 +62,46 @@ public interface NotificationDao extends ObservableDao {
     List<Notification> getUnreadNotificationsForUser(String username, UserType userType) throws DAOException;
 
     /**
-     * Marks a notification as read.
+     * Updates an existing notification.
      * <p>
-     * After updating, this method MUST call notifyObservers(UPDATE, ...)
-     * to trigger synchronization.
+     * Used mainly to mark notifications as read.
+     * Notifies observers (UPDATE) for synchronization.
      * </p>
      *
-     * @param notificationId The ID of the notification to mark as read
+     * @param notification The notification model with updated state (e.g. isRead = true)
      * @throws DAOException If the notification is not found or there is a database error
+     * @throws IllegalArgumentException If notification is null
      */
-    void markAsRead(int notificationId) throws DAOException;
+    void updateNotification(Notification notification) throws DAOException;
 
     /**
      * Marks all notifications for a user as read.
+     * <p>
+     * This is a batch update operation for convenience.
+     * </p>
      *
      * @param username The user's username
-     * @param userType The type of user (FAN or VENUE_MANAGER)
+     * @param userType The type of user
      * @throws DAOException If there is an error updating notifications
      */
     void markAllAsReadForUser(String username, UserType userType) throws DAOException;
 
     /**
-     * Deletes a notification by ID.
+     * Deletes a notification.
      * <p>
-     * After deleting, this method MUST call notifyObservers(DELETE, ...)
-     * to trigger synchronization.
+     * Notifies observers (DELETE) for synchronization.
      * </p>
      *
-     * @param notificationId The ID of the notification to delete
+     * @param notification The notification object to delete
      * @throws DAOException If the notification is not found or there is a database error
+     * @throws IllegalArgumentException If notification is null
      */
-    void deleteNotification(int notificationId) throws DAOException;
+    void deleteNotification(Notification notification) throws DAOException;
 
     /**
-     * Deletes all notifications for a specific booking.
+     * Deletes all notifications associated with a specific booking.
      * <p>
-     * This is useful when a booking is cancelled or deleted, and all
-     * related notifications should be cleaned up.
+     * Used for cleanup when a booking is deleted.
      * </p>
      *
      * @param bookingId The booking ID
@@ -121,12 +111,9 @@ public interface NotificationDao extends ObservableDao {
 
     /**
      * Gets the count of unread notifications for a user.
-     * <p>
-     * Used for displaying notification badges in the UI.
-     * </p>
      *
      * @param username The user's username
-     * @param userType The type of user (FAN or VENUE_MANAGER)
+     * @param userType The type of user
      * @return The number of unread notifications
      * @throws DAOException If there is an error counting notifications
      */

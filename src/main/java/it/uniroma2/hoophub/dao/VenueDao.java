@@ -22,11 +22,12 @@ public interface VenueDao {
     /**
      * Saves a new venue in the persistence layer.
      *
-     * @param venueBean The bean containing the venue's details, must not be null
-     * @throws DAOException If an error occurs while saving the venue
+     * @param venue the model
+     * @return Venue the model
+     * @throws DAOException             If an error occurs while saving the venue
      * @throws IllegalArgumentException If venueBean is null or contains invalid data
      */
-    void saveVenue(VenueBean venueBean) throws DAOException;
+    Venue saveVenue(Venue venue) throws DAOException;
 
     /**
      * Retrieves a venue by its unique identifier.
@@ -69,20 +70,20 @@ public interface VenueDao {
     /**
      * Updates an existing venue's details in the persistence layer.
      *
-     * @param venueBean The bean containing updated venue information, must not be null
-     * @throws DAOException If an error occurs while updating or if the venue doesn't exist
+     * @param venue The model containing updated venue information, must not be null
+     * @throws DAOException             If an error occurs while updating or if the venue doesn't exist
      * @throws IllegalArgumentException If venueBean is null
      */
-    void updateVenue(VenueBean venueBean) throws DAOException;
+    void updateVenue(Venue venue) throws DAOException;
 
     /**
      * Deletes a venue from the persistence layer.
      *
-     * @param venueId The ID of the venue to delete, must be positive
+     * @param venue the model
      * @throws DAOException If an error occurs during deletion or if the venue doesn't exist
      * @throws IllegalArgumentException If venueId is not positive
      */
-    void deleteVenue(int venueId) throws DAOException;
+    void deleteVenue(Venue venue) throws DAOException;
 
     /**
      * Checks if a venue exists in the persistence system.
@@ -105,22 +106,22 @@ public interface VenueDao {
     /**
      * Associates a team with a venue.
      *
-     * @param venueId The ID of the venue
-     * @param team The NBA team to associate
-     * @throws DAOException If an error occurs during the operation
+     * @param venue the model
+     * @param team  The NBA team to associate
+     * @throws DAOException             If an error occurs during the operation
      * @throws IllegalArgumentException If venueId is not positive or team is null
      */
-    void saveVenueTeam(int venueId, TeamNBA team) throws DAOException;
+    void saveVenueTeam(Venue venue, TeamNBA team) throws DAOException;
 
     /**
      * Removes a team association from a venue.
      *
-     * @param venueId The ID of the venue
-     * @param team The NBA team to disassociate
-     * @throws DAOException If an error occurs during the operation
+     * @param venue the model
+     * @param team  The NBA team to disassociate
+     * @throws DAOException             If an error occurs during the operation
      * @throws IllegalArgumentException If venueId is not positive or team is null
      */
-    void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException;
+    void deleteVenueTeam(Venue venue, TeamNBA team) throws DAOException;
 
     /**
      * Retrieves all teams associated with a venue.
@@ -135,9 +136,8 @@ public interface VenueDao {
     /**
      * Removes all team associations from a venue.
      *
-     * @param venueId The ID of the venue
-     * @throws DAOException If an error occurs during the operation
+     * @param venue@throws DAOException If an error occurs during the operation
      * @throws IllegalArgumentException If venueId is not positive
      */
-    void deleteAllVenueTeams(int venueId) throws DAOException;
+    void deleteAllVenueTeams(Venue venue) throws DAOException;
 }

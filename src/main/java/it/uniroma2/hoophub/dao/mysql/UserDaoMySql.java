@@ -1,10 +1,10 @@
 package it.uniroma2.hoophub.dao.mysql;
 
-import it.uniroma2.hoophub.beans.CredentialsBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.UserDao;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.Credentials;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.utilities.PasswordUtils;
@@ -74,11 +74,12 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
      *   <li>Sets the user type in the credentials if validation succeeds</li>
      * </ol>
      * </p>
+     *
+     * @return
      */
     @Override
-    public void validateUser(CredentialsBean credentials) throws DAOException {
-        validateCredentialsInput(credentials);
-
+    public UserType validateUser(Credentials credentials) throws DAOException {
+    validateCredentialsInput(credentials);
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_VALIDATE_USER)) {
@@ -88,23 +89,20 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         String storedHash = rs.getString("password_hash");
-                        String userType = rs.getString("user_type");
+                        String typeString = rs.getString("user_type");
 
+                        // Verifica Password (Raw vs Hash)
                         if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
-                            credentials.setType(userType);
-                            logger.log(Level.INFO, "User validated successfully: {0}", credentials.getUsername());
-                        } else {
-                            logger.log(Level.WARNING, "Invalid password for user: {0}", credentials.getUsername());
-                            throw new DAOException(ERR_INVALID_CREDENTIALS);
+                            logger.log(Level.INFO, "User validated: {0}", credentials.getUsername());
+                            return UserType.valueOf(typeString); // RITORNA IL TIPO
                         }
-                    } else {
-                        logger.log(Level.WARNING, "User not found: {0}", credentials.getUsername());
-                        throw new DAOException(ERR_INVALID_CREDENTIALS);
                     }
+                    // Se siamo qui, o utente non trovato o password errata
+                    throw new DAOException(ERR_INVALID_CREDENTIALS);
                 }
             }
         } catch (SQLException e) {
-            throw new DAOException("Error validating user credentials", e);
+            throw new DAOException("Error validating user", e);
         }
     }
 
@@ -116,11 +114,10 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
      * </p>
      */
     @Override
-    public void saveUser(UserBean userBean) throws DAOException {
-        validateUserBeanInput(userBean);
+    public void saveUser(User user) throws DAOException {
+        validateUserInput(user); // Aggiorna la validazione per accettare User
 
-        if (isUsernameTaken(userBean.getUsername())) {
-            logger.log(Level.WARNING, "Attempt to save user with existing username: {0}", userBean.getUsername());
+        if (isUsernameTaken(user.getUsername())) {
             throw new DAOException(ERR_USERNAME_EXISTS);
         }
 
@@ -128,19 +125,21 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_USER)) {
 
-                String hashedPassword = PasswordUtils.hashPassword(userBean.getPassword());
-
-                stmt.setString(1, userBean.getUsername());
-                stmt.setString(2, hashedPassword);
-                stmt.setString(3, userBean.getFullName());
-                stmt.setString(4, userBean.getGender());
-                stmt.setString(5, userBean.getType());
+                // NON facciamo più l'hash qui. Lo prendiamo dal Model.
+                stmt.setString(1, user.getUsername());
+                stmt.setString(2, user.getPasswordHash()); // Getter dal model
+                stmt.setString(3, user.getFullName());
+                stmt.setString(4, user.getGender());
+                stmt.setString(5, user.getUserType().toString()); // O come gestisci l'enum
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    logger.log(Level.INFO, "User saved successfully: {0}", userBean.getUsername());
-                    notifyObservers(DaoOperation.INSERT, "User", userBean.getUsername(), userBean);
+                    // Cache Put: Ora è facilissimo, abbiamo già l'oggetto User!
+                    putInCache(user, user.getUsername());
+
+                    logger.log(Level.INFO, "User saved: {0}", user.getUsername());
+                    notifyObservers(DaoOperation.INSERT, "User", user.getUsername(), user);
                 }
             }
         } catch (SQLException e) {
@@ -151,14 +150,10 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     /**
      * {@inheritDoc}
      * <p>
-     * Returns user data as a String array in the following order:
-     * <ol start="0">
-     *   <li>username</li>
-     *   <li>password_hash</li>
-     *   <li>full_name</li>
-     *   <li>gender</li>
-     *   <li>user_type</li>
-     * </ol>
+     * <strong>Nota sulla Cache:</strong> Questo metodo NON usa la cache.
+     * Motivo: L'interfaccia richiede un array di String contenente anche l'hash della password.
+     * L'oggetto User in cache (Domain Model) NON contiene la password per sicurezza.
+     * Pertanto, dobbiamo sempre interrogare il DB per ottenere i dati grezzi completi.
      * </p>
      */
     @Override
@@ -221,25 +216,31 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
      * </p>
      */
     @Override
-    public void updateUser(User user, UserBean userBean) throws DAOException {
+    public void updateUser(User user) throws DAOException {
+        // Validation: controlliamo solo che l'utente esista/sia valido
         validateUserInput(user);
-        validateUserBeanInput(userBean);
 
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_USER)) {
-
-                stmt.setString(1, userBean.getFullName());
-                stmt.setString(2, userBean.getGender());
+                // Si presuppone che il controller abbia già fatto user.setFullName(...)
+                stmt.setString(1, user.getFullName());
+                stmt.setString(2, user.getGender());
                 stmt.setString(3, user.getUsername());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    logger.log(Level.INFO, "User updated successfully: {0}", user.getUsername());
+                    // === CACHE WRITE-THROUGH (La tua richiesta) ===
+                    // Poiché 'user' è l'oggetto aggiornato (passato dal controller),
+                    // possiamo salvarlo direttamente in cache.
+                    // Nota: Non serve più rimuoverlo (Eviction), perché ora siamo sicuri che sia corretto.
+                    putInCache(user, user.getUsername());
+
+                    logger.log(Level.INFO, "User updated: {0}", user.getUsername());
+
                     notifyObservers(DaoOperation.UPDATE, "User", user.getUsername(), user);
                 } else {
-                    logger.log(Level.WARNING, "User not found for update: {0}", user.getUsername());
                     throw new DAOException("User not found for update: " + user.getUsername());
                 }
             }
@@ -262,17 +263,16 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_USER)) {
-
                 stmt.setString(1, user.getUsername());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    logger.log(Level.INFO, "User deleted successfully: {0}", user.getUsername());
+                    // === CACHE REMOVE ===
+                    removeFromCache(user.getClass(), user.getUsername());
+
+                    logger.log(Level.INFO, "User deleted: {0}", user.getUsername());
                     notifyObservers(DaoOperation.DELETE, "User", user.getUsername(), null);
-                } else {
-                    logger.log(Level.WARNING, "User not found for deletion: {0}", user.getUsername());
-                    throw new DAOException("User not found for deletion: " + user.getUsername());
                 }
             }
         } catch (SQLException e) {
@@ -285,7 +285,7 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     /**
      * Validates credentials input to prevent null pointer exceptions.
      */
-    private void validateCredentialsInput(CredentialsBean credentials) {
+    private void validateCredentialsInput(Credentials credentials) {
         if (credentials == null || credentials.getUsername() == null ||
                 credentials.getUsername().trim().isEmpty() ||
                 credentials.getPassword() == null || credentials.getPassword().trim().isEmpty()) {

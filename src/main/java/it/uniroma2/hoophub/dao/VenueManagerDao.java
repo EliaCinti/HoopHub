@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.dao;
 
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Venue;
@@ -44,16 +43,15 @@ public interface VenueManagerDao {
      * </ol>
      * </p>
      *
-     * @param venueManagerBean The bean containing the venue manager's details, must not be null
-     * @throws DAOException If an error occurs while saving, such as:
-     *                      <ul>
-     *                        <li>Username already exists (duplicate key)</li>
-     *                        <li>Database connection failure</li>
-     *                        <li>Constraint violation</li>
-     *                      </ul>
+     * @param venueManager@throws DAOException If an error occurs while saving, such as:
+     *                            <ul>
+     *                              <li>Username already exists (duplicate key)</li>
+     *                              <li>Database connection failure</li>
+     *                              <li>Constraint violation</li>
+     *                            </ul>
      * @throws IllegalArgumentException If venueManagerBean is null or contains invalid data
      */
-    void saveVenueManager(VenueManagerBean venueManagerBean) throws DAOException;
+    void saveVenueManager(VenueManager venueManager) throws DAOException;
 
     /**
      * Retrieves venue manager details from the persistence layer based on username.
@@ -111,11 +109,10 @@ public interface VenueManagerDao {
      * </p>
      *
      * @param venueManager The venue manager object containing updated manager-specific details, must not be null
-     * @param userBean The bean containing updated user details, must not be null
-     * @throws DAOException If an error occurs while updating the venue manager
+     * @throws DAOException             If an error occurs while updating the venue manager
      * @throws IllegalArgumentException If venueManager or userBean is null
      */
-    void updateVenueManager(VenueManager venueManager, UserBean userBean) throws DAOException;
+    void updateVenueManager(VenueManager venueManager) throws DAOException;
 
     /**
      * Deletes a venue manager from the persistence layer.
@@ -160,7 +157,7 @@ public interface VenueManagerDao {
      * </ul>
      * </p>
      *
-     * @param venueManager The venue manager whose venues should be retrieved, must not be null
+     * @param venueManager The venue manager, whose venues should be retrieved, must not be null
      * @return A list of venues managed by the venue manager, empty list if none found
      * @throws DAOException If an error occurs while accessing the data
      * @throws IllegalArgumentException If venueManager is null

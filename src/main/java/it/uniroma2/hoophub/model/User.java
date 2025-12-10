@@ -14,10 +14,11 @@ public abstract class User {
     private final String username; // Immutable Primary Key
     private String fullName;
     private String gender;
+    private final String passwordHash;
 
     /**
      * Protected constructor for use by subclasses and the Builder.
-     * Initial state (including immutable PK) is set directly here.
+     * The Initial state (including immutable PK) is set directly here.
      */
     protected User(Builder<?> builder) {
         // Immutable fields like PK are set directly
@@ -26,6 +27,7 @@ public abstract class User {
         // Initial state for mutable fields is set directly
         this.fullName = builder.fullName;
         this.gender = builder.gender;
+        this.passwordHash  = builder.passwordHash;
     }
 
     // ========================================================================
@@ -73,6 +75,8 @@ public abstract class User {
         return gender;
     }
 
+    public String getPasswordHash() {return passwordHash;}
+
     // ========================================================================
     // PRIVATE/PROTECTED SETTERS (Internal State Mutation)
     // ========================================================================
@@ -104,6 +108,7 @@ public abstract class User {
         protected String username;
         protected String fullName;
         protected String gender;
+        protected String passwordHash;
 
         public T username(String username) {
             this.username = username;
@@ -117,6 +122,10 @@ public abstract class User {
 
         public T gender(String gender) {
             this.gender = gender;
+            return self();
+        }
+        public T password(String passwordHash) {
+            this.passwordHash = passwordHash;
             return self();
         }
 

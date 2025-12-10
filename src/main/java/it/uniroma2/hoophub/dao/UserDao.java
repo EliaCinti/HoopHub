@@ -1,8 +1,8 @@
 package it.uniroma2.hoophub.dao;
 
-import it.uniroma2.hoophub.beans.CredentialsBean;
-import it.uniroma2.hoophub.beans.UserBean;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.Credentials;
 import it.uniroma2.hoophub.model.User;
 
 /**
@@ -17,11 +17,6 @@ import it.uniroma2.hoophub.model.User;
  * This DAO works in conjunction with specialized DAOs (FanDao, VenueManagerDao) to provide
  * a complete user management system with proper separation of concerns.
  * </p>
- *
- * @see User Base domain model for all user types
- * @see UserBean Base bean for data transfer
- * @see FanDao DAO for Fan-specific operations
- * @see VenueManagerDao DAO for VenueManager-specific operations
  */
 public interface UserDao {
 
@@ -50,18 +45,16 @@ public interface UserDao {
      *
      * @param credentials The credentials bean containing username and password to validate,
      *                    must not be null. The type field will be populated if validation succeeds.
-     * @throws DAOException If an error occurs while accessing the data storage
+     * @return UserType
+     * @throws DAOException             If an error occurs while accessing the data storage
      * @throws IllegalArgumentException If credentials is null or contains null/empty username or password
      */
-    void validateUser(CredentialsBean credentials) throws DAOException;
+    UserType validateUser(Credentials credentials) throws DAOException;
 
     /**
      * Saves a new user in the persistence layer.
      * <p>
-     * This method uses {@link UserBean} as input because it represents data coming from
-     * the UI layer during the registration process. This is typically called by specialized
-     * DAOs (FanDao, VenueManagerDao) as part of their save operations to persist the
-     * common user data before saving type-specific data.
+     * This method uses {@link Credentials} as input.
      * </p>
      * <p>
      * The implementation will:
@@ -73,7 +66,7 @@ public interface UserDao {
      * </ol>
      * </p>
      *
-     * @param userBean The bean containing the user's details from the UI, must not be null
+     * @param user The model containing the user's details
      * @throws DAOException If an error occurs while saving the user, such as:
      *                      <ul>
      *                        <li>Username already exists (duplicate key)</li>
@@ -82,13 +75,14 @@ public interface UserDao {
      *                      </ul>
      * @throws IllegalArgumentException If userBean is null or contains invalid data
      */
-    void saveUser(UserBean userBean) throws DAOException;
+    void saveUser(User user) throws DAOException;
 
     /**
      * Retrieves user details from the persistence layer based on username.
      * <p>
      * This method returns the raw data as a String array rather than a User object
-     * because User is abstract and cannot be instantiated directly. The specialized
+     *  because the User is abstract and cannot be instantiated directly.
+     *  The specialized
      * DAOs (FanDao, VenueManagerDao) use this method to retrieve common user data
      * and combine it with type-specific data to construct complete domain objects.
      * </p>
@@ -150,11 +144,10 @@ public interface UserDao {
      * </p>
      *
      * @param user The user object to identify which record to update, must not be null
-     * @param userBean The bean containing updated user details, must not be null
-     * @throws DAOException If an error occurs while updating the user
+     * @throws DAOException             If an error occurs while updating the user
      * @throws IllegalArgumentException If user or userBean is null
      */
-    void updateUser(User user, UserBean userBean) throws DAOException;
+    void updateUser(User user) throws DAOException;
 
     /**
      * Deletes a user from the persistence layer.
@@ -181,7 +174,7 @@ public interface UserDao {
      *                        <li>Foreign key constraint violation</li>
      *                        <li>Database connection failure</li>
      *                      </ul>
-     * @throws IllegalArgumentException If user is null
+     * @throws IllegalArgumentException If a user is null
      */
     void deleteUser(User user) throws DAOException;
 }

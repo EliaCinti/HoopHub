@@ -1,8 +1,6 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.VenueDao;
-import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.dao.helper_dao.VenueDaoHelper;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.enums.TeamNBA;
@@ -18,46 +16,19 @@ import java.io.File;
 import java.util.*;
 import java.util.logging.Level;
 
-/**
- * CSV implementation of VenueDao.
- * <p>
- * Manages Venue data in CSV file. Handles venue-team associations in separate CSV.
- * </p>
- * <p>
- * <strong>CSV Structure:</strong> id,name,type,address,city,max_capacity,venue_manager_username
- * </p>
- * <p>
- * <strong>Design Patterns:</strong>
- * <ul>
- *   <li><strong>Factory</strong>: Created via VenueDaoFactory</li>
- *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access VenueManagerDao</li>
- *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
- *   <li><strong>Builder</strong>: Uses Venue.Builder for object construction</li>
- * </ul>
- * </p>
- * <p>
- * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops
- * when Venue loads VenueManager and VenueManager loads Venues back.
- * </p>
- *
- * @see VenueDao
- * @see DaoLoadingContext
- */
 public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
     // ========== CSV CONFIGURATION ==========
-
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venues.csv";
     private static final String[] CSV_HEADER = {"id", "name", "type", "address", "city", "max_capacity", "venue_manager_username"};
+
+    // Configurazione file teams
     private static final String VENUE_TEAMS_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "venue_teams.csv";
     private static final String[] VENUE_TEAMS_HEADER = {"venue_id", "team_name"};
 
-    // ========== CONSTANTS ==========
-
     private static final String VENUE = "Venue";
 
-    // ========== COLUMN INDICES ==========
-
+    // Indici
     private static final int COL_ID = 0;
     private static final int COL_NAME = 1;
     private static final int COL_TYPE = 2;
@@ -65,517 +36,322 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     private static final int COL_CITY = 4;
     private static final int COL_MAX_CAPACITY = 5;
     private static final int COL_VENUE_MANAGER_USERNAME = 6;
+
+    // Indici file teams
     private static final int COL_VT_VENUE_ID = 0;
     private static final int COL_VT_TEAM_NAME = 1;
 
-    // ========== DEPENDENCIES ==========
-
     private final File venueTeamsFile;
 
-    // ========== CONSTRUCTOR ==========
-
-    /**
-     * Constructs a new VenueDaoCsv and initializes the CSV file.
-     * <p>
-     * The parent constructor ({@link AbstractCsvDao}) handles:
-     * <ul>
-     *   <li>Creating the File object</li>
-     *   <li>Creating parent directories if needed</li>
-     *   <li>Initializing the CSV file with headers if it doesn't exist</li>
-     *   <li>Setting up the logger</li>
-     * </ul>
-     * </p>
-     */
     public VenueDaoCsv() {
         super(CSV_FILE_PATH);
-
-        // Initialize venue_teams.csv file manually
         this.venueTeamsFile = new File(VENUE_TEAMS_FILE_PATH);
+        initTeamsFile();
+    }
+
+    private void initTeamsFile() {
         try {
             if (!venueTeamsFile.exists()) {
-                // Create parent directories if needed
                 File parentDir = venueTeamsFile.getParentFile();
+
+                // FIX: Controlliamo il risultato di mkdirs()
                 if (parentDir != null && !parentDir.exists()) {
                     boolean created = parentDir.mkdirs();
                     if (!created) {
-                        logger.log(Level.SEVERE, "CRITICAL: Impossible to create directory for venue teams: {0}", parentDir.getAbsolutePath());
+                        logger.log(Level.SEVERE, "Impossible to create directory for venue teams: {0}", parentDir.getAbsolutePath());
+                        // Se non riusciamo a creare la cartella, inutile provare a scrivere il file
+                        return;
                     }
                 }
 
-                // Create file with header using updateFile
-                // Note: updateFile() automatically adds header as first row, so we pass empty list
-                List<String[]> emptyData = new ArrayList<>();
-                CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, emptyData);
-
-                logger.log(Level.INFO, "Initialized venue_teams.csv file at: {0}", VENUE_TEAMS_FILE_PATH);
+                // Se siamo qui, la cartella esiste (o è stata creata). Creiamo il file vuoto con header.
+                CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, new ArrayList<>());
             }
         } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to initialize venue_teams.csv file", e);
+            logger.log(Level.SEVERE, "Failed to initialize venue_teams.csv", e);
         }
     }
 
     @Override
-    protected String[] getHeader() {
-        return CSV_HEADER;
-    }
+    protected String[] getHeader() { return CSV_HEADER; }
 
-    // ========== PUBLIC METHODS (VenueDao Interface Implementation) ==========
+    // ========== CRUD OPERATIONS (Model-First) ==========
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * If the venue bean has an ID of 0, a new ID is automatically generated using
-     * {@link #getNextId(int)}. The ID is set in the bean before saving.
-     * </p>
-     * <p>
-     * After successful save, observers are notified for cross-persistence synchronization.
-     * </p>
-     */
     @Override
-    public synchronized void saveVenue(VenueBean venueBean) throws DAOException {
-        validateNotNull(venueBean, "VenueBean");
-        validateNotNullOrEmpty(venueBean.getName(), "Venue name");
-        validateNotNull(venueBean.getType(), "Venue type");
-        validateNotNullOrEmpty(venueBean.getAddress(), "Address");
-        validateNotNullOrEmpty(venueBean.getCity(), "City");
-        validateNotNullOrEmpty(venueBean.getVenueManagerUsername(), "Venue manager username");
+    public synchronized Venue saveVenue(Venue venue) throws DAOException {
+        // 1. Validazione
+        validateNotNull(venue, VENUE);
+        // Il Model garantisce già che i team non siano vuoti
 
-        if (venueBean.getMaxCapacity() <= 0) {
-            throw new IllegalArgumentException("Max capacity must be positive");
+        // 2. Generazione ID
+        int id = venue.getId();
+        if (id == 0) {
+            id = (int) getNextId(COL_ID);
         }
 
-        // Generate ID if not provided
-        int id = venueBean.getId() == 0 ? (int) getNextId(COL_ID) : venueBean.getId();
-        venueBean.setId(id);
+        // 3. Creazione Oggetto con ID (Immutabile)
+        Venue savedVenue = new Venue.Builder()
+                .id(id)
+                .name(venue.getName())
+                .type(venue.getType())
+                .address(venue.getAddress())
+                .city(venue.getCity())
+                .maxCapacity(venue.getMaxCapacity())
+                .venueManager(venue.getVenueManager())
+                .teams(venue.getAssociatedTeams()) // Copia i team!
+                .build();
 
-        String[] newRow = {
+        // 4. Scrittura Venue (venues.csv)
+        String[] row = {
                 String.valueOf(id),
-                venueBean.getName(),
-                venueBean.getType().name(),
-                venueBean.getAddress(),
-                venueBean.getCity(),
-                String.valueOf(venueBean.getMaxCapacity()),
-                venueBean.getVenueManagerUsername()
+                savedVenue.getName(),
+                savedVenue.getType().name(),
+                savedVenue.getAddress(),
+                savedVenue.getCity(),
+                String.valueOf(savedVenue.getMaxCapacity()),
+                savedVenue.getVenueManagerUsername()
         };
+        CsvUtilities.writeFile(csvFile, row);
 
-        CsvUtilities.writeFile(csvFile, newRow);
+        // 5. Scrittura Teams (venue_teams.csv)
+        // Scriviamo tutti i team associati
+        for (TeamNBA team : savedVenue.getAssociatedTeams()) {
+            saveVenueTeamInternal(id, team);
+        }
 
-        notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(id), venueBean);
+        // 6. Notifica e Ritorno
+        notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(id), savedVenue);
+        return savedVenue;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The returned Venue object contains a fully populated VenueManager with all real data.
-     * Circular dependencies are prevented using {@link DaoLoadingContext}.
-     * </p>
-     */
+    @Override
+    public synchronized void updateVenue(Venue venue) throws DAOException {
+        validateNotNull(venue, VENUE);
+        validatePositiveId(venue.getId());
+
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        // 1. Update Venue (venues.csv)
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (Integer.parseInt(row[COL_ID]) == venue.getId()) {
+                row[COL_NAME] = venue.getName();
+                row[COL_TYPE] = venue.getType().name();
+                row[COL_ADDRESS] = venue.getAddress();
+                row[COL_CITY] = venue.getCity();
+                row[COL_MAX_CAPACITY] = String.valueOf(venue.getMaxCapacity());
+                // Manager username usually not updated here
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) throw new DAOException("Venue not found: " + venue.getId());
+        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+
+        // 2. Update Teams (venue_teams.csv)
+        // Strategia: Delete All + Insert New (per allineare CSV al Model)
+        deleteAllVenueTeamsInternal(venue.getId());
+
+        for (TeamNBA team : venue.getAssociatedTeams()) {
+            saveVenueTeamInternal(venue.getId(), team);
+        }
+
+        logger.log(Level.INFO, "Venue updated: {0}", venue.getId());
+        notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venue.getId()), venue);
+    }
+
+    @Override
+    public synchronized void deleteVenue(Venue venue) throws DAOException {
+        validateNotNull(venue, VENUE);
+        int id = venue.getId();
+
+        // 1. Delete Venue (venues.csv)
+        boolean found = deleteById(id, COL_ID);
+        if (!found) throw new DAOException("Venue not found: " + id);
+
+        // 2. Delete Teams (Cascade Manuale per CSV)
+        deleteAllVenueTeamsInternal(id);
+
+        logger.log(Level.INFO, "Venue deleted: {0}", id);
+        notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(id), null);
+    }
+
+    // ========== READ OPERATIONS ==========
+
     @Override
     public synchronized Venue retrieveVenue(int venueId) throws DAOException {
-        validatePositiveId(venueId);
-
-        String[] venueRow = findRowByValue(COL_ID, String.valueOf(venueId));
-        if (venueRow == null) {
-            return null;
-        }
-
-        return mapRowToVenue(venueRow);
+        String[] row = findRowByValue(COL_ID, String.valueOf(venueId));
+        if (row == null) return null;
+        return mapRowToVenue(row);
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Each returned Venue object has a fully populated VenueManager with all real data.
-     * </p>
-     */
     @Override
     public synchronized List<Venue> retrieveAllVenues() throws DAOException {
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> data = readAllDataRows();
         List<Venue> venues = new ArrayList<>();
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            venues.add(mapRowToVenue(data.get(i)));
+        for (String[] row : data) {
+            venues.add(mapRowToVenue(row));
         }
-
         return venues;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Each returned Venue object has a fully populated VenueManager with all real data.
-     * </p>
-     */
+    // ... retrieveByManager e retrieveByCity rimangono simili, chiamano mapRowToVenue ...
     @Override
-    public synchronized List<Venue> retrieveVenuesByManager(String venueManagerUsername) throws DAOException {
-        validateNotNullOrEmpty(venueManagerUsername, "Venue manager username");
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+    public synchronized List<Venue> retrieveVenuesByManager(String managerUsername) throws DAOException {
+        List<String[]> data = readAllDataRows();
         List<Venue> venues = new ArrayList<>();
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (row[COL_VENUE_MANAGER_USERNAME].equals(venueManagerUsername)) {
+        for (String[] row : data) {
+            if (row[COL_VENUE_MANAGER_USERNAME].equals(managerUsername)) {
                 venues.add(mapRowToVenue(row));
             }
         }
-
-        logger.log(Level.FINE, "Retrieved {0} venues for manager: {1}",
-                new Object[]{venues.size(), venueManagerUsername});
         return venues;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Each returned Venue object has a fully populated VenueManager with all real data.
-     * </p>
-     */
     @Override
     public synchronized List<Venue> retrieveVenuesByCity(String city) throws DAOException {
-        validateNotNullOrEmpty(city, "City");
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> data = readAllDataRows();
         List<Venue> venues = new ArrayList<>();
-
-        // Skip header row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
+        for (String[] row : data) {
             if (row[COL_CITY].equalsIgnoreCase(city)) {
                 venues.add(mapRowToVenue(row));
             }
         }
-
-        logger.log(Level.FINE, () ->
-                "Retrieved " + venues.size() + " venues in city: " + city);
         return venues;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * After successful update, observers are notified for cross-persistence synchronization.
-     * </p>
-     */
-    @Override
-    public synchronized void updateVenue(VenueBean venueBean) throws DAOException {
-        validateNotNull(venueBean, "VenueBean");
-        validatePositiveId(venueBean.getId());
-        validateNotNullOrEmpty(venueBean.getName(), "Venue name");
-        validateNotNull(venueBean.getType(), "Venue type");
-        validateNotNullOrEmpty(venueBean.getAddress(), "Address");
-        validateNotNullOrEmpty(venueBean.getCity(), "City");
+    // ========== TEAM METHODS (Internal & Public) ==========
 
-        if (venueBean.getMaxCapacity() <= 0) {
-            throw new IllegalArgumentException("Max capacity must be positive");
-        }
-
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        boolean found = false;
-
-        // Skip header, update matching row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-
-            if (Integer.parseInt(row[COL_ID]) == venueBean.getId()) {
-                row[COL_NAME] = venueBean.getName();
-                row[COL_TYPE] = venueBean.getType().name();
-                row[COL_ADDRESS] = venueBean.getAddress();
-                row[COL_CITY] = venueBean.getCity();
-                row[COL_MAX_CAPACITY] = String.valueOf(venueBean.getMaxCapacity());
-                // Note: venue_manager_username is NOT updated here - use separate method to reassign manager
-                found = true;
-                break;
-            }
-        }
-
-        if (!found) {
-            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    VENUE, "update", venueBean.getId()));
-        }
-
-        CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-
-        logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
-        notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * After successful deletion, observers are notified for cross-persistence synchronization.
-     * </p>
-     */
-    @Override
-    public synchronized void deleteVenue(int venueId) throws DAOException {
-        validatePositiveId(venueId);
-
-        boolean found = deleteById(venueId, COL_ID);
-
-        if (!found) {
-            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    VENUE, "deletion", venueId));
-        }
-
-        logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
-        notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized boolean venueExists(int venueId) throws DAOException {
-        validatePositiveId(venueId);
-        return findRowByValue(COL_ID, String.valueOf(venueId)) != null;
-    }
-
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Uses {@link AbstractCsvDao#getNextId(int)} to find the maximum ID and return maxId + 1.
-     * </p>
-     */
-    @Override
-    public synchronized int getNextVenueId() throws DAOException {
-        return (int) getNextId(COL_ID);
-    }
-
-    // ========== TEAM ASSOCIATION METHODS ==========
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized void saveVenueTeam(int venueId, TeamNBA team) throws DAOException {
-        validatePositiveId(venueId);
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
-
-        // Check if the association already exists
-        Set<TeamNBA> existingTeams = retrieveVenueTeams(venueId);
-        if (existingTeams.contains(team)) {
-            logger.log(Level.INFO, "Team {0} already associated with venue {1}",
-                    new Object[]{team.getDisplayName(), venueId});
-            return; // Already exists, no need to add again
-        }
-
-        // Add new association
-        String[] newRow = {String.valueOf(venueId), team.name()};
-        CsvUtilities.writeFile(venueTeamsFile, newRow);
-
-        logger.log(Level.INFO, "Team {0} associated with venue {1}",
-                new Object[]{team.getDisplayName(), venueId});
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public synchronized void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException {
-        validatePositiveId(venueId);
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
-
-        List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
-        boolean found = false;
-
-        // Remove matching row
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
-            if (Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId &&
-                    row[COL_VT_TEAM_NAME].equals(team.name())) {
-                data.remove(i);
-                found = true;
-                break;
-            }
-        }
-
-        if (found) {
-            CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, data);
-            logger.log(Level.INFO, "Team {0} disassociated from venue {1}",
-                    new Object[]{team.getDisplayName(), venueId});
-        } else {
-            logger.log(Level.WARNING, "Team {0} was not associated with venue {1}",
-                    new Object[]{team.getDisplayName(), venueId});
+    // Helper per salvare team (usato da saveVenue e updateVenue)
+    private void saveVenueTeamInternal(int venueId, TeamNBA team) throws DAOException {
+        // Controlla duplicati prima di scrivere
+        Set<TeamNBA> existing = retrieveVenueTeams(venueId);
+        if (!existing.contains(team)) {
+            String[] row = {String.valueOf(venueId), team.name()};
+            CsvUtilities.writeFile(venueTeamsFile, row);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Helper per cancellare tutti i team (usato da deleteVenue e updateVenue)
+    private void deleteAllVenueTeamsInternal(int venueId) throws DAOException {
+        List<String[]> allTeams = CsvUtilities.readAll(venueTeamsFile);
+        // Rimuove se venue_id corrisponde
+        allTeams.removeIf(row -> row.length > 0 && Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId);
+        CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, allTeams);
+    }
+
     @Override
     public synchronized Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
-        validatePositiveId(venueId);
-
         Set<TeamNBA> teams = new HashSet<>();
         List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
-
-        // Skip header row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
             if (Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
                 try {
-                    TeamNBA team = TeamNBA.fromDisplayName(row[COL_VT_TEAM_NAME]);
+                    // Cerca di risolvere il nome (gestisce anche nomi vecchi/sporchi)
+                    TeamNBA team = TeamNBA.valueOf(row[COL_VT_TEAM_NAME]);
                     teams.add(team);
-                } catch (IllegalArgumentException e) {
-                    logger.log(Level.WARNING, "Invalid team name in CSV: {0}", row[COL_VT_TEAM_NAME]);
+                } catch (IllegalArgumentException ignored) {
+                    //
                 }
             }
         }
-
         return teams;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    // Esposizione pubblica dei metodi team (delegano agli internal o reimplementano se serve singolo)
     @Override
-    public synchronized void deleteAllVenueTeams(int venueId) throws DAOException {
-        validatePositiveId(venueId);
+    public synchronized void saveVenueTeam(Venue venue, TeamNBA team) throws DAOException {
+        validateNotNull(venue, VENUE);
+        if(team == null) throw new IllegalArgumentException("Team cannot be null");
+        saveVenueTeamInternal(venue.getId(), team);
+    }
+
+    @Override
+    public synchronized void deleteVenueTeam(Venue venue, TeamNBA team) throws DAOException {
+        validateNotNull(venue, VENUE);
+        if(team == null) throw new IllegalArgumentException("Team cannot be null");
 
         List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
-        int removedCount = 0;
+        boolean removed = data.removeIf(row ->
+                row.length > 0 &&
+                        Integer.parseInt(row[COL_VT_VENUE_ID]) == venue.getId() &&
+                        row[COL_VT_TEAM_NAME].equals(team.name())
+        );
 
-        // Remove all rows for this venue (iterate backwards to avoid index issues)
-        for (int i = data.size() - 1; i >= CsvDaoConstants.FIRST_DATA_ROW; i--) {
-            String[] row = data.get(i);
-            if (Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
-                data.remove(i);
-                removedCount++;
-            }
-        }
-
-        if (removedCount > 0) {
-            CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, data);
-            logger.log(Level.INFO, "Removed {0} team associations from venue {1}",
-                    new Object[]{removedCount, venueId});
-        } else {
-            logger.log(Level.INFO, "No team associations found for venue {0}", venueId);
-        }
+        if(removed) CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, data);
     }
 
-    // ========== PRIVATE HELPER METHODS ==========
+    @Override
+    public synchronized void deleteAllVenueTeams(Venue venue) throws DAOException {
+        validateNotNull(venue, VENUE);
+        deleteAllVenueTeamsInternal(venue.getId());
+    }
 
-    /**
-     * Maps CSV row data to a Venue domain object.
-     * <p>
-     * <strong>Circular Dependency Prevention:</strong> This method uses {@link DaoLoadingContext}
-     * to detect and prevent infinite loops when loading related entities. If this venue is already
-     * being loaded in the current call stack (circular reference), it creates a minimal Venue
-     * without reloading the VenueManager, breaking the cycle.
-     * </p>
-     * <p>
-     * <strong>Object Completeness:</strong> When not in a circular loading situation, this method
-     * loads the complete VenueManager with all real data by delegating to VenueManagerDao,
-     * ensuring that the returned Venue object is fully populated.
-     * </p>
-     *
-     * @param row Array containing venue data [id, name, type, address, city, max_capacity, venue_manager_username]
-     * @return A fully constructed Venue object with complete VenueManager
-     * @throws DAOException If there's an error parsing data or constructing the Venue
-     */
+    // ========== HELPER MAPPING ==========
+
     private Venue mapRowToVenue(String[] row) throws DAOException {
+        int id = Integer.parseInt(row[COL_ID]);
+        String managerUsername = row[COL_VENUE_MANAGER_USERNAME];
+        String key = "Venue:" + id;
+
+        if (DaoLoadingContext.isLoading(key)) {
+            // Break Cycle: Minimal Venue
+            return createMinimalVenue(id, row, managerUsername);
+        }
+
+        DaoLoadingContext.startLoading(key);
         try {
-            int id = Integer.parseInt(row[COL_ID]);
-            VenueType type = VenueType.valueOf(row[COL_TYPE]);
-            int maxCapacity = Integer.parseInt(row[COL_MAX_CAPACITY]);
-            String managerUsername = row[COL_VENUE_MANAGER_USERNAME];
+            // 1. Load Manager
+            VenueManager manager = VenueDaoHelper.loadVenueManager(managerUsername);
 
-            String venueKey = "Venue:" + id;
+            // 2. Load Teams (PRIMA DEL BUILD)
+            Set<TeamNBA> teams = retrieveVenueTeams(id);
 
-            // Check if we're in a circular loading situation
-            if (DaoLoadingContext.isLoading(venueKey)) {
-                // Break the cycle by returning a minimal venue without loading manager
-                return createMinimalVenue(id, row[COL_NAME], type, row[COL_ADDRESS],
-                                        row[COL_CITY], maxCapacity, managerUsername);
-            }
-
-            // Mark this venue as being loaded
-            DaoLoadingContext.startLoading(venueKey);
-            try {
-                // Load the COMPLETE VenueManager (not a stub)
-                VenueManager venueManager = VenueDaoHelper.loadVenueManager(managerUsername);
-
-                // Build the venue with COMPLETE manager
-                Venue venue = new Venue.Builder()
-                        .id(id)
-                        .name(row[COL_NAME])
-                        .type(type)
-                        .address(row[COL_ADDRESS])
-                        .city(row[COL_CITY])
-                        .maxCapacity(maxCapacity)
-                        .venueManager(venueManager)
-                        .build();
-
-                // Load associated teams
-                Set<TeamNBA> teams = retrieveVenueTeams(id);
-                for (TeamNBA team : teams) {
-                    venue.addTeam(team);
-                }
-
-                return venue;
-            } finally {
-                // Always clean up the loading context
-                DaoLoadingContext.finishLoading(venueKey);
-            }
-        } catch (NumberFormatException e) {
-            throw new DAOException("Invalid number format in venue data: " + e.getMessage(), e);
-        } catch (IllegalArgumentException e) {
-            throw new DAOException("Error constructing Venue object: " + e.getMessage(), e);
+            // 3. Build Venue
+            return new Venue.Builder()
+                    .id(id)
+                    .name(row[COL_NAME])
+                    .type(VenueType.valueOf(row[COL_TYPE]))
+                    .address(row[COL_ADDRESS])
+                    .city(row[COL_CITY])
+                    .maxCapacity(Integer.parseInt(row[COL_MAX_CAPACITY]))
+                    .venueManager(manager)
+                    .teams(teams) // Passa i team qui!
+                    .build();
+        } finally {
+            DaoLoadingContext.finishLoading(key);
         }
     }
 
-    /**
-     * Creates a minimal Venue object to break circular loading dependencies.
-     * <p>
-     * This method is called when a Venue is already being loaded in the current call stack.
-     * It creates a Venue with minimal VenueManager information to prevent infinite recursion.
-     * </p>
-     *
-     * @param id Venue ID
-     * @param name Venue name
-     * @param type Venue type
-     * @param address Venue address
-     * @param city Venue city
-     * @param maxCapacity Venue capacity
-     * @param managerUsername VenueManager username
-     * @return A Venue with minimal VenueManager (without managed venues list)
-     * @throws DAOException If there's an error constructing the objects
-     */
-    private Venue createMinimalVenue(int id, String name, VenueType type, String address,
-                                    String city, int maxCapacity, String managerUsername) throws DAOException {
-        // Load VenueManager data without its venues list to break the cycle
-        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-        VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
-        VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
+    private Venue createMinimalVenue(int id, String[] row, String managerUsername) throws DAOException {
+        // Stub Manager per rompere il ciclo
+        DaoFactoryFacade dao = DaoFactoryFacade.getInstance();
+        VenueManager manager = dao.getVenueManagerDao().retrieveVenueManager(managerUsername);
 
-        if (venueManager == null) {
-            throw new DAOException("VenueManager not found: " + managerUsername);
-        }
-
-        Venue venue = new Venue.Builder()
-                .id(id)
-                .name(name)
-                .type(type)
-                .address(address)
-                .city(city)
-                .maxCapacity(maxCapacity)
-                .venueManager(venueManager)
-                .build();
-
-        // Load teams even for minimal venue
+        // Carica team anche per il minimal (non creano cicli)
         Set<TeamNBA> teams = retrieveVenueTeams(id);
-        for (TeamNBA team : teams) {
-            venue.addTeam(team);
-        }
 
-        return venue;
+        return new Venue.Builder()
+                .id(id)
+                .name(row[COL_NAME])
+                .type(VenueType.valueOf(row[COL_TYPE]))
+                .address(row[COL_ADDRESS])
+                .city(row[COL_CITY])
+                .maxCapacity(Integer.parseInt(row[COL_MAX_CAPACITY]))
+                .venueManager(manager)
+                .teams(teams)
+                .build();
+    }
+
+    @Override
+    public synchronized boolean venueExists(int id) throws DAOException {
+        return findRowByValue(COL_ID, String.valueOf(id)) != null;
+    }
+    @Override
+    public synchronized int getNextVenueId() throws DAOException {
+        return (int) getNextId(COL_ID);
     }
 }

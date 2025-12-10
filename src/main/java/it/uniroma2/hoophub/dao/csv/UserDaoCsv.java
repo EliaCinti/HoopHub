@@ -1,12 +1,13 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.beans.CredentialsBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.UserDao;
+import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.DAOException;
+import it.uniroma2.hoophub.model.Credentials;
 import it.uniroma2.hoophub.model.User;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
+import it.uniroma2.hoophub.sync.SyncContext;
 import it.uniroma2.hoophub.utilities.PasswordUtils;
 
 import java.util.List;
@@ -101,34 +102,43 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
      * <strong>Security Note:</strong> This method uses {@link PasswordUtils#checkPassword}
      * which performs constant-time comparison to prevent timing attacks.
      * </p>
+     *
+     * @return
      */
     @Override
-    public synchronized void validateUser(CredentialsBean credentials) throws DAOException {
+    public synchronized UserType validateUser(Credentials credentials) throws DAOException {
+        // 1. Validazioni (usiamo i getter del Model)
         validateNotNull(credentials, "Credentials");
+        // Nota: validateNotNullOrEmpty accetta stringhe, quindi va bene passare i getter
         validateNotNullOrEmpty(credentials.getUsername(), CsvDaoConstants.USERNAME);
         validateNotNullOrEmpty(credentials.getPassword(), "Password");
 
+        // 2. Ricerca nel CSV
         String[] userRow = findRowByValue(COL_USERNAME, credentials.getUsername());
 
-        // Check if user was not found (null or empty array from findRowByValue)
+        // Check if user was not found
         if (userRow == null || userRow.length == 0) {
             logger.log(Level.FINE, "User not found: {0}", credentials.getUsername());
             throw new DAOException("Invalid username or password");
         }
 
-        // Validate that the row has all required columns (data integrity check)
+        // Integrity Check
         if (userRow.length < 5) {
-            logger.log(Level.SEVERE, "Corrupted user data for: {0}. Expected 5 columns, found {1}",
-                    new Object[]{credentials.getUsername(), userRow.length});
-            throw new DAOException("Data integrity error. Please contact support.");
+            logger.log(Level.SEVERE, "Corrupted user data for: {0}", credentials.getUsername());
+            throw new DAOException("Data integrity error.");
         }
 
         String storedHash = userRow[COL_PASSWORD_HASH];
 
+        // 3. Verifica Password e Ritorno del Tipo
         if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
-            credentials.setType(userRow[COL_USER_TYPE]);
             logger.log(Level.FINE, "User validated successfully: {0}", credentials.getUsername());
-            return;
+
+            // REFACTORING QUI:
+            // Invece di credentials.setType(...), leggiamo la stringa dal CSV
+            // e la convertiamo in Enum per restituirla.
+            String typeString = userRow[COL_USER_TYPE];
+            return UserType.valueOf(typeString);
         }
 
         logger.log(Level.FINE, "Invalid password for user: {0}", credentials.getUsername());
@@ -143,32 +153,36 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
      * </p>
      */
     @Override
-    public synchronized void saveUser(UserBean userBean) throws DAOException {
-        validateNotNull(userBean, "UserBean");
-        validateNotNullOrEmpty(userBean.getUsername(), CsvDaoConstants.USERNAME);
-        validateNotNullOrEmpty(userBean.getPassword(), "Password");
-        validateNotNullOrEmpty(userBean.getFullName(), "Full name");
-        validateNotNullOrEmpty(userBean.getGender(), "Gender");
-        validateNotNullOrEmpty(userBean.getType(), "User type");
+    public synchronized void saveUser(User user) throws DAOException {
+        // 1. Validazione sul Model
+        validateNotNull(user, "User");
+        validateNotNullOrEmpty(user.getUsername(), CsvDaoConstants.USERNAME);
+        // Nota: controlliamo che l'hash esista (la password in chiaro non c'è nel model)
+        validateNotNullOrEmpty(user.getPasswordHash(), "Password Hash");
+        validateNotNullOrEmpty(user.getFullName(), "Full name");
+        validateNotNullOrEmpty(user.getGender(), "Gender");
+        validateNotNull(user.getUserType(), "User type");
 
-        // Skip duplicate check during initial sync (SyncContext prevents observer loops already)
-        if (!it.uniroma2.hoophub.sync.SyncContext.isSyncing() && isUsernameTaken(userBean.getUsername())) {
-            throw new DAOException("Username already exists: " + userBean.getUsername());
+        // 2. Controllo Duplicati
+        if (!SyncContext.isSyncing() && isUsernameTaken(user.getUsername())) {
+            throw new DAOException("Username already exists: " + user.getUsername());
         }
 
-        String hashedPassword = PasswordUtils.hashPassword(userBean.getPassword());
-
+        // 3. Preparazione Riga CSV (leggendo dal Model)
+        // Usiamo direttamente la passwordHash presente nell'oggetto User
         String[] newRow = {
-                userBean.getUsername(),
-                hashedPassword,
-                userBean.getFullName(),
-                userBean.getGender(),
-                userBean.getType()
+                user.getUsername(),
+                user.getPasswordHash(),
+                user.getFullName(),
+                user.getGender(),
+                user.getUserType().toString() // Salviamo il nome dell'enum (FAN, VENUE_MANAGER)
         };
 
+        // 4. Scrittura su File
         CsvUtilities.writeFile(csvFile, newRow);
 
-        notifyObservers(DaoOperation.INSERT, "User", userBean.getUsername(), userBean);
+        // 5. Notifica Observer (passando il Model)
+        notifyObservers(DaoOperation.INSERT, "User", user.getUsername(), user);
     }
 
     /**
@@ -207,11 +221,11 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
      * </p>
      */
     @Override
-    public synchronized void updateUser(User user, UserBean userBean) throws DAOException {
+    public synchronized void updateUser(User user) throws DAOException {
+        // 1. Validazione sul Model (via la Bean)
         validateNotNull(user, "User");
-        validateNotNull(userBean, "UserBean");
-        validateNotNullOrEmpty(userBean.getFullName(), "Full name");
-        validateNotNullOrEmpty(userBean.getGender(), "Gender");
+        validateNotNullOrEmpty(user.getFullName(), "Full name");
+        validateNotNullOrEmpty(user.getGender(), "Gender");
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
@@ -221,9 +235,10 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
             String[] row = data.get(i);
 
             if (row[COL_USERNAME].equals(user.getUsername())) {
-                // Update only full_name and gender (not password or type)
-                row[COL_FULL_NAME] = userBean.getFullName();
-                row[COL_GENDER] = userBean.getGender();
+                // 2. Lettura dati dal MODEL (Refactoring)
+                // Aggiorniamo solo i campi modificabili (non password o tipo)
+                row[COL_FULL_NAME] = user.getFullName();
+                row[COL_GENDER] = user.getGender();
                 found = true;
                 break;
             }
@@ -237,6 +252,8 @@ public class UserDaoCsv extends AbstractCsvDao implements UserDao {
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "User updated successfully: {0}", user.getUsername());
+
+        // 3. Notifica Observer col Model
         notifyObservers(DaoOperation.UPDATE, "User", user.getUsername(), user);
     }
 

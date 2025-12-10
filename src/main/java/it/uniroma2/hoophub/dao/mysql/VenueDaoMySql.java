@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.dao.mysql;
 
-import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
@@ -18,7 +17,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -98,65 +96,108 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     private static final String VENUE = "Venue";
 
     // ========== Error messages ==========
-    private static final String ERR_NULL_VENUE_BEAN = "VenueBean cannot be null";
     private static final String ERR_NULL_CITY = "City cannot be null or empty";
     private static final String ERR_VENUE_NOT_FOUND = "Venue not found";
 
     /**
      * {@inheritDoc}
-     * <p>
-     * The venue ID from the bean is used if provided (for CSV sync), otherwise
-     * MySQL AUTO_INCREMENT generates it. After insertion, observers are notified.
-     * </p>
      */
     @Override
-    public void saveVenue(VenueBean venueBean) throws DAOException {
-        validateVenueBeanInput(venueBean);
+    public Venue saveVenue(Venue venue) throws DAOException {
+        if (venue == null) {
+            throw new IllegalArgumentException("Venue cannot be null");
+        }
 
+        Connection conn = null;
         try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
-                         Statement.RETURN_GENERATED_KEYS)) {
+            conn = ConnectionFactory.getConnection();
+            conn.setAutoCommit(false); // Transazione unica per Venue + Teams
 
-                stmt.setString(1, venueBean.getName());
-                stmt.setString(2, venueBean.getType().name());
-                stmt.setString(3, venueBean.getAddress());
-                stmt.setString(4, venueBean.getCity());
-                stmt.setInt(5, venueBean.getMaxCapacity());
-                stmt.setString(6, venueBean.getVenueManagerUsername());
+            // 1. INSERT VENUE
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
+                    java.sql.Statement.RETURN_GENERATED_KEYS)) {
+
+                stmt.setString(1, venue.getName());
+                stmt.setString(2, venue.getType().name());
+                stmt.setString(3, venue.getAddress());
+                stmt.setString(4, venue.getCity());
+                stmt.setInt(5, venue.getMaxCapacity());
+                stmt.setString(6, venue.getVenueManagerUsername());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    // Get generated ID if not provided
-                    if (venueBean.getId() == 0) {
-                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                            if (generatedKeys.next()) {
-                                venueBean.setId(generatedKeys.getInt(1));
+                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                        if (generatedKeys.next()) {
+                            int newId = generatedKeys.getInt(1);
+
+                            // 2. INSERT TEAMS (Batch)
+                            try (PreparedStatement teamStmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
+
+                                // OTTIMIZZAZIONE: Settiamo l'ID una volta sola FUORI dal ciclo.
+                                // Questo valore verrà usato per tutte le righe aggiunte al batch.
+                                teamStmt.setInt(1, newId);
+
+                                for (TeamNBA team : venue.getAssociatedTeams()) {
+                                    // Nel ciclo cambiamo solo il secondo parametro (il nome della squadra)
+                                    teamStmt.setString(2, team.name());
+                                    teamStmt.addBatch();
+                                }
+
+                                // Eseguiamo tutto in un colpo solo
+                                teamStmt.executeBatch();
                             }
+
+                            // 3. Ricostruzione oggetto con ID
+                            Venue savedVenue = new Venue.Builder()
+                                    .id(newId)
+                                    .name(venue.getName())
+                                    .type(venue.getType())
+                                    .address(venue.getAddress())
+                                    .city(venue.getCity())
+                                    .maxCapacity(venue.getMaxCapacity())
+                                    .venueManager(venue.getVenueManager())
+                                    .teams(venue.getAssociatedTeams()) // Copia i team
+                                    .build();
+
+                            conn.commit();
+
+                            // 4. Cache & Notify
+                            putInCache(savedVenue, newId);
+                            logger.log(Level.INFO, "Venue saved successfully with ID: {0}", newId);
+                            notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(newId), savedVenue);
+
+                            return savedVenue;
+                        } else {
+                            conn.rollback();
+                            throw new DAOException("Creating venue failed, no ID obtained.");
                         }
                     }
-
-                    logger.log(Level.INFO, "Venue saved successfully: {0} (ID: {1})",
-                            new Object[]{venueBean.getName(), venueBean.getId()});
-                    notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(venueBean.getId()), venueBean);
+                } else {
+                    conn.rollback();
+                    throw new DAOException("Creating venue failed, no rows affected.");
                 }
             }
         } catch (SQLException e) {
+            rollbackTransaction(conn);
             throw new DAOException("Error saving venue", e);
+        } finally {
+            resetAutoCommit(conn);
         }
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Retrieves venue data and reconstructs the associated VenueManager object.
-     * The venue's bookings map is empty - bookings should be loaded separately when needed.
-     * </p>
      */
     @Override
     public Venue retrieveVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
+
+        // 1. CACHE CHECK
+        Venue cachedVenue = getFromCache(Venue.class, venueId);
+        if (cachedVenue != null) {
+            return cachedVenue;
+        }
 
         try {
             Connection conn = ConnectionFactory.getConnection();
@@ -166,7 +207,10 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
-                        return mapResultSetToVenue(rs);
+                        Venue venue = mapResultSetToVenue(rs);
+                        // 2. CACHE PUT
+                        putInCache(venue, venueId);
+                        return venue;
                     }
                     return null;
                 }
@@ -181,18 +225,11 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
      */
     @Override
     public List<Venue> retrieveAllVenues() throws DAOException {
-        List<Venue> venues = new ArrayList<>();
-
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUES);
                  ResultSet rs = stmt.executeQuery()) {
-
-                while (rs.next()) {
-                    venues.add(mapResultSetToVenue(rs));
-                }
-
-                return venues;
+                return processVenueResultSet(rs);
             }
         } catch (SQLException e) {
             throw new DAOException("Error retrieving all venues", e);
@@ -203,30 +240,9 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
      * {@inheritDoc}
      */
     @Override
-    public List<Venue> retrieveVenuesByManager(String venueManagerUsername) throws DAOException {
-        validateUsernameInput(venueManagerUsername);
-
-        List<Venue> venues = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_MANAGER)) {
-
-                stmt.setString(1, venueManagerUsername);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        venues.add(mapResultSetToVenue(rs));
-                    }
-                }
-
-                logger.log(Level.FINE, "Retrieved {0} venues for manager {1}",
-                        new Object[]{venues.size(), venueManagerUsername});
-                return venues;
-            }
-        } catch (SQLException e) {
-            throw new DAOException("Error retrieving venues by manager", e);
-        }
+    public List<Venue> retrieveVenuesByManager(String managerUsername) throws DAOException {
+        validateUsernameInput(managerUsername);
+        return executeSimpleVenueQuery(SQL_SELECT_VENUES_BY_MANAGER, managerUsername, "for manager: " + managerUsername);
     }
 
     /**
@@ -235,64 +251,67 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
     @Override
     public List<Venue> retrieveVenuesByCity(String city) throws DAOException {
         validateCityInput(city);
-
-        List<Venue> venues = new ArrayList<>();
-
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUES_BY_CITY)) {
-
-                stmt.setString(1, city);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        venues.add(mapResultSetToVenue(rs));
-                    }
-                }
-
-                logger.log(Level.FINE, "Retrieved {0} venues in city {1}",
-                        new Object[]{venues.size(), city});
-                return venues;
-            }
-        } catch (SQLException e) {
-            throw new DAOException("Error retrieving venues by city", e);
-        }
+        return executeSimpleVenueQuery(SQL_SELECT_VENUES_BY_CITY, city, "by city: " + city);
     }
 
     /**
      * {@inheritDoc}
-     * <p>
-     * Note: This implementation does NOT update the venue_manager_username field
-     * as manager transfer should be a separate operation with proper validation.
-     * </p>
      */
     @Override
-    public void updateVenue(VenueBean venueBean) throws DAOException {
-        validateVenueBeanInput(venueBean);
+    public void updateVenue(Venue venue) throws DAOException {
+        if (venue == null) {
+            throw new IllegalArgumentException("Venue cannot be null");
+        }
 
+        Connection conn = null;
         try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
+            conn = ConnectionFactory.getConnection();
+            conn.setAutoCommit(false);
 
-                stmt.setString(1, venueBean.getName());
-                stmt.setString(2, venueBean.getType().name());
-                stmt.setString(3, venueBean.getAddress());
-                stmt.setString(4, venueBean.getCity());
-                stmt.setInt(5, venueBean.getMaxCapacity());
-                stmt.setInt(6, venueBean.getId());
+            // 1. Update Tabella venues
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_VENUE)) {
+                stmt.setString(1, venue.getName());
+                stmt.setString(2, venue.getType().name());
+                stmt.setString(3, venue.getAddress());
+                stmt.setString(4, venue.getCity());
+                stmt.setInt(5, venue.getMaxCapacity());
+                stmt.setInt(6, venue.getId());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    logger.log(Level.INFO, "Venue updated successfully: {0}", venueBean.getId());
-                    notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venueBean.getId()), venueBean);
+                    // 2. Update Teams (Delete All + Insert New)
+                    try (PreparedStatement delStmt = conn.prepareStatement(SQL_DELETE_ALL_VENUE_TEAMS);
+                         PreparedStatement insStmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
+
+                        delStmt.setInt(1, venue.getId());
+                        delStmt.executeUpdate();
+
+                        for (TeamNBA team : venue.getAssociatedTeams()) {
+                            insStmt.setInt(1, venue.getId());
+                            insStmt.setString(2, team.name());
+                            insStmt.addBatch();
+                        }
+                        insStmt.executeBatch();
+                    }
+
+                    conn.commit();
+
+                    // 3. Cache Write-Through
+                    putInCache(venue, venue.getId());
+
+                    logger.log(Level.INFO, "Venue updated successfully: {0}", venue.getId());
+                    notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venue.getId()), venue);
                 } else {
-                    logger.log(Level.WARNING, "Venue not found for update: {0}", venueBean.getId());
-                    throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueBean.getId());
+                    conn.rollback();
+                    throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venue.getId());
                 }
             }
         } catch (SQLException e) {
+            rollbackTransaction(conn);
             throw new DAOException("Error updating venue", e);
+        } finally {
+            resetAutoCommit(conn);
         }
     }
 
@@ -300,27 +319,37 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
      * {@inheritDoc}
      */
     @Override
-    public void deleteVenue(int venueId) throws DAOException {
+    public void deleteVenue(Venue venue) throws DAOException {
+        if (venue == null) throw new IllegalArgumentException("Venue cannot be null");
+        int venueId = venue.getId();
         validateIdInput(venueId);
 
+        Connection conn = null;
         try {
-            Connection conn = ConnectionFactory.getConnection();
+            conn = ConnectionFactory.getConnection();
+            conn.setAutoCommit(false);
+
+            // Cascade delete on DB handles teams
             try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE)) {
-
                 stmt.setInt(1, venueId);
-
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
+                    conn.commit();
+                    // CACHE REMOVE
+                    removeFromCache(Venue.class, venueId);
                     logger.log(Level.INFO, "Venue deleted successfully: {0}", venueId);
                     notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(venueId), null);
                 } else {
-                    logger.log(Level.WARNING, "Venue not found for deletion: {0}", venueId);
+                    conn.rollback();
                     throw new DAOException(ERR_VENUE_NOT_FOUND + ": " + venueId);
                 }
             }
         } catch (SQLException e) {
+            rollbackTransaction(conn);
             throw new DAOException("Error deleting venue", e);
+        } finally {
+            resetAutoCommit(conn);
         }
     }
 
@@ -335,10 +364,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
     /**
      * {@inheritDoc}
-     * <p>
-     * In MySQL, this returns the current MAX(id) + 1. Note that if using AUTO_INCREMENT,
-     * this value may differ from the actual next ID if there are concurrent insertions.
-     * </p>
      */
     @Override
     public int getNextVenueId() throws DAOException {
@@ -346,7 +371,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
                  ResultSet rs = stmt.executeQuery()) {
-
                 if (rs.next()) {
                     return rs.getInt(1) + 1;
                 }
@@ -359,109 +383,64 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
     // ========== TEAM MANAGEMENT METHODS ==========
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void saveVenueTeam(int venueId, TeamNBA team) throws DAOException {
-        validateIdInput(venueId);
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
+    public void saveVenueTeam(Venue venue, TeamNBA team) throws DAOException {
+        if (venue == null) throw new IllegalArgumentException("Venue cannot be null");
+        validateTeamInput(team);
 
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
-                stmt.setInt(1, venueId);
-                stmt.setString(2, team.name());
-
-                stmt.executeUpdate();
-                logger.log(Level.INFO, "Team {0} associated with venue {1}",
-                        new Object[]{team.getDisplayName(), venueId});
-            }
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
+            stmt.setInt(1, venue.getId());
+            stmt.setString(2, team.name());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             throw new DAOException("Error saving venue team association", e);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void deleteVenueTeam(int venueId, TeamNBA team) throws DAOException {
-        validateIdInput(venueId);
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
+    public void deleteVenueTeam(Venue venue, TeamNBA team) throws DAOException {
+        if (venue == null) throw new IllegalArgumentException("Venue cannot be null");
+        validateTeamInput(team);
 
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE_TEAM)) {
-                stmt.setInt(1, venueId);
-                stmt.setString(2, team.name());
-
-                int affectedRows = stmt.executeUpdate();
-                if (affectedRows > 0) {
-                    logger.log(Level.INFO, "Team {0} removed from venue {1}",
-                            new Object[]{team.getDisplayName(), venueId});
-                }
-            }
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_VENUE_TEAM)) {
+            stmt.setInt(1, venue.getId());
+            stmt.setString(2, team.name());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             throw new DAOException("Error deleting venue team association", e);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
         validateIdInput(venueId);
         Set<TeamNBA> teams = new HashSet<>();
 
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_TEAMS)) {
-                stmt.setInt(1, venueId);
-
-                try (ResultSet rs = stmt.executeQuery()) {
-                    while (rs.next()) {
-                        String teamName = rs.getString("team_name");
-                        TeamNBA team = resolveTeam(teamName);
-                        if (team != null) {
-                            teams.add(team);
-                        } else {
-                            logger.log(Level.WARNING, "Invalid team name in database for venue {0}: {1}",
-                                    new Object[]{venueId, teamName});
-                        }
-                    }
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_TEAMS)) {
+            stmt.setInt(1, venueId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    TeamNBA team = resolveTeam(rs.getString("team_name"));
+                    if (team != null) teams.add(team);
                 }
-
-                logger.log(Level.FINE, "Retrieved {0} teams for venue {1}",
-                        new Object[]{teams.size(), venueId});
-                return teams;
             }
+            return teams;
         } catch (SQLException e) {
             throw new DAOException("Error retrieving venue teams", e);
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
-    public void deleteAllVenueTeams(int venueId) throws DAOException {
-        validateIdInput(venueId);
+    public void deleteAllVenueTeams(Venue venue) throws DAOException {
+        if (venue == null) throw new IllegalArgumentException("Venue cannot be null");
 
-        try {
-            Connection conn = ConnectionFactory.getConnection();
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_ALL_VENUE_TEAMS)) {
-                stmt.setInt(1, venueId);
-
-                int affectedRows = stmt.executeUpdate();
-                logger.log(Level.INFO, "Deleted {0} team associations for venue {1}",
-                        new Object[]{affectedRows, venueId});
-            }
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_ALL_VENUE_TEAMS)) {
+            stmt.setInt(1, venue.getId());
+            stmt.executeUpdate();
         } catch (SQLException e) {
             throw new DAOException("Error deleting all venue teams", e);
         }
@@ -478,64 +457,53 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
         int venueId = rs.getInt("id");
         String venueKey = "Venue:" + venueId;
 
-        // Check if we're in a circular loading situation
         if (DaoLoadingContext.isLoading(venueKey)) {
-            // Break the cycle by loading VenueManager (which will get a stub if needed)
             DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
             VenueManagerDao venueManagerDao = daoFactory.getVenueManagerDao();
             VenueManager venueManager = venueManagerDao.retrieveVenueManager(managerUsername);
+            if (venueManager == null) throw new DAOException("VenueManager not found: " + managerUsername);
 
-            if (venueManager == null) {
-                throw new DAOException("VenueManager not found: " + managerUsername);
-            }
             return buildVenueWithTeams(venueId, rs, venueManager);
         }
 
-        // Mark this venue as being loaded
         DaoLoadingContext.startLoading(venueKey);
         try {
-            // Load the COMPLETE VenueManager
             VenueManager venueManager = VenueDaoHelper.loadVenueManager(managerUsername);
             return buildVenueWithTeams(venueId, rs, venueManager);
-
         } finally {
-            // Always clean up the loading context
             DaoLoadingContext.finishLoading(venueKey);
         }
     }
 
-    /**
-     * Resolves a TeamNBA enum from a string using multiple strategies.
-     * Tries Display Name, Abbreviation, and finally Enum Constant Name.
-     *
-     * @param teamName The string representation of the team
-     * @return The TeamNBA enum or null if not found
-     */
-    private TeamNBA resolveTeam(String teamName) {
-        if (teamName == null || teamName.trim().isEmpty()) {
-            return null;
-        }
+    private Venue buildVenueWithTeams(int venueId, ResultSet rs, VenueManager venueManager) throws SQLException, DAOException {
+        // 1. RECUPERA I TEAM PRIMA DI COSTRUIRE
+        Set<TeamNBA> teams = retrieveVenueTeams(venueId);
 
-        // 1. Try Display Name (e.g. "Los Angeles Lakers")
-        TeamNBA team = TeamNBA.fromDisplayName(teamName);
-        if (team != null) return team;
-
-        // 2. Try Abbreviation (e.g. "LAL")
-        team = TeamNBA.fromAbbreviation(teamName);
-        if (team != null) return team;
-
-        // 3. Try Enum Constant Name (e.g. "LOS_ANGELES_LAKERS")
-        try {
-            return TeamNBA.valueOf(teamName);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
+        // 2. COSTRUISCI L'OGGETTO
+        return new Venue.Builder()
+                .id(venueId)
+                .name(rs.getString("name"))
+                .type(VenueType.valueOf(rs.getString("type")))
+                .address(rs.getString("address"))
+                .city(rs.getString("city"))
+                .maxCapacity(rs.getInt("max_capacity"))
+                .venueManager(venueManager)
+                .teams(teams) // Passa i team qui
+                .build();
     }
 
-    private void validateVenueBeanInput(VenueBean venueBean) {
-        if (venueBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_VENUE_BEAN);
+    private TeamNBA resolveTeam(String teamName) {
+        if (teamName == null || teamName.trim().isEmpty()) return null;
+        TeamNBA team = TeamNBA.fromDisplayName(teamName);
+        if (team == null) team = TeamNBA.fromAbbreviation(teamName);
+        if (team == null) {
+            try {
+                team = TeamNBA.valueOf(teamName);
+            } catch (IllegalArgumentException ignored) {
+                //
+            }
         }
+        return team;
     }
 
     private void validateCityInput(String city) {
@@ -544,35 +512,52 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
         }
     }
 
-    /**
-     * Helper method to build a Venue object and populate its teams.
-     * Centralizes object construction to eliminate code duplication.
-     *
-     * @param venueId The ID of the venue
-     * @param rs The ResultSet positioned at the current row
-     * @param venueManager The loaded VenueManager object
-     * @return The fully constructed Venue object
-     * @throws SQLException If a database access error occurs
-     * @throws DAOException If an error occurs, retrieving teams
-     */
-    private Venue buildVenueWithTeams(int venueId, ResultSet rs, VenueManager venueManager) throws SQLException, DAOException {
-        // Costruiamo l'oggetto base
-        Venue venue = new Venue.Builder()
-                .id(venueId)
-                .name(rs.getString("name"))
-                .type(VenueType.valueOf(rs.getString("type")))
-                .address(rs.getString("address"))
-                .city(rs.getString("city"))
-                .maxCapacity(rs.getInt("max_capacity"))
-                .venueManager(venueManager)
-                .build();
-
-        // Aggiungiamo i team
-        Set<TeamNBA> teams = retrieveVenueTeams(venueId);
-        for (TeamNBA team : teams) {
-            venue.addTeam(team);
+    private void validateTeamInput(TeamNBA team){
+        if (team == null) {
+            throw new IllegalArgumentException("Team cannot be null");
         }
+    }
 
-        return venue;
+    /**
+     * Helper method to process a ResultSet and convert it to a list of Venues.
+     * Centralizes the "Check Cache -> Map -> Put Cache" logic used by all list retrievers.
+     */
+    private List<Venue> processVenueResultSet(ResultSet rs) throws SQLException, DAOException {
+        List<Venue> venues = new ArrayList<>();
+        while (rs.next()) {
+            int id = rs.getInt("id");
+
+            // 1. CACHE CHECK (Identity Map)
+            // Se l'oggetto è già stato caricato in questa sessione, usiamo QUELLO.
+            // Questo garantisce che useremo sempre la stessa istanza.
+            Venue cachedVenue = getFromCache(Venue.class, id);
+
+            if (cachedVenue != null) {
+                venues.add(cachedVenue);
+            } else {
+                // 2. LOAD & CACHE
+                // Se non è in cache, lo creiamo dal ResultSet e lo salviamo in cache.
+                Venue venue = mapResultSetToVenue(rs);
+                putInCache(venue, id);
+                venues.add(venue);
+            }
+        }
+        return venues;
+    }
+
+    /**
+     * Helper method to execute a simple query with one String parameter.
+     * Reduces duplication for retrieveVenuesByManager and retrieveVenuesByCity.
+     */
+    private List<Venue> executeSimpleVenueQuery(String sql, String param, String errorContext) throws DAOException {
+        try (Connection conn = ConnectionFactory.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, param);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return processVenueResultSet(rs);
+            }
+        } catch (SQLException e) {
+            throw new DAOException("Error retrieving venues " + errorContext, e);
+        }
     }
 }

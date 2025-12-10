@@ -35,11 +35,11 @@ public interface BookingDao {
     /**
      * Saves a new booking in the persistence system.
      *
-     * @param bookingBean The booking data to be saved, must not be null
-     * @throws DAOException If there is an error during the save operation
+     * @param booking@throws DAOException If there is an error during the save operation
+     * @return Booking
      * @throws IllegalArgumentException If bookingBean is null or contains invalid data
      */
-    void saveBooking(BookingBean bookingBean) throws DAOException;
+    Booking saveBooking(Booking booking) throws DAOException;
 
     /**
      * Retrieves a booking by its unique identifier.
@@ -123,20 +123,19 @@ public interface BookingDao {
     /**
      * Updates an existing booking in the persistence system.
      *
-     * @param bookingBean The booking data with updated information
-     * @throws DAOException If there is an error updating or if the booking doesn't exist
+     * @param booking@throws DAOException If there is an error updating or if the booking doesn't exist
      * @throws IllegalArgumentException If bookingBean is null or has invalid ID
      */
-    void updateBooking(BookingBean bookingBean) throws DAOException;
+    void updateBooking(Booking booking) throws DAOException;
 
     /**
      * Deletes a booking from the persistence system.
      *
-     * @param bookingId The ID of the booking to delete
+     * @param booking the model
      * @throws DAOException If there is an error during deletion or if the booking doesn't exist
      * @throws IllegalArgumentException If bookingId is not positive
      */
-    void deleteBooking(int bookingId) throws DAOException;
+    void deleteBooking(Booking booking) throws DAOException;
 
     /**
      * Checks if a booking with the specified ID exists in the persistence system.

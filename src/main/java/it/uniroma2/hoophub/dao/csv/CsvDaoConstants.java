@@ -51,12 +51,6 @@ public final class CsvDaoConstants {
     public static final String ERR_INVALID_ID = "ID must be positive";
 
     /**
-     * Error message format for entity not found during retrieval.
-     * Usage: String.format(ERR_ENTITY_NOT_FOUND, "Booking", id)
-     */
-    public static final String ERR_ENTITY_NOT_FOUND = "%s not found: %s";
-
-    /**
      * Error message format for entity not found during a specific operation.
      * Usage: String.format(ERR_ENTITY_NOT_FOUND_FOR_OP, "Booking", "update", id)
      */

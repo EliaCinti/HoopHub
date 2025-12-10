@@ -1,7 +1,5 @@
 package it.uniroma2.hoophub.dao.csv;
 
-import it.uniroma2.hoophub.beans.UserBean;
-import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
@@ -12,7 +10,6 @@ import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.observer.DaoOperation;
 import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 import it.uniroma2.hoophub.utilities.DaoLoadingContext;
-import it.uniroma2.hoophub.enums.UserType;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -110,28 +107,31 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
      * </p>
      */
     @Override
-    public synchronized void saveVenueManager(VenueManagerBean venueManagerBean) throws DAOException {
-        validateNotNull(venueManagerBean, "VenueManagerBean");
-        validateNotNullOrEmpty(venueManagerBean.getUsername(), "Username");
-        validateNotNullOrEmpty(venueManagerBean.getCompanyName(), "Company name");
-        validateNotNullOrEmpty(venueManagerBean.getPhoneNumber(), "Phone number");
+    public synchronized void saveVenueManager(VenueManager venueManager) throws DAOException {
+        // Validiamo l'oggetto Model (non più la Bean)
+        validateNotNull(venueManager, VENUE_MANAGER);
+        validateNotNullOrEmpty(venueManager.getUsername(), "Username");
+        validateNotNullOrEmpty(venueManager.getCompanyName(), "Company name");
+        validateNotNullOrEmpty(venueManager.getPhoneNumber(), "Phone number");
 
-        // Set user type to VENUE_MANAGER before saving
-        venueManagerBean.setType(UserType.VENUE_MANAGER.getType());
+        // Nota: Non serve più settare il tipo manualmente (venueManagerBean.setType...)
+        // L'oggetto VenueManager sa già di essere un VENUE_MANAGER tramite il metodo getUserType()
 
-        // Step 1: Save common user data (username, password, full name, gender, type)
-        userDao.saveUser(venueManagerBean);
+        // Step 1: Salviamo i dati comuni (User)
+        // UserDao.saveUser ora accetta un oggetto User (e VenueManager estende User)
+        userDao.saveUser(venueManager);
 
-        // Step 2: Save venue manager-specific data
+        // Step 2: Salviamo i dati specifici su CSV
         String[] managerRow = {
-                venueManagerBean.getUsername(),
-                venueManagerBean.getCompanyName(),
-                venueManagerBean.getPhoneNumber()
+                venueManager.getUsername(),
+                venueManager.getCompanyName(),
+                venueManager.getPhoneNumber()
         };
 
         CsvUtilities.writeFile(csvFile, managerRow);
 
-        notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManagerBean.getUsername(), venueManagerBean);
+        // Notifichiamo l'observer passando il Model
+        notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManager.getUsername(), venueManager);
     }
 
     /**
@@ -190,21 +190,28 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
      * </p>
      */
     @Override
-    public synchronized void updateVenueManager(VenueManager venueManager, UserBean userBean) throws DAOException {
+    public synchronized void updateVenueManager(VenueManager venueManager) throws DAOException {
+        // 1. Validazione sul Model (Rimosso riferimento a userBean)
         validateNotNull(venueManager, VENUE_MANAGER);
-        validateNotNull(userBean, "UserBean");
+
+        // Validiamo i campi obbligatori del Model se necessario (opzionale, ma buona pratica)
+        validateNotNullOrEmpty(venueManager.getCompanyName(), "Company Name");
+        validateNotNullOrEmpty(venueManager.getPhoneNumber(), "Phone Number");
 
         // Step 1: Update common user data
-        userDao.updateUser(venueManager, userBean);
+        // Chiamiamo UserDao passando il Model. Lui aggiornerà nome, cognome, genere.
+        userDao.updateUser(venueManager);
 
-        // Step 2: Update venue manager-specific data
+        // Step 2: Update venue manager-specific data (CSV)
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
+            // Cerchiamo per username
             if (row[COL_USERNAME].equals(venueManager.getUsername())) {
+                // Leggiamo i nuovi dati direttamente dal MODEL
                 row[COL_COMPANY_NAME] = venueManager.getCompanyName();
                 row[COL_PHONE_NUMBER] = venueManager.getPhoneNumber();
                 found = true;
@@ -220,6 +227,8 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
 
         logger.log(Level.INFO, "VenueManager updated successfully: {0}", venueManager.getUsername());
+
+        // Notifica Observer passando il Model
         notifyObservers(DaoOperation.UPDATE, VENUE_MANAGER, venueManager.getUsername(), venueManager);
     }
 

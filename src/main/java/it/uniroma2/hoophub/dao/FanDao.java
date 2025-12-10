@@ -1,7 +1,6 @@
 package it.uniroma2.hoophub.dao;
 
 import it.uniroma2.hoophub.beans.FanBean;
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.model.Fan;
 import java.util.List;
@@ -42,16 +41,15 @@ public interface FanDao {
      * </ol>
      * </p>
      *
-     * @param fanBean The bean containing the fan's details from the UI, must not be null
-     * @throws DAOException If an error occurs while saving the fan, such as:
-     *                      <ul>
-     *                        <li>Username already exists (duplicate key)</li>
-     *                        <li>Database connection failure</li>
-     *                        <li>Constraint violation</li>
-     *                      </ul>
+     * @param fan@throws DAOException If an error occurs while saving the fan, such as:
+     *                   <ul>
+     *                     <li>Username already exists (duplicate key)</li>
+     *                     <li>Database connection failure</li>
+     *                     <li>Constraint violation</li>
+     *                   </ul>
      * @throws IllegalArgumentException If fanBean is null or contains invalid data
      */
-    void saveFan(FanBean fanBean) throws DAOException;
+    void saveFan(Fan fan) throws DAOException;
 
     /**
      * Retrieves fan details from the persistence layer based on username.
@@ -106,11 +104,10 @@ public interface FanDao {
      * </p>
      *
      * @param fan The fan object containing updated fan-specific details, must not be null
-     * @param userBean The bean containing updated user details, must not be null
-     * @throws DAOException If the fan does not exist, or if an error occurs while updating the data
+     * @throws DAOException             If the fan does not exist, or if an error occurs while updating the data
      * @throws IllegalArgumentException If fan or userBean is null
      */
-    void updateFan(Fan fan, UserBean userBean) throws DAOException;
+    void updateFan(Fan fan) throws DAOException;
 
     /**
      * Deletes a fan from the persistence layer.
