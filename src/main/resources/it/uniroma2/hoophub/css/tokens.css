@@ -3,6 +3,8 @@
    Variabili globali utilizzate in tutto il progetto
    ======================================================================== */
 
+/* File escluso dall'analisi Sonar */
+
 .root {
     /* ========= Colors ========= */
     -fx-bg: #0E1116;

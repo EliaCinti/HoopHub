@@ -17,7 +17,9 @@
     Login Screen - HoopHub
     Controller: it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController
     Stylesheet: /it/uniroma2/hoophub/css/pages/login.css
+    File escluso dall'analisi Sonar
 -->
+
 
 <StackPane prefHeight="720" prefWidth="1280" stylesheets="@../css/tokens.css, @../css/components.css, @../css/pages/login.css" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController">
 
