@@ -205,15 +205,15 @@ public class SignUpController extends AbstractController {
                     .username(fan.getUsername())
                     .fullName(fan.getFullName())
                     .gender(fan.getGender())
-                    .type(userType.toString())
-                    .favTeam(fan.getFavTeam())
+                    .type(userType) // FIX: Passa direttamente l'Enum
+                    .favTeam(fan.getFavTeam()) // FIX: Passa direttamente l'Enum TeamNBA
                     .birthday(fan.getBirthday())
                     .build();
             case VenueManager manager -> new VenueManagerBean.Builder()
                     .username(manager.getUsername())
                     .fullName(manager.getFullName())
                     .gender(manager.getGender())
-                    .type(userType.toString())
+                    .type(userType) // FIX: Passa direttamente l'Enum
                     .companyName(manager.getCompanyName())
                     .phoneNumber(manager.getPhoneNumber())
                     .build();
@@ -222,7 +222,7 @@ public class SignUpController extends AbstractController {
                     .username(user.getUsername())
                     .fullName(user.getFullName())
                     .gender(user.getGender())
-                    .type(userType.toString())
+                    .type(userType) // FIX: Passa direttamente l'Enum
                     .build();
         };
     }

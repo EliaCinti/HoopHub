@@ -423,8 +423,10 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
             stmt.setInt(1, venueId);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    TeamNBA team = resolveTeam(rs.getString("team_name"));
-                    if (team != null) teams.add(team);
+                    TeamNBA team = TeamNBA.robustValueOf(rs.getString("team_name"));
+                    if (team != null) {
+                        teams.add(team);
+                    }
                 }
             }
             return teams;
@@ -490,20 +492,6 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
                 .venueManager(venueManager)
                 .teams(teams) // Passa i team qui
                 .build();
-    }
-
-    private TeamNBA resolveTeam(String teamName) {
-        if (teamName == null || teamName.trim().isEmpty()) return null;
-        TeamNBA team = TeamNBA.fromDisplayName(teamName);
-        if (team == null) team = TeamNBA.fromAbbreviation(teamName);
-        if (team == null) {
-            try {
-                team = TeamNBA.valueOf(teamName);
-            } catch (IllegalArgumentException ignored) {
-                //
-            }
-        }
-        return team;
     }
 
     private void validateCityInput(String city) {

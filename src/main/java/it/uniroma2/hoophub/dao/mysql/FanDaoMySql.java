@@ -342,19 +342,9 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
         String username = rs.getString("username");
         String teamString = rs.getString("fav_team");
 
-        // Parse team - try display name first, then abbreviation, then enum constant
-        TeamNBA team = TeamNBA.fromDisplayName(teamString);  // "Golden State Warriors"
-        if (team == null) {
-            team = TeamNBA.fromAbbreviation(teamString);  // "GSW"
-        }
-        if (team == null) {
-            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
-            try {
-                team = TeamNBA.valueOf(teamString);
-            } catch (IllegalArgumentException e) {
-                // Not a valid enum constant, will throw below
-            }
-        }
+        // FIX: Sostituita la logica manuale con il metodo centralizzato robusto
+        TeamNBA team = TeamNBA.robustValueOf(teamString);
+
         if (team == null) {
             throw new DAOException("Invalid team for fan " + username + ": " + teamString);
         }
@@ -380,7 +370,9 @@ public class FanDaoMySql extends AbstractMySqlDao implements FanDao {
                     .gender(rs.getString("gender"))
                     .favTeam(team)
                     .birthday(rs.getDate("birthday").toLocalDate())
-                    .bookingList(new ArrayList<>())  // Empty list - bookings loaded separately
+                    // Nota: qui potresti voler caricare le booking reali se la logica lo prevede,
+                    // ma se il metodo originale usava ArrayList vuoto, lascialo così.
+                    .bookingList(new ArrayList<>())
                     .build();
         } finally {
             DaoLoadingContext.finishLoading(key);

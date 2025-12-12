@@ -1,5 +1,7 @@
 package it.uniroma2.hoophub.beans;
 
+import it.uniroma2.hoophub.enums.UserType;
+
 /**
  * Bean for user credentials (login).
  * <p>
@@ -11,7 +13,7 @@ package it.uniroma2.hoophub.beans;
 public class CredentialsBean {
     private final String username;
     private final String password;
-    private String type;
+    private UserType type;
 
     /**
      * Protected constructor for use by the Builder.
@@ -75,7 +77,7 @@ public class CredentialsBean {
     public static class Builder<T extends Builder<T>> {
         protected String username;
         protected String password;
-        protected String type;
+        protected UserType type;
 
         /**
          * Sets the username with validation.
@@ -106,10 +108,10 @@ public class CredentialsBean {
         /**
          * Sets the user type.
          *
-         * @param type The user type string (e.g., "FAN", "VENUE_MANAGER").
+         * @param type The user type enum (e.g., UserType.FAN, UserType.VENUE_MANAGER).
          * @return The builder instance.
          */
-        public T type(String type) {
+        public T type(UserType type) {
             this.type = type;
             return self();
         }
@@ -146,11 +148,11 @@ public class CredentialsBean {
         return password;
     }
 
-    public String getType() {
+    public UserType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(UserType type) {
         this.type = type;
     }
 }

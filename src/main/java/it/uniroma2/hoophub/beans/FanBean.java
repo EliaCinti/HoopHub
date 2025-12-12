@@ -46,7 +46,9 @@ public class FanBean extends UserBean {
         if (teamInput == null || teamInput.trim().isEmpty()) {
             throw new IllegalArgumentException("Team name cannot be empty");
         }
-        if (TeamNBA.fromInput(teamInput) == null) {
+
+        // FIX: Usa robustValueOf per usare la stessa logica di parsing del resto dell'app
+        if (TeamNBA.robustValueOf(teamInput) == null) {
             throw new IllegalArgumentException("Team not found. Please try the full name (e.g. 'Chicago Bulls') or abbreviation (e.g. 'CHI')");
         }
     }
@@ -68,7 +70,6 @@ public class FanBean extends UserBean {
         LocalDate date;
         try {
             // 1. Syntactic Parsing (Format & Calendar validity)
-            // Java's LocalDate.parse handles check for impossible dates (e.g., month 13)
             date = LocalDate.parse(dateStr);
         } catch (DateTimeParseException e) {
             // Translate technical parsing error into a user-friendly message
@@ -123,8 +124,7 @@ public class FanBean extends UserBean {
 
         /**
          * Sets the favorite team.
-         * Note: Validation of the string input to TeamNBA usually happens before calling this,
-         * typically in the Controller via TeamNBA.fromInput().
+         * Note: The input here is now a type-safe TeamNBA object.
          *
          * @param favTeam The favorite NBA team.
          * @return The builder instance.
@@ -142,7 +142,6 @@ public class FanBean extends UserBean {
          * @throws IllegalArgumentException if the date is invalid according to business rules.
          */
         public Builder birthday(LocalDate birthday) {
-            // Validate business rules (e.g. age) before setting
             validateBirthday(birthday);
             this.birthday = birthday;
             return this;

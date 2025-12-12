@@ -1,7 +1,7 @@
 package it.uniroma2.hoophub.dao;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -16,26 +16,28 @@ import java.util.logging.Logger;
 @SuppressWarnings("java:S6548") // Singleton is required
 public class GlobalCache {
 
-    private static GlobalCache instance;
+    // 1. Inizializzazione EAGER: Thread-safe per definizione e più semplice
+    private static GlobalCache instance = new GlobalCache();
+
+    // 2. ConcurrentHashMap: Gestisce accessi concorrenti senza corrompersi
     private final Map<String, Object> cacheMap;
     private final Logger logger;
 
     private GlobalCache() {
-        this.cacheMap = new HashMap<>();
+        this.cacheMap = new ConcurrentHashMap<>();
         this.logger = Logger.getLogger(GlobalCache.class.getName());
     }
 
     public static GlobalCache getInstance() {
-        if (instance == null) {
-            instance = new GlobalCache();
-        }
         return instance;
     }
 
     public void put(String key, Object value) {
-        cacheMap.put(key, value);
-        // Log a livello FINE (utile per debug ma non intasa la console in produzione)
-        logger.log(Level.FINE, "Cache PUT: {0}", key);
+        if (key != null && value != null) {
+            cacheMap.put(key, value);
+            // Log a livello FINE
+            logger.log(Level.FINE, "Cache PUT: {0}", key);
+        }
     }
 
     public Object get(String key) {
@@ -49,8 +51,10 @@ public class GlobalCache {
     }
 
     public void remove(String key) {
-        cacheMap.remove(key);
-        logger.log(Level.FINE, "Cache REMOVE: {0}", key);
+        if (key != null) {
+            cacheMap.remove(key);
+            logger.log(Level.FINE, "Cache REMOVE: {0}", key);
+        }
     }
 
     /**

@@ -246,15 +246,21 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     public synchronized Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
         Set<TeamNBA> teams = new HashSet<>();
         List<String[]> data = CsvUtilities.readAll(venueTeamsFile);
+
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
-            if (Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
-                try {
-                    // Cerca di risolvere il nome (gestisce anche nomi vecchi/sporchi)
-                    TeamNBA team = TeamNBA.valueOf(row[COL_VT_TEAM_NAME]);
+            // Controllo indice per evitare IndexOutOfBounds
+            if (row.length > COL_VT_TEAM_NAME && Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
+
+                // FIX: Usa robustValueOf che gestisce sigle, nomi completi e enum
+                TeamNBA team = TeamNBA.robustValueOf(row[COL_VT_TEAM_NAME]);
+
+                if (team != null) {
                     teams.add(team);
-                } catch (IllegalArgumentException ignored) {
-                    //
+                } else {
+                    // Logghiamo un warning invece di crashare o ignorare silenziosamente
+                    logger.log(Level.WARNING, "Team non riconosciuto nel CSV per venue {0}: {1}",
+                            new Object[]{venueId, row[COL_VT_TEAM_NAME]});
                 }
             }
         }

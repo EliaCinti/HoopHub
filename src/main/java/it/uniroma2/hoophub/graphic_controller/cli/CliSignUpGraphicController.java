@@ -288,11 +288,12 @@ public class CliSignUpGraphicController extends CliGraphicController {
 
             try {
                 // 1. Validate Syntax (String level check)
+                // Questo internamente usa TeamNBA.robustValueOf, quindi siamo allineati
                 FanBean.validateTeamSyntax(teamInput);
 
                 // 2. Resolve (Model level lookup)
-                // Siccome la validazione usa fromInput, siamo sicuri che qui non tornerà null
-                TeamNBA team = TeamNBA.fromInput(teamInput);
+                // FIX: Sostituito fromInput con robustValueOf per coerenza totale con Bean e DAO
+                TeamNBA team = TeamNBA.robustValueOf(teamInput);
                 return Optional.of(team);
 
             } catch (IllegalArgumentException e) {
@@ -356,8 +357,8 @@ public class CliSignUpGraphicController extends CliGraphicController {
                     .password(password)
                     .fullName(fullName)
                     .gender(gender)
-                    .type(UserType.FAN.toString())
-                    .favTeam(favTeam)
+                    .type(UserType.FAN) // FIX: Passa direttamente l'Enum UserType.FAN
+                    .favTeam(favTeam)   // FIX: Passa direttamente l'Enum TeamNBA
                     .birthday(birthday)
                     .build();
 
@@ -384,7 +385,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
                     .password(password)
                     .fullName(fullName)
                     .gender(gender)
-                    .type(UserType.VENUE_MANAGER.toString())
+                    .type(UserType.VENUE_MANAGER) // FIX: Passa direttamente l'Enum UserType.VENUE_MANAGER
                     .companyName(companyName)
                     .phoneNumber(phoneNumber)
                     .build();

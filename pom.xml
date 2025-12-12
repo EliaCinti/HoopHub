@@ -13,7 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.10.2</junit.version>
         <javafx.version>21.0.2</javafx.version>
-        <sonar.exclusions>src/main/resources/**/*.css</sonar.exclusions>
+        <sonar.exclusions>**/*.css, **/*.fxml</sonar.exclusions>
     </properties>
 
     <dependencies>

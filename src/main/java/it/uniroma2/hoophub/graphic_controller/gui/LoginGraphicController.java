@@ -85,7 +85,9 @@ public class LoginGraphicController {
      */
     private void navigateToHomepage(UserBean userBean) {
         try {
-            UserType userType = UserType.valueOf(userBean.getType());
+            // MODIFICA: Rimosso UserType.valueOf(...).
+            // Ora userBean.getType() restituisce direttamente l'Enum UserType!
+            UserType userType = userBean.getType();
 
             // Navigate based on user type
             if (userType == UserType.FAN) {
@@ -97,7 +99,6 @@ public class LoginGraphicController {
             // close the current login window
             Stage currentStage = (Stage) loginButton.getScene().getWindow();
             currentStage.close();
-
 
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Unable to load homepage", e);

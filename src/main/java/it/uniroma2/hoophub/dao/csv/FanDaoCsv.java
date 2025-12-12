@@ -248,42 +248,47 @@ public class FanDaoCsv extends AbstractCsvDao implements FanDao {
      */
     private Fan mapRowToFan(String[] userData, String[] fanData) throws DAOException {
         try {
-            String username = userData[0];
+            String username = fanData[COL_USERNAME];
             LocalDate birthday = LocalDate.parse(fanData[COL_BIRTHDAY]);
             String fanKey = "Fan:" + username;
 
-            // Check if we're in a circular loading situation
+            // FIX: Parsing robusto per la squadra del cuore
+            // Prima usavi TeamNBA.fromDisplayName(...) che è fragile
+            TeamNBA favTeam = TeamNBA.robustValueOf(fanData[COL_FAV_TEAM]);
+
+            // Gestione caso null (opzionale: se il fan può non avere squadra, rimuovi il check)
+            if (favTeam == null && fanData[COL_FAV_TEAM] != null && !fanData[COL_FAV_TEAM].isEmpty()) {
+                logger.log(Level.WARNING, "Squadra non riconosciuta per il fan {0}: {1}",
+                        new Object[]{username, fanData[COL_FAV_TEAM]});
+            }
+
+            // Check circular dependency loading
             if (DaoLoadingContext.isLoading(fanKey)) {
-                // Break the cycle by returning a minimal fan without loading bookings
                 return new Fan.Builder()
                         .username(username)
-                        .fullName(userData[2])
-                        .gender(userData[3])
-                        .favTeam(TeamNBA.fromDisplayName(fanData[COL_FAV_TEAM]))
+                        .fullName(userData[2]) // Assumi indici corretti da UserDaoCsv, da verificare e sostituire con costanti?
+                        .gender(userData[3]) // Assumi indici corretti da UserDaoCsv, da verificare e sostituire con costanti?
+                        .favTeam(favTeam) // Usa la variabile parsata
                         .birthday(birthday)
-                        .bookingList(Collections.emptyList())  // Empty to break cycle
+                        .bookingList(Collections.emptyList())
                         .build();
             }
 
-            // Mark this fan as being loaded
             DaoLoadingContext.startLoading(fanKey);
             try {
-                // Load the COMPLETE list of bookings (not empty)
                 DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
                 BookingDao bookingDao = daoFactory.getBookingDao();
                 List<Booking> bookings = bookingDao.retrieveBookingsByFan(username);
 
-                // Build Fan with COMPLETE bookings list
                 return new Fan.Builder()
                         .username(username)
-                        .fullName(userData[2])
-                        .gender(userData[3])
-                        .favTeam(TeamNBA.fromDisplayName(fanData[COL_FAV_TEAM]))
+                        .fullName(userData[2]) // Assumi indici corretti da UserDaoCsv, da verificare e sostituire con costanti?
+                        .gender(userData[3]) // Assumi indici corretti da UserDaoCsv, da verificare e sostituire con costanti?
+                        .favTeam(favTeam) // Usa la variabile parsata
                         .birthday(birthday)
-                        .bookingList(bookings)  // COMPLETE list
+                        .bookingList(bookings)
                         .build();
             } finally {
-                // Always clean up the loading context
                 DaoLoadingContext.finishLoading(fanKey);
             }
         } catch (DateTimeParseException e) {

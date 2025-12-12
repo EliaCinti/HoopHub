@@ -213,6 +213,7 @@ public class CliLoginGraphicController extends CliGraphicController {
         return new CredentialsBean.Builder<>()
                 .username(username)
                 .password(password)
+                // .type(null) // Non settiamo il tipo qui, è null al login
                 .build();
     }
 
@@ -283,7 +284,8 @@ public class CliLoginGraphicController extends CliGraphicController {
         printInfo(String.format(LOADING_DASHBOARD_MSG, userBean.getType()));
 
         try {
-            UserType userType = UserType.valueOf(userBean.getType());
+            // FIX: Rimosso UserType.valueOf(...). userBean.getType() è già un Enum!
+            UserType userType = userBean.getType();
 
             // Navigate based on user type
             if (userType == UserType.FAN) {
@@ -308,10 +310,6 @@ public class CliLoginGraphicController extends CliGraphicController {
         printInfo(LOGGING_OUT_MSG);
         printNewLine();
         performLogout();
-
-        // Future implementation:
-        // CliFanHomeGraphicController fanController = new CliFanHomeGraphicController();
-        // fanController.execute();
     }
 
     /**
@@ -323,10 +321,6 @@ public class CliLoginGraphicController extends CliGraphicController {
         printInfo(LOGGING_OUT_MSG);
         printNewLine();
         performLogout();
-
-        // Future implementation:
-        // CliVenueManagerHomeGraphicController vmController = new CliVenueManagerHomeGraphicController();
-        // vmController.execute();
     }
 
     /**

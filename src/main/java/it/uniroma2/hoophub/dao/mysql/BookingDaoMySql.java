@@ -548,34 +548,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     }
 
     /**
-     * Parses a team string to TeamNBA enum.
-     * Tries multiple formats: display name, abbreviation, enum constant.
-     *
-     * @param teamString Team name or abbreviation from database
-     * @param context Context for error message (e.g., "home_team for booking 123")
-     * @return TeamNBA enum
-     * @throws DAOException if team cannot be parsed
-     */
-    private TeamNBA parseTeam(String teamString, String context) throws DAOException {
-        TeamNBA team = TeamNBA.fromDisplayName(teamString);  // "Golden State Warriors"
-        if (team == null) {
-            team = TeamNBA.fromAbbreviation(teamString);  // "GSW"
-        }
-        if (team == null) {
-            // Try enum constant name as last resort: "GOLDEN_STATE_WARRIORS"
-            try {
-                team = TeamNBA.valueOf(teamString);
-            } catch (IllegalArgumentException ignored) {
-                // Not a valid enum constant
-            }
-        }
-        if (team == null) {
-            throw new DAOException("Invalid team " + context + ": " + teamString);
-        }
-        return team;
-    }
-
-    /**
      * Maps ResultSet to Booking.
      * <p>
      * Uses {@link DaoLoadingContext} to prevent circular loops.
@@ -588,8 +560,11 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         int venueId = rs.getInt("venue_id");
 
         // Parse teams robustly
-        TeamNBA homeTeam = parseTeam(rs.getString("home_team"), "home_team for booking " + bookingId);
-        TeamNBA awayTeam = parseTeam(rs.getString("away_team"), "away_team for booking " + bookingId);
+        TeamNBA homeTeam = TeamNBA.robustValueOf(rs.getString("home_team"));
+        TeamNBA awayTeam = TeamNBA.robustValueOf(rs.getString("away_team"));
+
+        if (homeTeam == null) throw new DAOException("Invalid home team in DB for booking " + bookingId);
+        if (awayTeam == null) throw new DAOException("Invalid away team in DB for booking " + bookingId);
 
         String key = "Booking:" + bookingId;
         if (DaoLoadingContext.isLoading(key)) {

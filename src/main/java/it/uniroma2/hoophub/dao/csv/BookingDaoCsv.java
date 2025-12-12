@@ -447,13 +447,21 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         Fan fan = deps.fan();
         Venue venue = deps.venue();
 
+        // FIX: Parsing robusto usando il nuovo metodo di TeamNBA
+        TeamNBA homeTeam = TeamNBA.robustValueOf(row[COL_HOME_TEAM]);
+        TeamNBA awayTeam = TeamNBA.robustValueOf(row[COL_AWAY_TEAM]);
+
+        if (homeTeam == null || awayTeam == null) {
+            throw new DAOException("Dati squadra non validi nel CSV per la prenotazione ID: " + bookingId);
+        }
+
         // Build Booking with loaded Fan and Venue
         return new Booking.Builder(
                 bookingId,
                 LocalDate.parse(row[COL_GAME_DATE]),
                 LocalTime.parse(row[COL_GAME_TIME]),
-                TeamNBA.fromDisplayName(row[COL_HOME_TEAM]),
-                TeamNBA.fromDisplayName(row[COL_AWAY_TEAM]),
+                homeTeam, // Usa le variabili parsate
+                awayTeam, // Usa le variabili parsate
                 venue,
                 fan
         )

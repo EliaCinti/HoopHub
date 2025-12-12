@@ -53,18 +53,6 @@ public enum TeamNBA {
         return abbreviation;
     }
 
-    public static TeamNBA fromDisplayName(String displayName) {
-        if (displayName == null || displayName.trim().isEmpty()) {
-            return null;
-        }
-        for (TeamNBA team : TeamNBA.values()) {
-            if (team.displayName.equalsIgnoreCase(displayName.trim())) {
-                return team;
-            }
-        }
-        return null;
-    }
-
     public static TeamNBA fromAbbreviation(String abbreviation) {
         if (abbreviation == null || abbreviation.trim().isEmpty()) {
             return null;
@@ -101,6 +89,63 @@ public enum TeamNBA {
             }
             // 3. Enum Name (e.g. "LOS_ANGELES_LAKERS")
             if (team.name().equalsIgnoreCase(normalizedInput)) {
+                return team;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Tenta di parsare una stringa in un TeamNBA in modo robusto.
+     * Supporta: Display Name ("Los Angeles Lakers"), Abbreviation ("LAL"),
+     * Enum Name ("LOS_ANGELES_LAKERS") e Case Insensitive.
+     *
+     * @param value La stringa da parsare
+     * @return L'istanza TeamNBA o null se non trovata
+     */
+    public static TeamNBA robustValueOf(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        String sanitized = value.trim();
+
+        // 1. Prova con Display Name (es. "Los Angeles Lakers")
+        TeamNBA team = fromDisplayName(sanitized);
+
+        // 2. Prova con Abbreviazione (es. "LAL")
+        if (team == null) {
+            team = fromAbbreviation(sanitized);
+        }
+
+        // 3. Prova con il nome standard dell'Enum (es. "LOS_ANGELES_LAKERS")
+        if (team == null) {
+            try {
+                team = TeamNBA.valueOf(sanitized);
+            } catch (IllegalArgumentException e) {
+                // Ignora e prova l'ultimo tentativo
+            }
+        }
+
+        // 4. Ultimo tentativo: Case Insensitive scan (es. "Lakers" o "lakers")
+        if (team == null) {
+            for (TeamNBA t : values()) {
+                if (t.name().equalsIgnoreCase(sanitized) ||
+                        t.getDisplayName().equalsIgnoreCase(sanitized) ||
+                        t.getAbbreviation().equalsIgnoreCase(sanitized)) {
+                    return t;
+                }
+            }
+        }
+
+        return team;
+    }
+
+    private static TeamNBA fromDisplayName(String displayName) {
+        if (displayName == null || displayName.trim().isEmpty()) {
+            return null;
+        }
+        for (TeamNBA team : TeamNBA.values()) {
+            if (team.displayName.equalsIgnoreCase(displayName.trim())) {
                 return team;
             }
         }

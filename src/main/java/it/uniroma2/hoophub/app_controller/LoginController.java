@@ -189,7 +189,7 @@ public class LoginController extends AbstractController {
                     .username(fan.getUsername())
                     .fullName(fan.getFullName())
                     .gender(fan.getGender())
-                    .type(UserType.FAN.name())
+                    .type(UserType.FAN)
                     .favTeam(fan.getFavTeam())
                     .birthday(fan.getBirthday())
                     .build();
@@ -198,7 +198,7 @@ public class LoginController extends AbstractController {
                     .username(vm.getUsername())
                     .fullName(vm.getFullName())
                     .gender(vm.getGender())
-                    .type(UserType.VENUE_MANAGER.name())
+                    .type(UserType.VENUE_MANAGER)
                     .companyName(vm.getCompanyName())
                     .phoneNumber(vm.getPhoneNumber())
                     .build();
