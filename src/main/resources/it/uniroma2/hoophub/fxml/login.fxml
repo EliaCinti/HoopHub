@@ -17,7 +17,6 @@
     Login Screen - HoopHub
     Controller: it.uniroma2.hoophub.graphic_controller.gui.LoginGraphicController
     Stylesheet: /it/uniroma2/hoophub/css/pages/login.css
-    File escluso dall'analisi Sonar
 -->
 
 
