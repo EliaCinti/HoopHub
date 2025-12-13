@@ -84,8 +84,9 @@ class DaoCacheIntegrationTest {
     @Order(1)
     @DisplayName("Fan: Identity Map")
     void testFanIdentityMap() throws Exception {
+        // CORRETTO: UserType.FAN invece di UserType.FAN.name()
         FanBean newFanBean = new FanBean.Builder()
-                .username(USER_FAN).password("Pass123!").type(UserType.FAN.name())
+                .username(USER_FAN).password("Pass123!").type(UserType.FAN)
                 .fullName("Junit Fan").gender("Male").favTeam(TeamNBA.CHICAGO_BULLS)
                 .birthday(LocalDate.of(2000, 1, 1)).build();
 
@@ -103,8 +104,9 @@ class DaoCacheIntegrationTest {
     @DisplayName("Fan: Update Write-Through")
     void testFanUpdate() throws Exception {
         // Arrange
+        // CORRETTO: UserType.FAN invece di UserType.FAN.name()
         FanBean initialBean = new FanBean.Builder()
-                .username(USER_FAN).password("Pass123!").type(UserType.FAN.name())
+                .username(USER_FAN).password("Pass123!").type(UserType.FAN)
                 .fullName("Old Name").gender("Male").favTeam(TeamNBA.CHICAGO_BULLS)
                 .birthday(LocalDate.of(2000, 1, 1)).build();
         Fan initialModel = createFanModel(initialBean);
@@ -137,8 +139,9 @@ class DaoCacheIntegrationTest {
         it.uniroma2.hoophub.dao.VenueManagerDao vmDao = DaoFactoryFacade.getInstance().getVenueManagerDao();
 
         // Save
+        // CORRETTO: UserType.VENUE_MANAGER invece di UserType.VENUE_MANAGER.name()
         VenueManagerBean bean = new VenueManagerBean.Builder()
-                .username(USER_VM).password("Pass1!").type(UserType.VENUE_MANAGER.name())
+                .username(USER_VM).password("Pass1!").type(UserType.VENUE_MANAGER)
                 .fullName("VM One").gender("Male").companyName("Corp A").phoneNumber("3331234567").build();
         VenueManager vmModel = createVenueManagerModel(bean);
         vmDao.saveVenueManager(vmModel);
@@ -229,6 +232,7 @@ class DaoCacheIntegrationTest {
         DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
         // Fan
+        // CORRETTO: UserType.FAN invece di "FAN"
         Fan fan = createFanModel(new FanBean.Builder()
                 .username(USER_FAN)
                 .password("p")
@@ -236,11 +240,12 @@ class DaoCacheIntegrationTest {
                 .gender("M")
                 .favTeam(TeamNBA.LOS_ANGELES_LAKERS)
                 .birthday(LocalDate.now())
-                .type("FAN")
+                .type(UserType.FAN)
                 .build());
         factory.getFanDao().saveFan(fan);
 
         // Manager
+        // CORRETTO: UserType.VENUE_MANAGER invece di "VENUE_MANAGER"
         VenueManager vm = createVenueManagerModel(new VenueManagerBean.Builder()
                 .username(USER_OWNER)
                 .password("p")
@@ -248,7 +253,7 @@ class DaoCacheIntegrationTest {
                 .gender("F")
                 .companyName("C")
                 .phoneNumber("3330000000")
-                .type("VENUE_MANAGER")
+                .type(UserType.VENUE_MANAGER)
                 .build());
         factory.getVenueManagerDao().saveVenueManager(vm);
 
@@ -311,6 +316,7 @@ class DaoCacheIntegrationTest {
     @DisplayName("Notification: Save & Retrieve")
     void testNotification() throws Exception {
         // Setup User (serve per la FK)
+        // CORRETTO: UserType.FAN invece di "FAN"
         Fan fan = createFanModel(new FanBean.Builder()
                 .username(USER_FAN)
                 .password("p")
@@ -318,7 +324,7 @@ class DaoCacheIntegrationTest {
                 .gender("M")
                 .favTeam(TeamNBA.LOS_ANGELES_LAKERS)
                 .birthday(LocalDate.now())
-                .type("FAN")
+                .type(UserType.FAN)
                 .build());
         DaoFactoryFacade.getInstance().getFanDao().saveFan(fan);
 
