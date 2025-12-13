@@ -117,6 +117,7 @@ To run a local analysis before pushing changes (e.g., for pre-commit checks), us
 
 ```bash
 ./mvnw clean verify sonar:sonar -Dsonar.token=YOUR_SECRET_TOKEN
+```
 
 ## 🚀 Getting Started
 
