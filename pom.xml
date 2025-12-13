@@ -17,6 +17,8 @@
         <sonar.organization>eliacinti</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
 
+        <sonar.projectKey>EliaCinti_HoopHub2</sonar.projectKey>
+
         <sonar.exclusions>**/*.css,**/*.fxml,src/main/resources/**/*.css</sonar.exclusions>
     </properties>
 
