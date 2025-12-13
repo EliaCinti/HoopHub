@@ -93,32 +93,6 @@ HoopHub/
 
 ```
 
-## 🔍 CI/CD & Static Analysis
-
-To ensure high code quality and automate testing, a Continuous Integration (CI) pipeline has been implemented using **GitHub Actions** and **SonarCloud**.
-
-### 1. Architectural Decisions
-The analysis setup was customized to fit the specific needs of a JavaFX application:
-* **Maven Configuration (`pom.xml`)**:
-   * Defined project identity (`sonar.organization`, `sonar.projectKey`) directly in the build file for portability.
-   * **Exclusions**: Configured explicit exclusions (`<sonar.exclusions>`) for CSS and FXML files. This was necessary to prevent valid JavaFX styling and markup from being flagged as "code smells" (false positives).
-* **GitHub Actions (`build.yml`)**:
-   * A workflow was created to automatically trigger the Maven build on every `push` to the main branch.
-   * This ensures that the analysis runs in a controlled environment using Java 21, respecting the Maven exclusions that SonarCloud's native automatic analysis would ignore.
-
-### 2. Viewing the Analysis
-
-#### 🟢 Automatic (Live Dashboard)
-Thanks to the CI pipeline, the code is analyzed automatically after every commit.
-👉 **[View SonarCloud Dashboard](https://sonarcloud.io/dashboard?id=EliaCinti_HoopHub2)**
-
-#### ⚙️ Manual (CLI)
-To run a local analysis before pushing changes (e.g., for pre-commit checks), use the Maven Wrapper:
-
-```bash
-./mvnw clean verify sonar:sonar -Dsonar.token=YOUR_SECRET_TOKEN
-```
-
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -160,6 +134,32 @@ To run a local analysis before pushing changes (e.g., for pre-commit checks), us
    ```bash
    java -jar target/hoophub-cli.jar
    ```
+
+## 🔍 CI/CD & Static Analysis
+
+To ensure high code quality and automate testing, a Continuous Integration (CI) pipeline has been implemented using **GitHub Actions** and **SonarCloud**.
+
+### 1. Architectural Decisions
+The analysis setup was customized to fit the specific needs of a JavaFX application:
+* **Maven Configuration (`pom.xml`)**:
+    * Defined project identity (`sonar.organization`, `sonar.projectKey`) directly in the build file for portability.
+    * **Exclusions**: Configured explicit exclusions (`<sonar.exclusions>`) for CSS and FXML files. This was necessary to prevent valid JavaFX styling and markup from being flagged as "code smells" (false positives).
+* **GitHub Actions (`build.yml`)**:
+    * A workflow was created to automatically trigger the Maven build on every `push` to the main branch.
+    * This ensures that the analysis runs in a controlled environment using Java 21, respecting the Maven exclusions that SonarCloud's native automatic analysis would ignore.
+
+### 2. Viewing the Analysis
+
+#### 🟢 Automatic (Live Dashboard)
+Thanks to the CI pipeline, the code is analyzed automatically after every commit.
+👉 **[View SonarCloud Dashboard](https://sonarcloud.io/dashboard?id=EliaCinti_HoopHub2)**
+
+#### ⚙️ Manual (CLI)
+To run a local analysis before pushing changes (e.g., for pre-commit checks), use the Maven Wrapper:
+
+```bash
+./mvnw clean verify sonar:sonar -Dsonar.token=YOUR_SECRET_TOKEN
+```
 
 ## 📸 Screenshots
 
