@@ -3,6 +3,8 @@ package it.uniroma2.hoophub.dao.mysql;
 import it.uniroma2.hoophub.beans.FanBean;
 import it.uniroma2.hoophub.beans.VenueManagerBean;
 import it.uniroma2.hoophub.dao.FanDao;
+import it.uniroma2.hoophub.dao.VenueDao;
+import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.enums.*;
 import it.uniroma2.hoophub.model.*;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
@@ -136,7 +138,7 @@ class DaoCacheIntegrationTest {
     @Order(3)
     @DisplayName("VenueManager: Lifecycle")
     void testVenueManagerLifecycle() throws Exception {
-        it.uniroma2.hoophub.dao.VenueManagerDao vmDao = DaoFactoryFacade.getInstance().getVenueManagerDao();
+        VenueManagerDao vmDao = DaoFactoryFacade.getInstance().getVenueManagerDao();
 
         // Save
         // CORRETTO: UserType.VENUE_MANAGER invece di UserType.VENUE_MANAGER.name()
@@ -171,8 +173,8 @@ class DaoCacheIntegrationTest {
     @Order(4)
     @DisplayName("Venue: Save & Update con Teams")
     void testVenueLifecycle() throws Exception {
-        it.uniroma2.hoophub.dao.VenueManagerDao vmDao = DaoFactoryFacade.getInstance().getVenueManagerDao();
-        it.uniroma2.hoophub.dao.VenueDao venueDao = DaoFactoryFacade.getInstance().getVenueDao();
+        VenueManagerDao vmDao = DaoFactoryFacade.getInstance().getVenueManagerDao();
+        VenueDao venueDao = DaoFactoryFacade.getInstance().getVenueDao();
 
         // 1. Setup Manager
         VenueManager owner = new VenueManager.Builder()
@@ -232,31 +234,30 @@ class DaoCacheIntegrationTest {
         DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
 
         // Fan
-        // CORRETTO: UserType.FAN invece di "FAN"
         Fan fan = createFanModel(new FanBean.Builder()
                 .username(USER_FAN)
-                .password("p")
-                .fullName("F")
-                .gender("M")
+                .password("password123")
+                .fullName("Fan Test")
+                .gender("Male")
                 .favTeam(TeamNBA.LOS_ANGELES_LAKERS)
-                .birthday(LocalDate.now())
+                .birthday(LocalDate.of(2000, 1, 1)) // FIX: Data valida (> 16 anni)
                 .type(UserType.FAN)
                 .build());
         factory.getFanDao().saveFan(fan);
 
         // Manager
-        // CORRETTO: UserType.VENUE_MANAGER invece di "VENUE_MANAGER"
         VenueManager vm = createVenueManagerModel(new VenueManagerBean.Builder()
                 .username(USER_OWNER)
-                .password("p")
-                .fullName("M")
-                .gender("F")
+                .password("password123")
+                .fullName("Manager Test")
+                .gender("Female")
                 .companyName("C")
                 .phoneNumber("3330000000")
                 .type(UserType.VENUE_MANAGER)
                 .build());
         factory.getVenueManagerDao().saveVenueManager(vm);
 
+        // ... Il resto del metodo rimane identico ...
         // Venue
         Venue venue = new Venue.Builder()
                 .name("V")
@@ -271,7 +272,7 @@ class DaoCacheIntegrationTest {
 
         // 1. SAVE BOOKING
         Booking booking = new Booking.Builder(
-                0, // ID temp
+                0,
                 LocalDate.now().plusDays(1),
                 LocalTime.of(20, 0),
                 TeamNBA.LOS_ANGELES_LAKERS,
@@ -303,7 +304,7 @@ class DaoCacheIntegrationTest {
         assertEquals(BookingStatus.CONFIRMED, retrieved.getStatus());
         assertSame(confirmedBooking, retrieved);
 
-        // Cleanup (Booking cancellato via cascade o manuale? Meglio manuale per test pulito)
+        // Cleanup
         factory.getBookingDao().deleteBooking(retrieved);
         factory.getVenueManagerDao().deleteVenueManager(vm);
         factory.getFanDao().deleteFan(fan);
@@ -316,14 +317,13 @@ class DaoCacheIntegrationTest {
     @DisplayName("Notification: Save & Retrieve")
     void testNotification() throws Exception {
         // Setup User (serve per la FK)
-        // CORRETTO: UserType.FAN invece di "FAN"
         Fan fan = createFanModel(new FanBean.Builder()
                 .username(USER_FAN)
-                .password("p")
-                .fullName("F")
-                .gender("M")
+                .password("password123")
+                .fullName("Fan Test")
+                .gender("Male")
                 .favTeam(TeamNBA.LOS_ANGELES_LAKERS)
-                .birthday(LocalDate.now())
+                .birthday(LocalDate.of(2000, 1, 1)) // FIX: Data valida (> 16 anni)
                 .type(UserType.FAN)
                 .build());
         DaoFactoryFacade.getInstance().getFanDao().saveFan(fan);

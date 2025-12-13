@@ -5,4 +5,8 @@
 "LolloIlCampione","$2a$12$IK2RY.SGSt03viYqkVPk7.PnNOQIvELcr7I9RzeiZ5AaryXnkEWfq","Elia Cinti","Male","VENUE_MANAGER"
 "sarah_owner","$2a$12$qxrOqVtDD0k9pscP.LwNN.SO/ZT0nxRTVW3GtT7B2Aic2dYhr29Bm","Sarah Owner","Female","VENUE_MANAGER"
 "mike_manager","$2a$12$o.FbNg/ypxy10.wpK8RU4.UcCKlnYcfTsqx752eK2sSfeNW7Rw1PK","Mike Manager","Male","VENUE_MANAGER"
+"junit_test_fan","hashed_password123","Fan Test","Male","FAN"
+"junit_test_fan","hashed_Pass123!","Junit Fan","Male","FAN"
 "junit_test_fan","hashed_Pass123!","Old Name","Male","FAN"
+"junit_test_fan","hashed_password123","Fan Test","Male","FAN"
+"junit_test_fan","hashed_password123","Fan Test","Male","FAN"

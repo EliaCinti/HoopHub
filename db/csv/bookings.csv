@@ -2,3 +2,5 @@
 "2","2025-12-09","20:00","Golden State Warriors","Phoenix Suns","2","jane_smith","PENDING","false"
 "1","2025-12-06","19:30","Los Angeles Lakers","Boston Celtics","1","john_doe","CONFIRMED","false"
 "3","2025-12-13","21:00","Los Angeles Lakers","Miami Heat","3","john_doe","PENDING","false"
+"4","2025-12-14","20:00","LOS_ANGELES_LAKERS","BOSTON_CELTICS","9","junit_test_fan","PENDING","false"
+"5","2025-12-14","20:00","LOS_ANGELES_LAKERS","BOSTON_CELTICS","11","junit_test_fan","PENDING","false"

@@ -234,14 +234,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         }
     }
 
-    // Helper per cancellare tutti i team (usato da deleteVenue e updateVenue)
-    private void deleteAllVenueTeamsInternal(int venueId) throws DAOException {
-        List<String[]> allTeams = CsvUtilities.readAll(venueTeamsFile);
-        // Rimuove se venue_id corrisponde
-        allTeams.removeIf(row -> row.length > 0 && Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId);
-        CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, allTeams);
-    }
-
     @Override
     public synchronized Set<TeamNBA> retrieveVenueTeams(int venueId) throws DAOException {
         Set<TeamNBA> teams = new HashSet<>();
@@ -351,6 +343,25 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                 .teams(teams)
                 .build();
     }
+
+
+    // Helper per cancellare tutti i team (usato da deleteVenue e updateVenue)
+    private void deleteAllVenueTeamsInternal(int venueId) throws DAOException {
+        List<String[]> allTeams = CsvUtilities.readAll(venueTeamsFile);
+
+        // FIX: Rimuoviamo l'header se presente per evitare NumberFormatException su "venue_id"
+        // CsvUtilities.readAll restituisce tutto, header incluso.
+        if (!allTeams.isEmpty()) {
+            allTeams.removeFirst();
+        }
+
+        // Ora è sicuro fare il parsing, abbiamo solo dati
+        allTeams.removeIf(row -> row.length > 0 && Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId);
+
+        // updateFile rimetterà l'header automaticamente se manca, passando la costante HEADER
+        CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, allTeams);
+    }
+
 
     @Override
     public synchronized boolean venueExists(int id) throws DAOException {

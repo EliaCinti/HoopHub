@@ -147,13 +147,15 @@ public class VenueManagerDaoCsv extends AbstractCsvDao implements VenueManagerDa
 
         // Step 1: Retrieve common user data
         String[] userData = userDao.retrieveUser(username);
-        if (userData == null) {
+
+        // FIX: Controlla anche la lunghezza dell'array (AbstractCsvDao ritorna array vuoto se non trovato)
+        if (userData == null || userData.length == 0) {
             return null;
         }
 
         // Step 2: Retrieve venue manager-specific data
         String[] managerData = findRowByValue(COL_USERNAME, username);
-        if (managerData == null) {
+        if (managerData == null || managerData.length == 0) {
             return null;
         }
 
