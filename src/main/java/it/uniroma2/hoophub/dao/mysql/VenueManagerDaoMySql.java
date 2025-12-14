@@ -21,8 +21,6 @@ import java.util.logging.Level;
 
 /**
  * MySQL implementation of VenueManagerDao.
- * Handles persistence for VenueManager entities, coordinating with UserDao
- * for common user data.
  */
 public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManagerDao {
 
@@ -49,47 +47,31 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
     private static final String SQL_DELETE_VENUE_MANAGER =
             "DELETE FROM venue_managers WHERE username = ?";
 
-
     // ========== Constants ==========
     private static final String VENUE_MANAGER = "VenueManager";
-
 
     private static final String ERR_NULL_VENUE_MANAGER = "VenueManager cannot be null";
     private static final String ERR_VENUE_MANAGER_NOT_FOUND = "VenueManager not found";
 
-    /**
-     * Constructs VenueManagerDaoMySql with UserDao dependency.
-     * Injected by VenueManagerDaoFactory (Factory pattern).
-     *
-     * @param userDao DAO for common user operations
-     */
     public VenueManagerDaoMySql(UserDao userDao) {
         this.userDao = userDao;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Saves in transaction: (1) user data via UserDao, (2) manager data in DB.
-     * Rolls back on failure. Notifies observers (Observer pattern).
-     * </p>
-     */
     @Override
     public void saveVenueManager(VenueManager venueManager) throws DAOException {
         validateVenueManagerInput(venueManager);
 
         Connection conn = null;
         try {
+            // FIX: Connection fuori dal try-with-resources
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            // 1. Deleghiamo a UserDao il salvataggio dei campi comuni (users table)
-            // Passiamo direttamente il Model 'venueManager' (che è un User)
+            // 1. Delegate common user data save
             userDao.saveUser(venueManager);
 
-            // 2. Inseriamo i dati specifici in venue_managers
+            // 2. Save manager specific data
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE_MANAGER)) {
-                // Leggiamo i dati dal Model
                 stmt.setString(1, venueManager.getUsername());
                 stmt.setString(2, venueManager.getCompanyName());
                 stmt.setString(3, venueManager.getPhoneNumber());
@@ -99,13 +81,10 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 if (affectedRows > 0) {
                     conn.commit();
 
-                    // === CACHE PUT ===
-                    // L'oggetto è già completo (costruito dal Controller), lo cachiamo direttamente.
+                    // Cache Write-Through
                     putInCache(venueManager, venueManager.getUsername());
 
                     logger.log(Level.INFO, "VenueManager saved: {0}", venueManager.getUsername());
-
-                    // Notifichiamo l'observer passando il Model
                     notifyObservers(DaoOperation.INSERT, VENUE_MANAGER, venueManager.getUsername(), venueManager);
                 } else {
                     conn.rollback();
@@ -120,21 +99,14 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Uses JOIN query. Returns VenueManager with empty venues list.
-     * Use {@link #getVenues(VenueManager)} to load venues separately.
-     * </p>
-     */
     @Override
     public VenueManager retrieveVenueManager(String username) throws DAOException {
         validateUsernameInput(username);
 
-        // 1. CACHE CHECK
         VenueManager cached = getFromCache(VenueManager.class, username);
         if (cached != null) return cached;
 
+        // FIX: Connection fuori dal try-with-resources
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_VENUE_MANAGER)) {
@@ -143,8 +115,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         VenueManager vm = mapResultSetToManager(rs);
-
-                        // 2. CACHE PUT
                         putInCache(vm, username);
                         return vm;
                     }
@@ -156,12 +126,10 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<VenueManager> retrieveAllVenueManagers() throws DAOException {
         List<VenueManager> managers = new ArrayList<>();
+        // FIX: Connection fuori dal try-with-resources
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_VENUE_MANAGERS);
@@ -169,14 +137,11 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
                 while (rs.next()) {
                     String username = rs.getString("username");
-
-                    // CACHE CHECK per row
                     VenueManager cached = getFromCache(VenueManager.class, username);
                     if (cached != null) {
                         managers.add(cached);
                     } else {
                         VenueManager vm = mapResultSetToManager(rs);
-                        // CACHE PUT
                         putInCache(vm, username);
                         managers.add(vm);
                     }
@@ -188,19 +153,13 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Updates in transaction: (1) user data via UserDao, (2) manager data in DB.
-     * Notifies observers (Observer pattern).
-     * </p>
-     */
     @Override
     public void updateVenueManager(VenueManager venueManager) throws DAOException {
         validateVenueManagerInput(venueManager);
 
         Connection conn = null;
         try {
+            // FIX: Connection fuori dal try-with-resources
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
@@ -216,9 +175,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                 int affectedRows = stmt.executeUpdate();
                 if (affectedRows > 0) {
                     conn.commit();
-
-                    // === CACHE WRITE-THROUGH (AGGIUNTO) ===
-                    // Aggiorniamo l'oggetto in cache poiché abbiamo il model aggiornato
                     putInCache(venueManager, venueManager.getUsername());
 
                     logger.log(Level.INFO, "VenueManager updated: {0}", venueManager.getUsername());
@@ -236,19 +192,13 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Deletes in transaction: (1) manager data, (2) user data via UserDao.
-     * Notifies observers (Observer pattern).
-     * </p>
-     */
     @Override
     public void deleteVenueManager(VenueManager venueManager) throws DAOException {
         validateVenueManagerInput(venueManager);
 
         Connection conn = null;
         try {
+            // FIX: Connection fuori dal try-with-resources
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
@@ -262,8 +212,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
                     userDao.deleteUser(venueManager);
 
                     conn.commit();
-
-                    // CACHE REMOVE
                     removeFromCache(VenueManager.class, venueManager.getUsername());
 
                     logger.log(Level.INFO, "VenueManager deleted: {0}", venueManager.getUsername());
@@ -281,32 +229,21 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Queries venues table, reconstructs Venue objects via VenueDao (Facade pattern).
-     * </p>
-     */
     @Override
     public List<Venue> getVenues(VenueManager venueManager) throws DAOException {
         validateVenueManagerInput(venueManager);
-
-        // Use Facade to avoid constructor circular dependency with VenueDao
+        // La chiamata al Facade è sicura perché VenueDaoMySql ora gestisce correttamente
+        // la sua connessione senza chiudere quella singleton.
         VenueDao venueDao = DaoFactoryFacade.getInstance().getVenueDao();
         return venueDao.retrieveVenuesByManager(venueManager.getUsername());
     }
 
     // ========== PRIVATE HELPER METHODS ==========
 
-    /**
-     * Maps ResultSet to VenueManager.
-     * Uses {@link DaoLoadingContext} to prevent circular loops.
-     */
     private VenueManager mapResultSetToManager(ResultSet rs) throws SQLException {
         String username = rs.getString("username");
         String key = "VenueManager:" + username;
 
-        // Anti-recursion check
         if (DaoLoadingContext.isLoading(key)) {
             return new VenueManager.Builder()
                     .username(username)
@@ -320,8 +257,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
 
         DaoLoadingContext.startLoading(key);
         try {
-            // Note: Venues are NOT loaded here to keep it lightweight.
-            // They are loaded explicitly via getVenues() when needed.
             return new VenueManager.Builder()
                     .username(username)
                     .fullName(rs.getString("full_name"))
@@ -334,8 +269,6 @@ public class VenueManagerDaoMySql extends AbstractMySqlDao implements VenueManag
             DaoLoadingContext.finishLoading(key);
         }
     }
-
-    // ========== VALIDATION METHODS ==========
 
     private void validateVenueManagerInput(VenueManager venueManager) {
         if (venueManager == null) {

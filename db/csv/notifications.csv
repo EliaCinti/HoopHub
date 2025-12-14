@@ -1,3 +1,1 @@
 "id","user_id","type","title","message","booking_id","is_read","created_at"
-"1","junit_test_fan","FAN","BOOKING_APPROVED","Test Msg","","false","2025-12-13 19:01:19"
-"2","junit_test_fan","FAN","BOOKING_APPROVED","Test Msg","","false","2025-12-13 19:12:26"

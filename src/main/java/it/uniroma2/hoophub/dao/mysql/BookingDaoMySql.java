@@ -25,22 +25,6 @@ import java.util.logging.Level;
 
 /**
  * MySQL implementation of the BookingDao interface.
- * <p>
- * This class handles persistence for Booking entities using JDBC.
- * It implements a caching strategy (Identity Map) to optimize performance
- * and ensure object identity consistency within the same session.
- * </p>
- * <p>
- * <strong>Key Features:</strong>
- * <ul>
- * <li><strong>Caching:</strong> Checks internal cache before querying DB.</li>
- * <li><strong>Code Reuse:</strong> Uses helper methods for mapping and parameter setting.</li>
- * <li><strong>Consistency:</strong> Invalidates cache entries on update/delete.</li>
- * </ul>
- * </p>
- *
- * @see BookingDao
- * @see AbstractMySqlDao
  */
 public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
@@ -106,18 +90,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     private static final String ERR_NULL_STATUS = "Status cannot be null";
     private static final String ERR_BOOKING_NOT_FOUND = "Booking not found";
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Extracts fan username and venue ID from the BookingBean to save the relationship.
-     * After successful insertion, observers are notified for cross-persistence sync.
-     * </p>
-     *
-     * @return
-     */
     @Override
     public Booking saveBooking(Booking booking) throws DAOException {
-        // Validazione Model
         if (booking == null) {
             throw new IllegalArgumentException("Booking cannot be null");
         }
@@ -130,14 +104,11 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
                     Statement.RETURN_GENERATED_KEYS)) {
 
-                // 1. Setta parametri comuni dal Model
                 stmt.setDate(1, java.sql.Date.valueOf(booking.getGameDate()));
                 stmt.setTime(2, java.sql.Time.valueOf(booking.getGameTime()));
                 stmt.setString(3, booking.getHomeTeam().name());
                 stmt.setString(4, booking.getAwayTeam().name());
                 stmt.setInt(5, booking.getVenue().getId());
-
-                // 2. Setta parametri specifici insert
                 stmt.setString(6, booking.getFan().getUsername());
                 stmt.setString(7, booking.getStatus().name());
                 stmt.setBoolean(8, booking.isNotified());
@@ -149,9 +120,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                         if (generatedKeys.next()) {
                             int newId = generatedKeys.getInt(1);
 
-                            // Costruiamo la NUOVA istanza con l'ID generato dal DB
                             Booking savedBooking = new Booking.Builder(
-                                    newId, // ID AUTO-GENERATO
+                                    newId,
                                     booking.getGameDate(),
                                     booking.getGameTime(),
                                     booking.getHomeTeam(),
@@ -164,15 +134,12 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                                     .build();
 
                             conn.commit();
-
-                            // Cache Write-Through
-                            // CACHE PUT
                             putInCache(savedBooking, newId);
 
                             logger.log(Level.INFO, "Booking saved successfully with ID: {0}", newId);
                             notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
 
-                            return savedBooking; // RESTITUIAMO L'ENTITÀ
+                            return savedBooking;
                         } else {
                             conn.rollback();
                             throw new DAOException("Creating booking failed, no ID obtained.");
@@ -191,17 +158,10 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Reconstructs the full Booking object including Fan and Venue references.
-     * </p>
-     */
     @Override
     public Booking retrieveBooking(int bookingId) throws DAOException {
         validateIdInput(bookingId);
 
-        // 1. CACHE CHECK (Identity Map)
         Booking cachedBooking = getFromCache(Booking.class, bookingId);
         if (cachedBooking != null) {
             return cachedBooking;
@@ -215,8 +175,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
                         Booking booking = mapResultSetToBooking(rs);
-
-                        // 2. CACHE PUT
                         putInCache(booking, bookingId);
                         return booking;
                     }
@@ -228,17 +186,12 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<Booking> retrieveAllBookings() throws DAOException {
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_ALL_BOOKINGS);
                  ResultSet rs = stmt.executeQuery()) {
-
-                // USE CENTRALIZED HELPER FOR CACHING LOGIC
                 return processBookingResultSet(rs);
             }
         } catch (SQLException e) {
@@ -246,9 +199,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
         validateUsernameInput(fanUsername);
@@ -257,9 +207,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN)) {
                 stmt.setString(1, fanUsername);
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     return processBookingResultSet(rs);
                 }
             }
@@ -268,9 +216,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
         validateIdInput(venueId);
@@ -279,11 +224,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE)) {
                 stmt.setInt(1, venueId);
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     List<Booking> bookings = processBookingResultSet(rs);
-
                     logger.log(Level.FINE, "Retrieved {0} bookings for venue {1}",
                             new Object[]{bookings.size(), venueId});
                     return bookings;
@@ -294,13 +236,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * Uses a JOIN with the venues table to find all bookings for venues managed
-     * by the specified venue manager.
-     * </p>
-     */
     @Override
     public List<Booking> retrieveBookingsByVenueManager(String venueManagerUsername) throws DAOException {
         validateUsernameInput(venueManagerUsername);
@@ -309,9 +244,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_VENUE_MANAGER)) {
                 stmt.setString(1, venueManagerUsername);
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     return processBookingResultSet(rs);
                 }
             }
@@ -320,9 +253,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<Booking> retrieveBookingsByDate(LocalDate date) throws DAOException {
         validateDateInput(date);
@@ -331,11 +261,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_DATE)) {
                 stmt.setDate(1, Date.valueOf(date));
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     List<Booking> bookings = processBookingResultSet(rs);
-
                     logger.log(Level.FINE, "Retrieved {0} bookings for date {1}",
                             new Object[]{bookings.size(), date});
                     return bookings;
@@ -346,9 +273,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
     public List<Booking> retrieveBookingsByStatus(String fanUsername, BookingStatus status) throws DAOException {
         validateUsernameInput(fanUsername);
         validateStatusInput(status);
@@ -358,11 +283,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_BOOKINGS_BY_FAN_AND_STATUS)) {
                 stmt.setString(1, fanUsername);
                 stmt.setString(2, status.name());
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     List<Booking> bookings = processBookingResultSet(rs);
-
                     logger.log(Level.FINE, "Retrieved {0} {1} bookings for fan {2}",
                             new Object[]{bookings.size(), status, fanUsername});
                     return bookings;
@@ -373,9 +295,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public List<Booking> retrieveUnnotifiedBookings(String fanUsername) throws DAOException {
         validateUsernameInput(fanUsername);
@@ -384,11 +303,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_UNNOTIFIED_BOOKINGS)) {
                 stmt.setString(1, fanUsername);
-
                 try (ResultSet rs = stmt.executeQuery()) {
-                    // USE CENTRALIZED HELPER FOR CACHING LOGIC
                     List<Booking> bookings = processBookingResultSet(rs);
-
                     logger.log(Level.FINE, "Retrieved {0} unnotified bookings for fan {1}",
                             new Object[]{bookings.size(), fanUsername});
                     return bookings;
@@ -399,12 +315,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void updateBooking(Booking booking) throws DAOException {
-        // 1. Validazione sul Model
         if (booking == null) {
             throw new IllegalArgumentException("Booking cannot be null");
         }
@@ -415,34 +327,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             conn.setAutoCommit(false);
 
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_BOOKING)) {
-
-                // 2. Set parametri dal Model (Sostituisce setCommonStatementParameters se usava Bean)
-                // Usiamo i getter diretti del Model per date, team e venue
                 stmt.setDate(1, java.sql.Date.valueOf(booking.getGameDate()));
                 stmt.setTime(2, java.sql.Time.valueOf(booking.getGameTime()));
                 stmt.setString(3, booking.getHomeTeam().name());
                 stmt.setString(4, booking.getAwayTeam().name());
                 stmt.setInt(5, booking.getVenueId());
-
-                // Parametri specifici (Status, Notified)
                 stmt.setString(6, booking.getStatus().name());
                 stmt.setBoolean(7, booking.isNotified());
-
-                // WHERE Clause
                 stmt.setInt(8, booking.getId());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
                     conn.commit();
-
-                    // === CACHE WRITE-THROUGH ===
-                    // L'oggetto 'booking' è già aggiornato (Model-First), lo salviamo in cache.
                     putInCache(booking, booking.getId());
 
                     logger.log(Level.INFO, "Booking updated successfully: {0}", booking.getId());
-
-                    // Notifica Observer passando il Model
                     notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
                 } else {
                     conn.rollback();
@@ -457,12 +357,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void deleteBooking(Booking booking) throws DAOException {
-        // 1. Validazione
         if (booking == null) {
             throw new IllegalArgumentException("Booking cannot be null");
         }
@@ -474,21 +370,14 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             conn.setAutoCommit(false);
 
             try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_BOOKING)) {
-                // Usiamo l'ID preso dal Model
                 stmt.setInt(1, booking.getId());
-
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
                     conn.commit();
-
-                    // === CACHE REMOVE ===
-                    // Attenzione: removeFromCache vuole la chiave (ID), non l'oggetto intero!
                     removeFromCache(Booking.class, booking.getId());
 
                     logger.log(Level.INFO, "Booking deleted successfully: {0}", booking.getId());
-
-                    // Notifica Observer (passiamo ID come stringa e null come payload)
                     notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(booking.getId()), null);
                 } else {
                     conn.rollback();
@@ -503,26 +392,18 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean bookingExists(int bookingId) throws DAOException {
         validateIdInput(bookingId);
-        // Delegate to safe helper in AbstractMySqlDao
         return existsById(conn -> conn.prepareStatement(SQL_CHECK_BOOKING_EXISTS), bookingId);
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public int getNextBookingId() throws DAOException {
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_GET_MAX_ID);
                  ResultSet rs = stmt.executeQuery()) {
-
                 if (rs.next()) {
                     return rs.getInt(1) + 1;
                 }
@@ -547,19 +428,11 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * Maps ResultSet to Booking.
-     * <p>
-     * Uses {@link DaoLoadingContext} to prevent circular loops.
-     * Loads complete Fan and Venue via respective DAOs (Facade pattern).
-     * </p>
-     */
     private Booking mapResultSetToBooking(ResultSet rs) throws SQLException, DAOException {
         int bookingId = rs.getInt("id");
         String fanUsername = rs.getString("fan_username");
         int venueId = rs.getInt("venue_id");
 
-        // Parse teams robustly
         TeamNBA homeTeam = TeamNBA.robustValueOf(rs.getString("home_team"));
         TeamNBA awayTeam = TeamNBA.robustValueOf(rs.getString("away_team"));
 
@@ -568,15 +441,14 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         String key = "Booking:" + bookingId;
         if (DaoLoadingContext.isLoading(key)) {
-            // Return minimal booking object without loading relationships
             return new Booking.Builder(
                     bookingId,
                     rs.getDate("game_date").toLocalDate(),
                     rs.getTime("game_time").toLocalTime(),
                     homeTeam,
                     awayTeam,
-                    null,  // Minimal object: no venue
-                    null   // Minimal object: no fan
+                    null,
+                    null
             )
                     .status(BookingStatus.valueOf(rs.getString("status")))
                     .notified(rs.getBoolean("notified"))
@@ -585,9 +457,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
         DaoLoadingContext.startLoading(key);
         try {
-            // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
             BookingDaoHelper.BookingDependencies deps = BookingDaoHelper.loadDependencies(fanUsername, venueId);
-
             Fan fan = deps.fan();
             Venue venue = deps.venue();
 
@@ -608,30 +478,15 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         }
     }
 
-    /**
-     * Helper to process ResultSet into a List of Bookings using Cache logic.
-     * <p>
-     * Iterates through the ResultSet, checking the cache for each ID.
-     * If cached, uses the existing instance; otherwise, maps the row and caches it.
-     * </p>
-     *
-     * @param rs The ResultSet to process
-     * @return List of fully populated Booking objects
-     * @throws SQLException If database access error occurs
-     * @throws DAOException If mapping fails
-     */
     private List<Booking> processBookingResultSet(ResultSet rs) throws SQLException, DAOException {
         List<Booking> bookings = new ArrayList<>();
         while (rs.next()) {
             int id = rs.getInt("id");
-
-            // 1. CACHE CHECK (Identity Map)
             Booking cached = getFromCache(Booking.class, id);
 
             if (cached != null) {
                 bookings.add(cached);
             } else {
-                // 2. LOAD & CACHE
                 Booking booking = mapResultSetToBooking(rs);
                 putInCache(booking, id);
                 bookings.add(booking);

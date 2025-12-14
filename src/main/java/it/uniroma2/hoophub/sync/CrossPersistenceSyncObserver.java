@@ -37,6 +37,7 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
 
     private static final Logger logger = Logger.getLogger(CrossPersistenceSyncObserver.class.getName());
     private final PersistenceType sourceType;
+    private static final String NOTIFICATION = "Notification";
 
     /**
      * Creates a new cross-persistence synchronization observer.
@@ -61,17 +62,6 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
     }
 
     /**
-     * Gets a DAO factory configured for the target persistence type.
-     *
-     * @return DaoFactoryFacade configured for target persistence
-     */
-    private DaoFactoryFacade getTargetFactory() {
-        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
-        factory.setPersistenceType(getTargetType());
-        return factory;
-    }
-
-    /**
      * Handles entity insertion synchronization.
      * <p>
      * When a new entity is inserted in the source persistence, this method
@@ -87,32 +77,33 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
     public void onAfterInsert(String entityType, String entityId, Object entity) {
         if (SyncContext.isSyncing()) return;
         SyncContext.startSync();
+
+        // 1. Salviamo il tipo di persistenza corrente (es. MYSQL)
+        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+        PersistenceType originalType = factory.getPersistenceType();
+
         try {
+            // 2. Impostiamo il tipo target per la sincronizzazione (es. CSV)
+            factory.setPersistenceType(getTargetType());
+
             logger.log(Level.INFO, "SYNC INSERT: Propagating {0} ({1}) from {2} to {3}",
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
+            // 3. Eseguiamo l'operazione sul DAO target
             switch (entityType) {
-                case SyncConstants.FAN -> {
-                    FanDao targetDao = getTargetFactory().getFanDao();
-                    targetDao.saveFan((Fan) entity);
-                }
-                case SyncConstants.VENUE_MANAGER -> {
-                    VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
-                    targetDao.saveVenueManager((VenueManager) entity);
-                }
-                case SyncConstants.VENUE -> {
-                    VenueDao targetDao = getTargetFactory().getVenueDao();
-                    targetDao.saveVenue((Venue) entity);
-                }
-                case SyncConstants.BOOKING -> {
-                    BookingDao targetDao = getTargetFactory().getBookingDao();
-                    targetDao.saveBooking((Booking) entity);
-                }
+                case SyncConstants.FAN -> factory.getFanDao().saveFan((Fan) entity);
+                case SyncConstants.VENUE_MANAGER -> factory.getVenueManagerDao().saveVenueManager((VenueManager) entity);
+                case SyncConstants.VENUE -> factory.getVenueDao().saveVenue((Venue) entity);
+                case SyncConstants.BOOKING -> factory.getBookingDao().saveBooking((Booking) entity);
+                // Aggiungi qui Notification se necessario, ho visto dai log che mancava
+                case NOTIFICATION -> factory.getNotificationDao().saveNotification((it.uniroma2.hoophub.model.Notification) entity);
                 default -> logger.log(Level.WARNING, "Sync INSERT not handled for entity type: {0}", entityType);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Sync INSERT failed", e);
         } finally {
+            // 4. RIPRISTINIAMO il tipo originale (FONDAMENTALE!)
+            factory.setPersistenceType(originalType);
             SyncContext.endSync();
         }
     }
@@ -133,41 +124,28 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
     public void onAfterUpdate(String entityType, String entityId, Object entity) {
         if (SyncContext.isSyncing()) return;
         SyncContext.startSync();
+
+        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+        PersistenceType originalType = factory.getPersistenceType();
+
         try {
+            factory.setPersistenceType(getTargetType());
+
             logger.log(Level.INFO, "SYNC UPDATE: Propagating {0} ({1}) from {2} to {3}",
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
             switch (entityType) {
-                case SyncConstants.FAN -> {
-                    FanDao targetDao = getTargetFactory().getFanDao();
-                    // L'oggetto 'entity' che arriva dall'Observer è già il Model aggiornato
-                    Fan fan = (Fan) entity;
-
-                    targetDao.updateFan(fan);
-                }
-                case SyncConstants.VENUE_MANAGER -> {
-                    VenueManagerDao targetDao = getTargetFactory().getVenueManagerDao();
-                    VenueManager venueManager = (VenueManager) entity;
-
-                    targetDao.updateVenueManager(venueManager);
-                }
-                case SyncConstants.VENUE -> {
-                    VenueDao targetDao = getTargetFactory().getVenueDao();
-                    Venue venue = (Venue) entity;
-
-                    targetDao.updateVenue(venue);
-                }
-                case SyncConstants.BOOKING -> {
-                    BookingDao targetDao = getTargetFactory().getBookingDao();
-                    Booking booking = (Booking) entity;
-
-                    targetDao.updateBooking(booking);
-                }
+                case SyncConstants.FAN -> factory.getFanDao().updateFan((Fan) entity);
+                case SyncConstants.VENUE_MANAGER -> factory.getVenueManagerDao().updateVenueManager((VenueManager) entity);
+                case SyncConstants.VENUE -> factory.getVenueDao().updateVenue((Venue) entity);
+                case SyncConstants.BOOKING -> factory.getBookingDao().updateBooking((Booking) entity);
+                case NOTIFICATION -> factory.getNotificationDao().updateNotification((it.uniroma2.hoophub.model.Notification) entity);
                 default -> logger.log(Level.WARNING, "Sync UPDATE not handled for entity type: {0}", entityType);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Sync UPDATE failed", e);
         } finally {
+            factory.setPersistenceType(originalType);
             SyncContext.endSync();
         }
     }
@@ -188,18 +166,28 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
     public void onAfterDelete(String entityType, String entityId) {
         if (SyncContext.isSyncing()) return;
         SyncContext.startSync();
+
+        DaoFactoryFacade factory = DaoFactoryFacade.getInstance();
+        PersistenceType originalType = factory.getPersistenceType();
+
         try {
+            factory.setPersistenceType(getTargetType());
+
             logger.log(Level.INFO, "SYNC DELETE: Propagating {0} ({1}) from {2} to {3}",
                     new Object[]{entityType, entityId, sourceType, getTargetType()});
 
-            DaoFactoryFacade targetFactory = getTargetFactory();
-
+            // Nota: non usiamo più getTargetFactory() qui dentro
             switch (entityType) {
-                case SyncConstants.USER -> deleteUser(entityId, targetFactory);
-                case SyncConstants.FAN -> deleteFan(entityId, targetFactory);
-                case SyncConstants.VENUE_MANAGER -> deleteVenueManager(entityId, targetFactory);
-                case SyncConstants.VENUE -> deleteVenue(entityId, targetFactory);
-                case SyncConstants.BOOKING -> deleteBooking(entityId, targetFactory);
+                case SyncConstants.USER -> deleteUser(entityId, factory);
+                case SyncConstants.FAN -> deleteFan(entityId, factory);
+                case SyncConstants.VENUE_MANAGER -> deleteVenueManager(entityId, factory);
+                case SyncConstants.VENUE -> deleteVenue(entityId, factory);
+                case SyncConstants.BOOKING -> deleteBooking(entityId, factory);
+                case NOTIFICATION -> {
+                    int id = Integer.parseInt(entityId);
+                    it.uniroma2.hoophub.model.Notification n = factory.getNotificationDao().retrieveNotification(id);
+                    if(n != null) factory.getNotificationDao().deleteNotification(n);
+                }
                 default -> logger.log(Level.WARNING, "Sync DELETE not handled for entity type: {0}", entityType);
             }
         } catch (DAOException e) {
@@ -207,6 +195,7 @@ public class CrossPersistenceSyncObserver implements DaoObserver {
         } catch (NumberFormatException e) {
             logger.log(Level.SEVERE, e, () -> "Invalid entity ID format for deletion: " + entityId);
         } finally {
+            factory.setPersistenceType(originalType);
             SyncContext.endSync();
         }
     }

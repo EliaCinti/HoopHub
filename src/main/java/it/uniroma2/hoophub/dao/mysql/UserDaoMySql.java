@@ -17,28 +17,10 @@ import java.util.logging.Level;
 
 /**
  * MySQL implementation of the UserDao interface.
- * <p>
- * This class provides data access operations for User entities stored in a MySQL database.
- * It extends {@link AbstractMySqlDao} to support the Observer pattern for cross-persistence
- * synchronization. All database operations use prepared statements to prevent SQL injection attacks.
- * </p>
- * <p>
- * The implementation handles:
- * <ul>
- *   <li>User authentication and validation</li>
- *   <li>Secure password hashing using BCrypt</li>
- *   <li>CRUD operations on the users table</li>
- *   <li>Observer notifications for data changes</li>
- * </ul>
- * </p>
- *
- * @see UserDao
- * @see AbstractMySqlDao
- * @see ConnectionFactory
  */
 public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
 
-    // SQL Queries - constants to avoid string duplication and magic strings
+    // SQL Queries
     private static final String SQL_VALIDATE_USER =
             "SELECT username, password_hash, user_type FROM users WHERE username = ?";
 
@@ -63,23 +45,11 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
     private static final String ERR_INVALID_CREDENTIALS = "Invalid username or password";
     private static final String ERR_USERNAME_EXISTS = "Username already exists";
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * This implementation:
-     * <ol>
-     *   <li>Validates that credentials are not null</li>
-     *   <li>Queries the database for the user</li>
-     *   <li>Verifies the password using BCrypt</li>
-     *   <li>Sets the user type in the credentials if validation succeeds</li>
-     * </ol>
-     * </p>
-     *
-     * @return
-     */
     @Override
     public UserType validateUser(Credentials credentials) throws DAOException {
-    validateCredentialsInput(credentials);
+        validateCredentialsInput(credentials);
+
+        // FIX: Connection fuori dal try-with-resources
         try {
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_VALIDATE_USER)) {
@@ -94,10 +64,9 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                         // Verifica Password (Raw vs Hash)
                         if (PasswordUtils.checkPassword(credentials.getPassword(), storedHash)) {
                             logger.log(Level.INFO, "User validated: {0}", credentials.getUsername());
-                            return UserType.valueOf(typeString); // RITORNA IL TIPO
+                            return UserType.valueOf(typeString);
                         }
                     }
-                    // Se siamo qui, o utente non trovato o password errata
                     throw new DAOException(ERR_INVALID_CREDENTIALS);
                 }
             }
@@ -106,36 +75,28 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * The password is hashed using BCrypt before being stored in the database.
-     * After successful insertion, observers are notified for cross-persistence sync.
-     * </p>
-     */
     @Override
     public void saveUser(User user) throws DAOException {
-        validateUserInput(user); // Aggiorna la validazione per accettare User
+        validateUserInput(user);
 
         if (isUsernameTaken(user.getUsername())) {
             throw new DAOException(ERR_USERNAME_EXISTS);
         }
 
         try {
+            // FIX: Connection fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_USER)) {
 
-                // NON facciamo più l'hash qui. Lo prendiamo dal Model.
                 stmt.setString(1, user.getUsername());
-                stmt.setString(2, user.getPasswordHash()); // Getter dal model
+                stmt.setString(2, user.getPasswordHash());
                 stmt.setString(3, user.getFullName());
                 stmt.setString(4, user.getGender());
-                stmt.setString(5, user.getUserType().toString()); // O come gestisci l'enum
+                stmt.setString(5, user.getUserType().toString());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    // Cache Put: Ora è facilissimo, abbiamo già l'oggetto User!
                     putInCache(user, user.getUsername());
 
                     logger.log(Level.INFO, "User saved: {0}", user.getUsername());
@@ -147,20 +108,12 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * <strong>Nota sulla Cache:</strong> Questo metodo NON usa la cache.
-     * Motivo: L'interfaccia richiede un array di String contenente anche l'hash della password.
-     * L'oggetto User in cache (Domain Model) NON contiene la password per sicurezza.
-     * Pertanto, dobbiamo sempre interrogare il DB per ottenere i dati grezzi completi.
-     * </p>
-     */
     @Override
     public String[] retrieveUser(String username) throws DAOException {
         validateUsernameInput(username);
 
         try {
+            // FIX: Connection fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_SELECT_USER)) {
 
@@ -176,7 +129,7 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                                 rs.getString("user_type")
                         };
                     }
-                    return new String[0];
+                    return new String[0]; // Empty array if not found (convention from original code)
                 }
             }
         } catch (SQLException e) {
@@ -184,14 +137,12 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public boolean isUsernameTaken(String username) throws DAOException {
         validateUsernameInput(username);
 
         try {
+            // FIX: Connection fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_CHECK_USERNAME)) {
 
@@ -209,21 +160,14 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * After successful update, observers are notified for cross-persistence sync.
-     * </p>
-     */
     @Override
     public void updateUser(User user) throws DAOException {
-        // Validation: controlliamo solo che l'utente esista/sia valido
         validateUserInput(user);
 
         try {
+            // FIX: Connection fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_UPDATE_USER)) {
-                // Si presuppone che il controller abbia già fatto user.setFullName(...)
                 stmt.setString(1, user.getFullName());
                 stmt.setString(2, user.getGender());
                 stmt.setString(3, user.getUsername());
@@ -231,14 +175,9 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    // === CACHE WRITE-THROUGH (La tua richiesta) ===
-                    // Poiché 'user' è l'oggetto aggiornato (passato dal controller),
-                    // possiamo salvarlo direttamente in cache.
-                    // Nota: Non serve più rimuoverlo (Eviction), perché ora siamo sicuri che sia corretto.
                     putInCache(user, user.getUsername());
 
                     logger.log(Level.INFO, "User updated: {0}", user.getUsername());
-
                     notifyObservers(DaoOperation.UPDATE, "User", user.getUsername(), user);
                 } else {
                     throw new DAOException("User not found for update: " + user.getUsername());
@@ -249,18 +188,12 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * After successful deletion, observers are notified for cross-persistence sync.
-     * Note: This should typically be called after deleting type-specific data (Fan/VenueManager).
-     * </p>
-     */
     @Override
     public void deleteUser(User user) throws DAOException {
         validateUserInput(user);
 
         try {
+            // FIX: Connection fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = conn.prepareStatement(SQL_DELETE_USER)) {
                 stmt.setString(1, user.getUsername());
@@ -268,7 +201,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    // === CACHE REMOVE ===
                     removeFromCache(user.getClass(), user.getUsername());
 
                     logger.log(Level.INFO, "User deleted: {0}", user.getUsername());
@@ -282,9 +214,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
 
     // ========== PRIVATE VALIDATION METHODS ==========
 
-    /**
-     * Validates credentials input to prevent null pointer exceptions.
-     */
     private void validateCredentialsInput(Credentials credentials) {
         if (credentials == null || credentials.getUsername() == null ||
                 credentials.getUsername().trim().isEmpty() ||
@@ -293,9 +222,6 @@ public class UserDaoMySql extends AbstractMySqlDao implements UserDao {
         }
     }
 
-    /**
-     * Validates User input to prevent null pointer exceptions.
-     */
     private void validateUserInput(User user) {
         if (user == null) {
             throw new IllegalArgumentException(ERR_NULL_USER);

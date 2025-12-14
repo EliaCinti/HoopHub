@@ -1,6 +1,5 @@
 package it.uniroma2.hoophub.dao.mysql;
 
-import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -31,7 +30,6 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
     // NOTA: La mappa locale 'cache' è stata rimossa in favore di GlobalCache
 
     protected static final String ERR_NULL_USERNAME = "Username cannot be null or empty";
-    protected static final String ERR_NULL_USER_BEAN = "UserBean cannot be null";
     protected static final String ERR_INVALID_ID = "ID must be positive";
 
     protected AbstractMySqlDao() {
@@ -131,12 +129,6 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
         }
     }
 
-    protected void validateUserBeanInput(UserBean userBean) {
-        if (userBean == null) {
-            throw new IllegalArgumentException(ERR_NULL_USER_BEAN);
-        }
-    }
-
     protected void validateIdInput(int id) {
         if (id <= 0) {
             throw new IllegalArgumentException(ERR_INVALID_ID);
@@ -151,6 +143,7 @@ public abstract class AbstractMySqlDao extends AbstractObservableDao {
     @SuppressWarnings("java:S2077")
     protected boolean existsById(PreparedStatementProvider provider, int id) throws DAOException {
         try {
+            // FIX: Connessione fuori dal try-with-resources
             Connection conn = ConnectionFactory.getConnection();
             try (PreparedStatement stmt = provider.create(conn)) {
                 stmt.setInt(1, id);
