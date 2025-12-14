@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.sync;
 
+import it.uniroma2.hoophub.dao.GlobalCache;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.csv.CsvDaoConstants;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -79,6 +80,8 @@ public class InitialSyncManager {
         } catch (DAOException e) {
             logger.log(Level.SEVERE, "Initial synchronization failed.", e);
         } finally {
+            GlobalCache.getInstance().clearAll();
+            logger.info("Global Cache cleared to ensure data consistency.");
             SyncContext.endSync();
             logger.info("Real-time synchronization observers reactivated.");
         }

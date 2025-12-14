@@ -19,8 +19,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     private static final String COLUMN_LIST = "id, user_id, user_type, type, message, related_booking_id, is_read, created_at";
     private static final String SELECT = "SELECT ";
 
-    private static final String SQL_INSERT =
-            "INSERT INTO notifications (user_id, user_type, type, message, related_booking_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    private static final String SQL_INSERT_WITH_ID =
+            "INSERT INTO notifications (id, user_id, user_type, type, message, related_booking_id, is_read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String SQL_SELECT_BY_ID =
             SELECT + COLUMN_LIST + " FROM notifications WHERE id = ?";
@@ -55,45 +55,64 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT, Statement.RETURN_GENERATED_KEYS)) {
-                stmt.setString(1, notification.getUsername());
-                stmt.setString(2, notification.getUserType().name());
-                stmt.setString(3, notification.getType().name());
-                stmt.setString(4, notification.getMessage());
+            // Usa la NUOVA query con ID
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_WITH_ID, Statement.RETURN_GENERATED_KEYS)) {
 
-                if (notification.getBookingId() != null) {
-                    stmt.setInt(5, notification.getBookingId());
+                // 1. GESTIONE ID (Identity Preservation)
+                if (notification.getId() > 0) {
+                    stmt.setInt(1, notification.getId());
                 } else {
-                    stmt.setNull(5, Types.INTEGER);
+                    stmt.setNull(1, Types.INTEGER);
                 }
 
-                stmt.setBoolean(6, notification.isRead());
-                stmt.setTimestamp(7, Timestamp.valueOf(notification.getCreatedAt()));
+                // 2. SET PARAMETRI (Tutti slittati di +1)
+                stmt.setString(2, notification.getUsername());
+                stmt.setString(3, notification.getUserType().name());
+                stmt.setString(4, notification.getType().name());
+                stmt.setString(5, notification.getMessage());
+
+                if (notification.getBookingId() != null) {
+                    stmt.setInt(6, notification.getBookingId());
+                } else {
+                    stmt.setNull(6, Types.INTEGER);
+                }
+
+                stmt.setBoolean(7, notification.isRead());
+                stmt.setTimestamp(8, Timestamp.valueOf(notification.getCreatedAt()));
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            int newId = generatedKeys.getInt(1);
+                    // 3. RECUPERO ID FINALE
+                    int newId = notification.getId(); // Assumiamo sia quello passato
 
-                            Notification savedNotification = new Notification.Builder()
-                                    .from(notification)
-                                    .id(newId)
-                                    .build();
-
-                            conn.commit();
-                            putInCache(savedNotification, newId);
-
-                            logger.log(Level.INFO, "Notification saved with ID: {0}", newId);
-                            notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(newId), savedNotification);
-
-                            return savedNotification;
-                        } else {
-                            conn.rollback();
-                            throw new DAOException("Creating notification failed, no ID obtained.");
+                    // Se era 0 (generato da MySQL), lo recuperiamo
+                    if (newId == 0) {
+                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                            if (generatedKeys.next()) {
+                                newId = generatedKeys.getInt(1);
+                            } else {
+                                conn.rollback();
+                                throw new DAOException("Creating notification failed, no ID obtained.");
+                            }
                         }
                     }
+
+                    // 4. COSTRUZIONE OGGETTO
+                    Notification savedNotification = new Notification.Builder()
+                            .from(notification) // Copia tutto dal precedente
+                            .id(newId)          // Sovrascrive solo l'ID
+                            .build();
+
+                    conn.commit();
+
+                    // 5. CACHE & OBSERVER
+                    putInCache(savedNotification, newId);
+                    logger.log(Level.INFO, "Notification saved with ID: {0}", newId);
+                    notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(newId), savedNotification);
+
+                    return savedNotification;
+
                 } else {
                     conn.rollback();
                     throw new DAOException("Creating notification failed, no rows affected.");

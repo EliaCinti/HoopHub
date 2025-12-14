@@ -1,5 +1,1 @@
 "username","password_hash","full_name","gender","user_type"
-"jane_smith","$2a$12$KIXv4YhLK5t7TQqS5xwMHOWZvHxXL2d3HgWjZxNJ5Iu8K1kW9qW2e","Jane Smith","Female","FAN"
-"john_doe","$2a$12$KIXv4YhLK5t7TQqS5xwMHOWZvHxXL2d3HgWjZxNJ5Iu8K1kW9qW2e","John Doe","Male","FAN"
-"sarah_owner","$2a$12$KIXv4YhLK5t7TQqS5xwMHOWZvHxXL2d3HgWjZxNJ5Iu8K1kW9qW2e","Sarah Owner","Female","VENUE_MANAGER"
-"mike_manager","$2a$12$KIXv4YhLK5t7TQqS5xwMHOWZvHxXL2d3HgWjZxNJ5Iu8K1kW9qW2e","Mike Manager","Male","VENUE_MANAGER"

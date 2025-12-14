@@ -1,14 +1,13 @@
 package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.dao.AbstractObservableDao;
+import it.uniroma2.hoophub.dao.GlobalCache;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.dao.helper_dao.CsvUtilities;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -22,22 +21,15 @@ import java.util.logging.Logger;
  * <p>
  * <strong>Responsibilities:</strong>
  * <ul>
- *   <li>CSV file initialization and validation</li>
- *   <li>Common CRUD helper methods (getNextId, findRow, etc.)</li>
- *   <li>Centralized logging</li>
- *   <li>Error message formatting</li>
+ * <li>CSV file initialization and validation</li>
+ * <li>Common CRUD helper methods (getNextId, findRow, etc.)</li>
+ * <li>Centralized logging</li>
+ * <li>Error message formatting</li>
+ * <li><strong>Centralized Caching:</strong> Delegates to {@link GlobalCache}.</li>
  * </ul>
  * </p>
- * <p>
- * <strong>Design Pattern:</strong> Template Method - subclasses provide entity-specific
- * details (headers, column indices, mapping logic) while this class handles common operations.
- * </p>
- *
- * @see AbstractObservableDao
- * @see CsvUtilities
  */
 public abstract class AbstractCsvDao extends AbstractObservableDao {
-
 
     /**
      * Logger instance for this DAO (uses the concrete subclass name).
@@ -49,21 +41,10 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
      */
     protected final File csvFile;
 
-    // =================================================================================
-    // IDENTITY MAP (CACHE)
-    // =================================================================================
-    protected final Map<Object, Object> cache = new HashMap<>();
+    // NOTA: La mappa locale 'cache' è stata rimossa in favore di GlobalCache
 
     /**
      * Constructs a new AbstractCsvDao with the specified file path.
-     * <p>
-     * This constructor:
-     * <ol>
-     *   <li>Initializes the logger with the concrete subclass name</li>
-     *   <li>Creates the File object for the CSV file</li>
-     *   <li>Initializes the CSV file if it doesn't exist</li>
-     * </ol>
-     * </p>
      *
      * @param filePath The relative or absolute path to the CSV file
      */
@@ -74,37 +55,64 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
     }
 
     // =================================================================================
-    // CACHE MANAGEMENT METHODS
+    // CACHE MANAGEMENT METHODS (Delegated to GlobalCache)
     // =================================================================================
 
-    @SuppressWarnings("unchecked")
-    protected <T> T getFromCache(Object key) {
-        return (T) cache.get(key);
+    /**
+     * Genera una chiave univoca per la cache globale (es. "Booking:10").
+     */
+    protected String generateCacheKey(Class<?> clazz, Object id) {
+        if (id == null) return null;
+        return clazz.getSimpleName() + ":" + id;
     }
 
-    protected void putInCache(Object key, Object entity) {
-        if (key != null && entity != null) {
-            cache.put(key, entity);
+    /**
+     * Retrieves an entity from the Global Cache safely using Generics.
+     *
+     * @param clazz The class type of the object (e.g., User.class)
+     * @param key The unique identifier (ID or Username)
+     * @return The entity if found and matches the type, null otherwise
+     */
+    protected <T> T getFromCache(Class<T> clazz, Object key) {
+        String cacheKey = generateCacheKey(clazz, key);
+        Object cachedObject = GlobalCache.getInstance().get(cacheKey);
+        return cachedObject != null ? clazz.cast(cachedObject) : null;
+    }
+
+    /**
+     * Stores an entity in the Global Cache.
+     * The key is automatically generated based on the entity's class and the ID.
+     *
+     * @param entity The entity to cache
+     * @param key The unique identifier for the entity
+     */
+    protected void putInCache(Object entity, Object key) {
+        if (entity != null && key != null) {
+            String cacheKey = generateCacheKey(entity.getClass(), key);
+            GlobalCache.getInstance().put(cacheKey, entity);
         }
     }
 
-    protected void removeFromCache(Object key) {
+    /**
+     * Removes an entity from the Global Cache.
+     *
+     * @param clazz The class type of the object to remove
+     * @param key The unique identifier
+     */
+    protected void removeFromCache(Class<?> clazz, Object key) {
         if (key != null) {
-            cache.remove(key);
+            String cacheKey = generateCacheKey(clazz, key);
+            GlobalCache.getInstance().remove(cacheKey);
         }
     }
 
-    public void clearCache() {
-        cache.clear();
-    }
-
-    // ---
+    // =================================================================================
+    // CSV HANDLING METHODS (Invariati)
+    // =================================================================================
 
     /**
      * Returns the CSV header for this entity.
-     * <p>
      * Subclasses must implement this method to provide the column names for their CSV file.
-     * </p>
      *
      * @return Array of column names (e.g., ["id", "name", "email"])
      */
@@ -112,23 +120,10 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
 
     /**
      * Initializes the CSV file if it doesn't exist.
-     * <p>
-     * This method:
-     * <ol>
-     *   <li>Creates parent directories if needed</li>
-     *   <li>Creates an empty CSV file with just the header row</li>
-     *   <li>Logs the initialization</li>
-     * </ol>
-     * </p>
-     * <p>
-     * <strong>Thread Safety:</strong> This method is called from the constructor,
-     * which executes in a single-threaded context during object creation.
-     * </p>
      */
     private void initializeCsvFile() {
         try {
             if (!csvFile.exists()) {
-                // Create parent directories if they don't exist
                 File parentDir = csvFile.getParentFile();
                 if (parentDir != null && !parentDir.exists()) {
                     boolean dirsCreated = parentDir.mkdirs();
@@ -137,7 +132,6 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
                     }
                 }
 
-                // Create file with header only
                 List<String[]> emptyData = new ArrayList<>();
                 CsvUtilities.updateFile(csvFile, getHeader(), emptyData);
                 logger.log(Level.INFO, CsvDaoConstants.MSG_CSV_INITIALIZED, csvFile.getPath());
@@ -147,26 +141,10 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         }
     }
 
-    /**
-     * Generates the next available ID for a new entity.
-     * <p>
-     * This method scans all existing rows in the CSV file, finds the maximum ID value,
-     * and returns maxId + 1. This approach works for both integer and long IDs.
-     * </p>
-     * <p>
-     * <strong>Note:</strong> For high-concurrency scenarios, consider using a more
-     * sophisticated ID generation mechanism (e.g., UUID, database sequence).
-     * </p>
-     *
-     * @param idColumnIndex The index of the ID column (typically 0)
-     * @return The next available ID (maxId + 1), or 1 if no records exist
-     * @throws DAOException If there is an error reading the CSV file
-     */
     protected synchronized long getNextId(int idColumnIndex) throws DAOException {
         List<String[]> data = CsvUtilities.readAll(csvFile);
         long maxId = 0;
 
-        // Start from index 1 to skip header
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             try {
                 long id = Long.parseLong(data.get(i)[idColumnIndex]);
@@ -183,22 +161,6 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         return maxId + 1;
     }
 
-    /**
-     * Finds a specific row in the CSV file by matching a value in a specified column.
-     * <p>
-     * This is a generic search method that can be used to find rows by ID, username,
-     * or any other unique identifier.
-     * </p>
-     * <p>
-     * <strong>Performance Note:</strong> This method performs a linear search (O(n)).
-     * For large datasets, consider indexing or caching strategies.
-     * </p>
-     *
-     * @param columnIndex The index of the column to search in
-     * @param value The value to search for (exact match, case-sensitive)
-     * @return The matching row as a String array, or {@code null} if not found
-     * @throws DAOException If there is an error reading the CSV file
-     */
     protected synchronized String[] findRowByValue(int columnIndex, String value) throws DAOException {
         if (value == null) {
             return new String[0];
@@ -206,7 +168,6 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
 
         List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        // Start from index 1 to skip header
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
             if (row.length > columnIndex && row[columnIndex].equals(value)) {
@@ -217,17 +178,7 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         return new String[0];
     }
 
-    /**
-     * Deletes a row where the specified column matches the given string value.
-     * Useful for deleting entities identified by a string (e.g., username).
-     *
-     * @param columnIndex The index of the column to check (e.g., COL_USERNAME)
-     * @param value The value to match (e.g., "mario_rossi")
-     * @return true if a row was found and deleted, false otherwise
-     * @throws DAOException If there is an error reading or writing the CSV file
-     */
     protected synchronized boolean deleteByColumn(int columnIndex, String value) throws DAOException {
-        // Validazione input
         if (value == null) {
             return false;
         }
@@ -235,9 +186,7 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
-        // Start from index 1 to skip header
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            // Controllo bounds e match del valore
             if (data.get(i).length > columnIndex && data.get(i)[columnIndex].equals(value)) {
                 data.remove(i);
                 found = true;
@@ -246,103 +195,34 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         }
 
         if (found) {
-            // Scriviamo il file aggiornato.
-            // Nota: data contiene ancora header alla posizione 0 se non l'abbiamo rimosso.
-            // CsvUtilities.updateFile si aspetta i dati SENZA header (perché lo aggiunge lui),
-            // quindi passiamo la sublist dal secondo elemento in poi.
             CsvUtilities.updateFile(csvFile, getHeader(), data.subList(1, data.size()));
         }
 
         return found;
     }
 
-    /**
-     * Counts the total number of entities (rows) in the CSV file.
-     * <p>
-     * Excludes the header row from the count.
-     * </p>
-     *
-     * @return The number of data rows in the file (excluding header)
-     * @throws DAOException If there is an error reading the CSV file
-     */
-    protected synchronized int countEntities() throws DAOException {
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        return Math.max(0, data.size() - 1); // Subtract 1 for header
-    }
-
-    /**
-     * Validates that a string value is not null or empty.
-     * <p>
-     * This is a common validation pattern used across all DAO methods.
-     * </p>
-     *
-     * @param value The string value to validate
-     * @param fieldName The name of the field (for error messages)
-     * @throws IllegalArgumentException If the value is null or empty (after trimming)
-     */
     protected void validateNotNullOrEmpty(String value, String fieldName) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(String.format(CsvDaoConstants.ERR_NULL_OR_EMPTY, fieldName));
         }
     }
 
-    /**
-     * Validates that an object is not null.
-     * <p>
-     * This is a common validation pattern used across all DAO methods.
-     * </p>
-     *
-     * @param object The object to validate
-     * @param entityName The name of the entity (for error messages)
-     * @throws IllegalArgumentException If the object is null
-     */
     protected void validateNotNull(Object object, String entityName) {
         if (object == null) {
             throw new IllegalArgumentException(String.format(CsvDaoConstants.ERR_NULL_ENTITY, entityName));
         }
     }
 
-    /**
-     * Validates that an ID is positive.
-     * <p>
-     * This is a common validation pattern for methods that accept ID parameters.
-     * </p>
-     *
-     * @param id The ID to validate
-     * @throws IllegalArgumentException If the ID is not positive (less than or equal to 0)
-     */
     protected void validatePositiveId(long id) {
         if (id <= 0) {
             throw new IllegalArgumentException(CsvDaoConstants.ERR_INVALID_ID);
         }
     }
 
-    /**
-     * Deletes an entity from the CSV file by its ID.
-     * <p>
-     * This is a common delete pattern used across all CSV DAOs. It:
-     * <ol>
-     *   <li>Reads all data from the CSV file</li>
-     *   <li>Searches for the row with the matching ID</li>
-     *   <li>Removes that row if found</li>
-     *   <li>Writes the updated data back to the file</li>
-     * </ol>
-     * </p>
-     * <p>
-     * <strong>Thread Safety:</strong> This method is synchronized to prevent
-     * concurrent modification issues.
-     * </p>
-     *
-     * @param id The ID of the entity to delete
-     * @param idColumnIndex The index of the ID column in the CSV file
-     * @return {@code true} if the entity was found and deleted, {@code false} otherwise
-     * @throws DAOException If there is an error reading or writing the CSV file
-     */
     protected synchronized boolean deleteById(long id, int idColumnIndex) throws DAOException {
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean found = false;
 
-        // Skip header, find and remove matching row
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             if (Long.parseLong(data.get(i)[idColumnIndex]) == id) {
                 data.remove(i);
@@ -358,29 +238,6 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         return found;
     }
 
-    /**
-     * Returns the path of the CSV file managed by this DAO.
-     * <p>
-     * Useful for logging and debugging purposes.
-     * </p>
-     *
-     * @return The absolute path of the CSV file
-     */
-    protected String getFilePath() {
-        return csvFile.getAbsolutePath();
-    }
-
-    /**
-     * Reads all data rows from the CSV file, automatically skipping the header.
-     * <p>
-     * This is a convenience method that eliminates the need to manually skip the header
-     * row when iterating over CSV data. Returns an empty list if the file only contains
-     * a header or is empty.
-     * </p>
-     *
-     * @return List of data rows (without header), or empty list if no data exists
-     * @throws DAOException If there is an error reading the CSV file
-     */
     protected synchronized List<String[]> readAllDataRows() throws DAOException {
         List<String[]> allData = CsvUtilities.readAll(csvFile);
 
@@ -388,22 +245,9 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
             return new ArrayList<>();
         }
 
-        // Return all rows except header
         return new ArrayList<>(allData.subList(CsvDaoConstants.FIRST_DATA_ROW, allData.size()));
     }
 
-    /**
-     * Finds all rows matching a specific value in a column.
-     * <p>
-     * Unlike {@link #findRowByValue(int, String)} which returns only the first match,
-     * this method returns all matching rows. Useful for one-to-many relationships.
-     * </p>
-     *
-     * @param columnIndex The index of the column to search in
-     * @param value The value to search for (exact match, case-sensitive)
-     * @return List of all matching rows, or empty list if none found
-     * @throws DAOException If there is an error reading the CSV file
-     */
     protected synchronized List<String[]> findAllRowsByValue(int columnIndex, String value) throws DAOException {
         if (value == null) {
             return new ArrayList<>();
@@ -412,7 +256,6 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         List<String[]> matches = new ArrayList<>();
         List<String[]> data = CsvUtilities.readAll(csvFile);
 
-        // Start from index 1 to skip header
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
             if (row.length > columnIndex && row[columnIndex].equals(value)) {
@@ -421,5 +264,16 @@ public abstract class AbstractCsvDao extends AbstractObservableDao {
         }
 
         return matches;
+    }
+
+    /**
+     * Checks if a CSV row is valid (not null and not empty).
+     * Useful for validating results from findRowByValue or UserDao.retrieveUser.
+     *
+     * @param row The CSV row array
+     * @return true if the row contains data, false otherwise
+     */
+    protected boolean isValidRow(String[] row) {
+        return row != null && row.length > 0;
     }
 }

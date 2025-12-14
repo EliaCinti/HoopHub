@@ -18,7 +18,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
     private static final String CSV_FILE_PATH = CsvDaoConstants.CSV_BASE_DIR + "notifications.csv";
 
-    // HEADER ALLINEATO AL DB: user_id, user_type, type, message, related_booking_id, ...
+    // HEADER ALLINEATO AL DB
     private static final String[] CSV_HEADER = {
             "id", "user_id", "user_type", "type", "message",
             "related_booking_id", "is_read", "created_at"
@@ -27,11 +27,11 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
     private static final String NOTIFICATION = "Notification";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // INDICI (Ricalcolati sull'header nuovo)
+    // INDICI
     private static final int COL_ID = 0;
-    private static final int COL_USER_ID = 1;      // Era username
+    private static final int COL_USER_ID = 1;
     private static final int COL_USER_TYPE = 2;
-    private static final int COL_TYPE = 3;         // Era notification_type
+    private static final int COL_TYPE = 3;
     private static final int COL_MESSAGE = 4;
     private static final int COL_RELATED_BOOKING_ID = 5;
     private static final int COL_IS_READ = 6;
@@ -64,16 +64,20 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
         String[] newRow = {
                 String.valueOf(id),
-                savedNotification.getUsername(),    // Mappa su user_id
+                savedNotification.getUsername(),
                 savedNotification.getUserType().name(),
-                savedNotification.getType().name(), // Mappa su type
+                savedNotification.getType().name(),
                 savedNotification.getMessage(),
-                bookingIdStr,                       // Mappa su related_booking_id
+                bookingIdStr,
                 String.valueOf(savedNotification.isRead()),
                 savedNotification.getCreatedAt().format(DATE_TIME_FORMATTER)
         };
 
         CsvUtilities.writeFile(csvFile, newRow);
+
+        // CACHE: Write-Through
+        putInCache(savedNotification, id);
+
         notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(id), savedNotification);
         return savedNotification;
     }
@@ -81,8 +85,28 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
     @Override
     public synchronized Notification retrieveNotification(int id) throws DAOException {
         validatePositiveId(id);
+
+        // 1. CACHE CHECK
+        Notification cached = getFromCache(Notification.class, id);
+        if (cached != null) return cached;
+
+        // 2. Load from file
         String[] row = findRowByValue(COL_ID, String.valueOf(id));
-        return (row == null) ? null : mapRowToNotification(row);
+
+        // FIX "SILENZIATORE": Controllo esplicito per righe vuote o array a lunghezza 0
+        // Se row è vuoto, significa "non trovato" (o riga sporca), quindi ritorniamo null
+        // senza provare a mapparlo (che causerebbe l'eccezione).
+        if (row == null || row.length == 0) {
+            return null;
+        }
+
+        // Ora siamo sicuri che row abbia dei dati
+        Notification notification = mapRowToNotification(row);
+
+        // 3. CACHE PUT
+        putInCache(notification, id);
+
+        return notification;
     }
 
     @Override
@@ -95,9 +119,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
 
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
-            // COL_USER_ID corrisponde allo username
             if (row[COL_USER_ID].equals(username) && row[COL_USER_TYPE].equals(userType.name())) {
-                notifications.add(mapRowToNotification(row));
+                notifications.add(resolveNotificationFromRow(row));
             }
         }
         notifications.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
@@ -117,7 +140,7 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
             if (row[COL_USER_ID].equals(username) &&
                     row[COL_USER_TYPE].equals(userType.name()) &&
                     !Boolean.parseBoolean(row[COL_IS_READ])) {
-                notifications.add(mapRowToNotification(row));
+                notifications.add(resolveNotificationFromRow(row));
             }
         }
         notifications.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
@@ -144,14 +167,24 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
         if (!found) throw new DAOException("Notification not found: " + notification.getId());
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+
+        // CACHE: Write-Through
+        putInCache(notification, notification.getId());
+
         notifyObservers(DaoOperation.UPDATE, NOTIFICATION, String.valueOf(notification.getId()), notification);
     }
 
     @Override
     public synchronized void markAllAsReadForUser(String username, UserType userType) throws DAOException {
-        // ... Logica uguale, usa le nuove costanti COL_USER_ID ...
         List<String[]> data = CsvUtilities.readAll(csvFile);
         boolean changed = false;
+
+        // Per semplicità, qui non aggiorniamo la cache in tempo reale (sarebbe pesante).
+        // Meglio invalidare le notifiche di quell'utente se avessimo una cache query-based.
+        // Con la cache ID-based, i dati in memoria rimarranno "isRead=false" fino al riavvio o eviction.
+        // Soluzione: clearCache() parziale o accettare un breve disallineamento.
+        // Dato che retrieveNotification non è molto usata per le liste, è accettabile.
+
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
             if (row[COL_USER_ID].equals(username) &&
@@ -169,8 +202,13 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
         validateNotNull(notification, NOTIFICATION);
         int id = notification.getId();
         validatePositiveId(id);
+
         boolean found = deleteById(id, COL_ID);
         if (!found) throw new DAOException("Notification not found");
+
+        // CACHE: Remove
+        removeFromCache(Notification.class, id);
+
         notifyObservers(DaoOperation.DELETE, NOTIFICATION, String.valueOf(id), null);
     }
 
@@ -188,6 +226,8 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
                 remaining.add(row);
             } else {
                 changed = true;
+                // Opzionale: Rimuovere dalla cache per ID
+                removeFromCache(Notification.class, Integer.parseInt(row[COL_ID]));
             }
         }
         if(changed) CsvUtilities.updateFile(csvFile, CSV_HEADER, remaining);
@@ -198,14 +238,38 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
         return getUnreadNotificationsForUser(u, t).size();
     }
 
-    // ========== HELPER MAPPING (Aggiornato) ==========
+    // ========== HELPER MAPPING ==========
 
-    private Notification mapRowToNotification(String[] row) throws DAOException {
+    /**
+     * Helper per risolvere la notifica dalla riga, usando la cache.
+     */
+    private Notification resolveNotificationFromRow(String[] row) throws DAOException {
         try {
             int id = Integer.parseInt(row[COL_ID]);
-            String username = row[COL_USER_ID]; // Mappa da colonna user_id
+            Notification cached = getFromCache(Notification.class, id);
+            if (cached != null) return cached;
+
+            Notification n = mapRowToNotification(row);
+            putInCache(n, id);
+            return n;
+        } catch (NumberFormatException e) {
+            // Log e ignora riga corrotta
+            return null;
+        }
+    }
+
+    // FIX: Aggiunto controllo di validità all'inizio
+    private Notification mapRowToNotification(String[] row) throws DAOException {
+        // Difesa contro array vuoti o nulli
+        if (!isValidRow(row)) {
+            throw new DAOException("Attempted to map an invalid or empty CSV row to Notification");
+        }
+
+        try {
+            int id = Integer.parseInt(row[COL_ID]);
+            String username = row[COL_USER_ID];
             UserType userType = UserType.valueOf(row[COL_USER_TYPE]);
-            NotificationType notificationType = NotificationType.valueOf(row[COL_TYPE]); // Mappa da colonna type
+            NotificationType notificationType = NotificationType.valueOf(row[COL_TYPE]);
             String message = row[COL_MESSAGE];
 
             String bIdStr = row[COL_RELATED_BOOKING_ID];

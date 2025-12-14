@@ -29,9 +29,8 @@ import java.util.logging.Level;
 public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
 
     // ========== SQL Queries ==========
-    private static final String SQL_INSERT_BOOKING =
-            "INSERT INTO bookings (game_date, game_time, home_team, away_team, venue_id, " +
-                    "fan_username, status, notified) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+    private static final String SQL_INSERT_BOOKING_WITH_ID =
+            "INSERT INTO bookings (id, game_date, game_time, home_team, away_team, venue_id, fan_username, status, notified) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
     private static final String SQL_SELECT_BOOKING =
             "SELECT id, game_date, game_time, home_team, away_team, venue_id, fan_username, " +
@@ -101,50 +100,67 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING,
+            // Usa la nuova query con ID
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_BOOKING_WITH_ID,
                     Statement.RETURN_GENERATED_KEYS)) {
 
-                stmt.setDate(1, java.sql.Date.valueOf(booking.getGameDate()));
-                stmt.setTime(2, java.sql.Time.valueOf(booking.getGameTime()));
-                stmt.setString(3, booking.getHomeTeam().name());
-                stmt.setString(4, booking.getAwayTeam().name());
-                stmt.setInt(5, booking.getVenue().getId());
-                stmt.setString(6, booking.getFan().getUsername());
-                stmt.setString(7, booking.getStatus().name());
-                stmt.setBoolean(8, booking.isNotified());
+                // 1. GESTIONE ID (Identity Preservation)
+                if (booking.getId() > 0) {
+                    stmt.setInt(1, booking.getId());
+                } else {
+                    stmt.setNull(1, java.sql.Types.INTEGER);
+                }
+
+                // 2. SET ALTRI PARAMETRI (Indici scalati di +1)
+                stmt.setDate(2, java.sql.Date.valueOf(booking.getGameDate()));
+                stmt.setTime(3, java.sql.Time.valueOf(booking.getGameTime()));
+                stmt.setString(4, booking.getHomeTeam().name());
+                stmt.setString(5, booking.getAwayTeam().name());
+                stmt.setInt(6, booking.getVenue().getId());
+                stmt.setString(7, booking.getFan().getUsername());
+                stmt.setString(8, booking.getStatus().name());
+                stmt.setBoolean(9, booking.isNotified());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            int newId = generatedKeys.getInt(1);
+                    // 3. RECUPERO ID FINALE
+                    int newId = booking.getId(); // Assumiamo sia quello passato
 
-                            Booking savedBooking = new Booking.Builder(
-                                    newId,
-                                    booking.getGameDate(),
-                                    booking.getGameTime(),
-                                    booking.getHomeTeam(),
-                                    booking.getAwayTeam(),
-                                    booking.getVenue(),
-                                    booking.getFan()
-                            )
-                                    .status(booking.getStatus())
-                                    .notified(booking.isNotified())
-                                    .build();
-
-                            conn.commit();
-                            putInCache(savedBooking, newId);
-
-                            logger.log(Level.INFO, "Booking saved successfully with ID: {0}", newId);
-                            notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
-
-                            return savedBooking;
-                        } else {
-                            conn.rollback();
-                            throw new DAOException("Creating booking failed, no ID obtained.");
+                    // Se era 0 (generato da MySQL), lo recuperiamo
+                    if (newId == 0) {
+                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                            if (generatedKeys.next()) {
+                                newId = generatedKeys.getInt(1);
+                            } else {
+                                conn.rollback();
+                                throw new DAOException("Creating booking failed, no ID obtained.");
+                            }
                         }
                     }
+
+                    Booking savedBooking = new Booking.Builder(
+                            newId, // ID Definitivo
+                            booking.getGameDate(),
+                            booking.getGameTime(),
+                            booking.getHomeTeam(),
+                            booking.getAwayTeam(),
+                            booking.getVenue(),
+                            booking.getFan()
+                    )
+                            .status(booking.getStatus())
+                            .notified(booking.isNotified())
+                            .build();
+
+                    conn.commit();
+
+                    // CACHE & OBSERVER
+                    putInCache(savedBooking, newId);
+                    logger.log(Level.INFO, "Booking saved successfully with ID: {0}", newId);
+                    notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
+
+                    return savedBooking;
+
                 } else {
                     conn.rollback();
                     throw new DAOException("Creating booking failed, no rows affected.");

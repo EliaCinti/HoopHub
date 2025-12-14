@@ -29,9 +29,8 @@ import java.util.logging.Level;
 public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
     // ========== SQL Queries ==========
-    private static final String SQL_INSERT_VENUE =
-            "INSERT INTO venues (name, type, address, city, max_capacity, venue_manager_username) " +
-                    "VALUES (?, ?, ?, ?, ?, ?)";
+    private static final String SQL_INSERT_VENUE_WITH_ID =
+            "INSERT INTO venues (id, name, type, address, city, max_capacity, venue_manager_username) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
     private static final String SQL_SELECT_VENUE =
             "SELECT id, name, type, address, city, max_capacity, venue_manager_username " +
@@ -92,59 +91,74 @@ public class VenueDaoMySql extends AbstractMySqlDao implements VenueDao {
 
         Connection conn = null;
         try {
-            // FIX: Recuperiamo la connessione PRIMA di usarla
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE,
+            try (PreparedStatement stmt = conn.prepareStatement(SQL_INSERT_VENUE_WITH_ID,
                     java.sql.Statement.RETURN_GENERATED_KEYS)) {
 
-                stmt.setString(1, venue.getName());
-                stmt.setString(2, venue.getType().name());
-                stmt.setString(3, venue.getAddress());
-                stmt.setString(4, venue.getCity());
-                stmt.setInt(5, venue.getMaxCapacity());
-                stmt.setString(6, venue.getVenueManagerUsername());
+                // 1. GESTIONE ID (Identity Preservation)
+                if (venue.getId() > 0) {
+                    stmt.setInt(1, venue.getId());
+                } else {
+                    stmt.setNull(1, java.sql.Types.INTEGER);
+                }
+
+                stmt.setString(2, venue.getName());
+                stmt.setString(3, venue.getType().name());
+                stmt.setString(4, venue.getAddress());
+                stmt.setString(5, venue.getCity());
+                stmt.setInt(6, venue.getMaxCapacity());
+                stmt.setString(7, venue.getVenueManagerUsername());
 
                 int affectedRows = stmt.executeUpdate();
 
                 if (affectedRows > 0) {
-                    try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
-                        if (generatedKeys.next()) {
-                            int newId = generatedKeys.getInt(1);
-
-                            try (PreparedStatement teamStmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
-                                teamStmt.setInt(1, newId);
-                                for (TeamNBA team : venue.getAssociatedTeams()) {
-                                    teamStmt.setString(2, team.name());
-                                    teamStmt.addBatch();
-                                }
-                                teamStmt.executeBatch();
+                    // RECUPERO ID
+                    int newId = venue.getId();
+                    if (newId == 0) {
+                        try (ResultSet generatedKeys = stmt.getGeneratedKeys()) {
+                            if (generatedKeys.next()) {
+                                newId = generatedKeys.getInt(1);
+                            } else {
+                                conn.rollback();
+                                throw new DAOException("Creating venue failed, no ID obtained.");
                             }
-
-                            Venue savedVenue = new Venue.Builder()
-                                    .id(newId)
-                                    .name(venue.getName())
-                                    .type(venue.getType())
-                                    .address(venue.getAddress())
-                                    .city(venue.getCity())
-                                    .maxCapacity(venue.getMaxCapacity())
-                                    .venueManager(venue.getVenueManager())
-                                    .teams(venue.getAssociatedTeams())
-                                    .build();
-
-                            conn.commit();
-
-                            putInCache(savedVenue, newId);
-                            logger.log(Level.INFO, "Venue saved successfully with ID: {0}", newId);
-                            notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(newId), savedVenue);
-
-                            return savedVenue;
-                        } else {
-                            conn.rollback();
-                            throw new DAOException("Creating venue failed, no ID obtained.");
                         }
                     }
+
+                    // SALVATAGGIO TEAM (Optimized Batch)
+                    try (PreparedStatement teamStmt = conn.prepareStatement(SQL_INSERT_VENUE_TEAM)) {
+
+                        // FIX: Spostato fuori dal loop (Loop Invariant)
+                        teamStmt.setInt(1, newId);
+
+                        for (TeamNBA team : venue.getAssociatedTeams()) {
+                            teamStmt.setString(2, team.name());
+                            teamStmt.addBatch();
+                        }
+                        teamStmt.executeBatch();
+                    }
+
+                    Venue savedVenue = new Venue.Builder()
+                            .id(newId)
+                            .name(venue.getName())
+                            .type(venue.getType())
+                            .address(venue.getAddress())
+                            .city(venue.getCity())
+                            .maxCapacity(venue.getMaxCapacity())
+                            .venueManager(venue.getVenueManager())
+                            .teams(venue.getAssociatedTeams())
+                            .build();
+
+                    conn.commit();
+
+                    putInCache(savedVenue, newId);
+                    logger.log(Level.INFO, "Venue saved successfully with ID: {0}", newId);
+                    notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(newId), savedVenue);
+
+                    return savedVenue;
+
                 } else {
                     conn.rollback();
                     throw new DAOException("Creating venue failed, no rows affected.");

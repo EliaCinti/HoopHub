@@ -20,25 +20,6 @@ import java.util.logging.Level;
 
 /**
  * CSV implementation of BookingDao.
- * <p>
- * Manages Booking data in CSV file with references to Fan and Venue.
- * </p>
- * <p>
- * <strong>Design Patterns:</strong>
- * <ul>
- *   <li><strong>Factory</strong>: Created via BookingDaoFactory</li>
- *   <li><strong>Facade</strong>: Uses DaoFactoryFacade to access FanDao and VenueDao</li>
- *   <li><strong>Observer</strong>: Notifies observers for CSV-MySQL sync</li>
- *   <li><strong>Builder</strong>: Uses Booking.Builder for object construction</li>
- * </ul>
- * </p>
- * <p>
- * <strong>Circular Dependency:</strong> Uses {@link DaoLoadingContext} to prevent infinite loops
- * when Booking loads Fan and Fan loads Bookings back.
- * </p>
- *
- * @see BookingDao
- * @see DaoLoadingContext
  */
 public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
@@ -68,12 +49,6 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
     // ========== CONSTRUCTOR ==========
 
-    /**
-     * Constructs a new BookingDaoCsv.
-     * <p>
-     * Initializes the CSV file if it doesn't exist (handled by AbstractCsvDao).
-     * </p>
-     */
     public BookingDaoCsv() {
         super(CSV_FILE_PATH);
     }
@@ -89,13 +64,11 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized Booking saveBooking(Booking booking) throws DAOException {
         validateNotNull(booking, BOOKING);
 
-        // 1. Gestione ID: Se è 0, ne generiamo uno nuovo. Se è > 0 (es. da sync), lo manteniamo.
         int id = booking.getId();
         if (id == 0) {
-            id = (int) getNextId(COL_ID); // Metodo helper di AbstractCsvDao
+            id = (int) getNextId(COL_ID);
         }
 
-        // 2. Creazione dell'oggetto "Salvato" (con l'ID definitivo)
         Booking savedBooking = new Booking.Builder(
                 id,
                 booking.getGameDate(),
@@ -109,23 +82,23 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
                 .notified(booking.isNotified())
                 .build();
 
-        // 3. Preparazione riga CSV leggendo dal NUOVO oggetto
         String[] newRow = {
                 String.valueOf(savedBooking.getId()),
                 savedBooking.getGameDate().toString(),
                 savedBooking.getGameTime().toString(),
-                savedBooking.getHomeTeam().name(), // Enum -> String
-                savedBooking.getAwayTeam().name(), // Enum -> String
+                savedBooking.getHomeTeam().name(),
+                savedBooking.getAwayTeam().name(),
                 String.valueOf(savedBooking.getVenue().getId()),
                 savedBooking.getFan().getUsername(),
                 savedBooking.getStatus().name(),
                 String.valueOf(savedBooking.isNotified())
         };
 
-        // 4. Scrittura su file
         CsvUtilities.writeFile(csvFile, newRow);
 
-        // 5. Notifica e Ritorno
+        // CACHE: Write-Through
+        putInCache(savedBooking, id);
+
         notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), savedBooking);
 
         return savedBooking;
@@ -135,23 +108,30 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized Booking retrieveBooking(int bookingId) throws DAOException {
         validatePositiveId(bookingId);
 
+        // 1. CACHE CHECK
+        Booking cached = getFromCache(Booking.class, bookingId);
+        if (cached != null) return cached;
+
+        // 2. Load from file
         String[] row = findRowByValue(COL_ID, String.valueOf(bookingId));
-        if (row == null) {
+
+        // FIX: Usa isValidRow
+        if (!isValidRow(row)) {
             return null;
         }
 
-        return mapRowToBooking(row);
+        Booking booking = mapRowToBooking(row);
+
+        // 3. CACHE PUT
+        putInCache(booking, bookingId);
+
+        return booking;
     }
 
     @Override
     public synchronized List<Booking> retrieveAllBookings() throws DAOException {
-        List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            bookings.add(mapRowToBooking(data.get(i)));
-        }
-
+        List<String[]> data = readAllDataRows();
+        List<Booking> bookings = processRowsToBookings(data);
         logger.log(Level.FINE, "Retrieved {0} bookings", bookings.size());
         return bookings;
     }
@@ -159,106 +139,79 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     @Override
     public synchronized List<Booking> retrieveBookingsByFan(String fanUsername) throws DAOException {
         validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
-
-        // Uses AbstractCsvDao helper to find all matching rows
         List<String[]> matchingRows = findAllRowsByValue(COL_FAN_USERNAME, fanUsername);
-        List<Booking> bookings = new ArrayList<>();
-
-        for (String[] row : matchingRows) {
-            bookings.add(mapRowToBooking(row));
-        }
-
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
     public synchronized List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
         validatePositiveId(venueId);
-
-        // Uses AbstractCsvDao helper to find all matching rows
         List<String[]> matchingRows = findAllRowsByValue(COL_VENUE_ID, String.valueOf(venueId));
-        List<Booking> bookings = new ArrayList<>();
-
-        for (String[] row : matchingRows) {
-            bookings.add(mapRowToBooking(row));
-        }
-
+        List<Booking> bookings = processRowsToBookings(matchingRows);
         logger.log(Level.FINE, "Retrieved {0} bookings for venue {1}",
                 new Object[]{bookings.size(), venueId});
         return bookings;
     }
 
-    /**
-     * {@inheritDoc}
-     * <p>
-     * <strong>Implementation Note:</strong> This method performs an in-memory "JOIN" equivalent.
-     * It first retrieves all venues managed by the user, collects their IDs, and then
-     * filters all bookings that match those venue IDs.
-     * </p>
-     */
     @Override
     public synchronized List<Booking> retrieveBookingsByVenueManager(String venueManagerUsername) throws DAOException {
         validateNotNullOrEmpty(venueManagerUsername, "Venue manager username");
 
-        // Step 1: Retrieve all venues managed by this manager using VenueDao
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
         VenueDao venueDao = daoFactory.getVenueDao();
 
         List<Venue> managedVenues = venueDao.retrieveVenuesByManager(venueManagerUsername);
 
-        // Optimization: If no venues, return empty list immediately
         if (managedVenues.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // Step 2: Collect IDs of managed venues for fast lookup
         List<Integer> managedVenueIds = new ArrayList<>();
         for (Venue venue : managedVenues) {
             managedVenueIds.add(venue.getId());
         }
 
-        // Step 3: Retrieve all bookings and filter by venue ID
-        // Note: We use readAll directly instead of retrieveAllBookings to avoid building objects we might discard
-        List<String[]> data = CsvUtilities.readAll(csvFile);
-        List<Booking> matchingBookings = new ArrayList<>();
+        List<String[]> data = readAllDataRows();
+        List<String[]> matchingRows = new ArrayList<>();
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
+        for (String[] row : data) {
+            // FIX: Controllo validità riga prima di accedere all'indice
+            if (row.length <= COL_VENUE_ID) continue;
+
             try {
                 int bookingVenueId = Integer.parseInt(row[COL_VENUE_ID]);
-
-                // Filter: Does this booking belong to one of the manager's venues?
                 if (managedVenueIds.contains(bookingVenueId)) {
-                    // Only map (and load heavy dependencies) if it's a match
-                    matchingBookings.add(mapRowToBooking(row));
+                    matchingRows.add(row);
                 }
             } catch (NumberFormatException e) {
-                logger.log(Level.WARNING, "Skipping invalid booking row at index {0}", i);
+                logger.log(Level.WARNING, "Skipping invalid booking row: invalid venue ID");
             }
         }
 
+        List<Booking> bookings = processRowsToBookings(matchingRows);
         logger.log(Level.FINE, "Retrieved {0} bookings for manager {1}",
-                new Object[]{matchingBookings.size(), venueManagerUsername});
-        return matchingBookings;
+                new Object[]{bookings.size(), venueManagerUsername});
+        return bookings;
     }
 
     @Override
     public synchronized List<Booking> retrieveBookingsByDate(LocalDate date) throws DAOException {
         validateNotNull(date, "Date");
 
-        List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> data = readAllDataRows();
+        List<String[]> matchingRows = new ArrayList<>();
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
+        for (String[] row : data) {
+            // FIX: Controllo validità riga
+            if (row.length <= COL_GAME_DATE) continue;
 
             if (LocalDate.parse(row[COL_GAME_DATE]).equals(date)) {
-                bookings.add(mapRowToBooking(row));
+                matchingRows.add(row);
             }
         }
 
-        logger.log(Level.INFO, () ->
-                "Retrieved " + bookings.size() + " bookings for date " + date);
+        List<Booking> bookings = processRowsToBookings(matchingRows);
+        logger.log(Level.INFO, () -> "Retrieved " + bookings.size() + " bookings for date " + date);
         return bookings;
     }
 
@@ -267,47 +220,42 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
         validateNotNull(status, "BookingStatus");
 
-        List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> data = readAllDataRows();
+        List<String[]> matchingRows = new ArrayList<>();
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
+        for (String[] row : data) {
+            // FIX: Controllo validità riga per evitare ArrayIndexOutOfBounds
+            if (row.length <= COL_STATUS) continue;
 
             if (row[COL_FAN_USERNAME].equals(fanUsername) &&
                     row[COL_STATUS].equals(status.name())) {
-                bookings.add(mapRowToBooking(row));
+                matchingRows.add(row);
             }
         }
-
-        logger.log(Level.FINE, "Retrieved {0} {1} bookings for fan {2}",
-                new Object[]{bookings.size(), status, fanUsername});
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
     public synchronized List<Booking> retrieveUnnotifiedBookings(String fanUsername) throws DAOException {
         validateNotNullOrEmpty(fanUsername, FAN_USERNAME);
 
-        List<Booking> bookings = new ArrayList<>();
-        List<String[]> data = CsvUtilities.readAll(csvFile);
+        List<String[]> data = readAllDataRows();
+        List<String[]> matchingRows = new ArrayList<>();
 
-        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
-            String[] row = data.get(i);
+        for (String[] row : data) {
+            // FIX: Controllo validità riga
+            if (row.length <= COL_NOTIFIED) continue;
 
             if (row[COL_FAN_USERNAME].equals(fanUsername) &&
                     !Boolean.parseBoolean(row[COL_NOTIFIED])) {
-                bookings.add(mapRowToBooking(row));
+                matchingRows.add(row);
             }
         }
-
-        logger.log(Level.FINE, "Retrieved {0} unnotified bookings for fan {1}",
-                new Object[]{bookings.size(), fanUsername});
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
     public synchronized void updateBooking(Booking booking) throws DAOException {
-        // 1. Validazione sul Model
         validateNotNull(booking, BOOKING);
         validatePositiveId(booking.getId());
 
@@ -317,18 +265,19 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
 
-            // Cerchiamo la riga con l'ID corrispondente
-            if (Integer.parseInt(row[COL_ID]) == booking.getId()) {
-                // 2. Aggiornamento dati leggendo dal MODEL
-                row[COL_GAME_DATE] = booking.getGameDate().toString();
-                row[COL_GAME_TIME] = booking.getGameTime().toString();
-                row[COL_HOME_TEAM] = booking.getHomeTeam().name(); // Enum -> String
-                row[COL_AWAY_TEAM] = booking.getAwayTeam().name(); // Enum -> String
-                row[COL_VENUE_ID] = String.valueOf(booking.getVenueId());
-                row[COL_STATUS] = booking.getStatus().name();      // Enum -> String
-                row[COL_NOTIFIED] = String.valueOf(booking.isNotified());
+            // 1. Troviamo la riga giusta (ID match e non vuota)
+            if (row.length > COL_ID && Integer.parseInt(row[COL_ID]) == booking.getId()) {
 
-                found = true;
+                // 2. Verifichiamo se la riga è integra per scriverci sopra
+                if (row.length > COL_NOTIFIED) {
+                    updateRowData(row, booking);
+                    found = true;
+                } else {
+                    // Riga trovata ma corrotta: non aggiorniamo, ma logghiamo il problema
+                    logger.log(Level.WARNING, "Skipping update: CSV row for ID {0} is incomplete.", booking.getId());
+                }
+
+                // 3. UNICO BREAK: Abbiamo trovato l'ID (valido o no), fine della ricerca.
                 break;
             }
         }
@@ -342,23 +291,31 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         logger.log(Level.INFO, "Booking updated successfully: {0}", booking.getId());
 
-        // 3. Notifica Observer passando il Model
+        // CACHE: Write-Through
+        putInCache(booking, booking.getId());
+
         notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
+    }
+
+    private void updateRowData(String[] row, Booking booking) {
+        // Helper interno per pulire updateBooking
+        row[COL_GAME_DATE] = booking.getGameDate().toString();
+        row[COL_GAME_TIME] = booking.getGameTime().toString();
+        row[COL_HOME_TEAM] = booking.getHomeTeam().name();
+        row[COL_AWAY_TEAM] = booking.getAwayTeam().name();
+        row[COL_VENUE_ID] = String.valueOf(booking.getVenueId());
+        row[COL_STATUS] = booking.getStatus().name();
+        row[COL_NOTIFIED] = String.valueOf(booking.isNotified());
     }
 
     @Override
     public synchronized void deleteBooking(Booking booking) throws DAOException {
-        // 1. Validazione Model
         validateNotNull(booking, BOOKING);
-
         int bookingId = booking.getId();
-        // Validazione ID positivo (se non hai un helper dedicato, usa questo check diretto)
         if (bookingId <= 0) {
             throw new IllegalArgumentException("Invalid booking ID: " + bookingId);
         }
 
-        // 2. Cancellazione dal CSV
-        // Usiamo deleteByColumn (metodo di AbstractCsvDao) passando la colonna ID e il valore
         boolean found = deleteByColumn(COL_ID, String.valueOf(bookingId));
 
         if (!found) {
@@ -368,14 +325,17 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
 
-        // 3. Notifica Observer
+        // CACHE: Remove
+        removeFromCache(Booking.class, bookingId);
+
         notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
     }
 
     @Override
     public synchronized boolean bookingExists(int bookingId) throws DAOException {
         validatePositiveId(bookingId);
-        return findRowByValue(COL_ID, String.valueOf(bookingId)) != null;
+        // FIX: Usa isValidRow
+        return isValidRow(findRowByValue(COL_ID, String.valueOf(bookingId)));
     }
 
     @Override
@@ -386,18 +346,42 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     // ========== PRIVATE HELPER METHODS ==========
 
     /**
-     * Maps a CSV row to a Booking domain object.
-     * <p>
-     * <strong>Refactoring:</strong> The duplication has been removed by extracting the
-     * object retrieval and building logic into the {@link #loadAndBuildBooking} helper method.
-     * The circular dependency check now simply decides whether to wrap that call
-     * in a new loading context or not.
-     * </p>
-     *
-     * @param row The CSV row data
-     * @return A Booking object with loaded Fan and Venue references
-     * @throws DAOException If the row data is invalid or cannot be parsed
+     * Converts a list of CSV rows into a list of Booking objects using cache check.
      */
+    private List<Booking> processRowsToBookings(List<String[]> rows) throws DAOException {
+        List<Booking> bookings = new ArrayList<>();
+        for (String[] row : rows) {
+            Booking b = resolveBookingFromRow(row);
+            if (b != null) {
+                bookings.add(b);
+            }
+        }
+        return bookings;
+    }
+
+    /**
+     * Resolves a single CSV row to a Booking object.
+     * Checks cache first, then maps from row if necessary and caches the result.
+     */
+    private Booking resolveBookingFromRow(String[] row) throws DAOException {
+        // Controllo validità riga
+        if (!isValidRow(row)) return null;
+
+        try {
+            int id = Integer.parseInt(row[COL_ID]);
+            Booking cached = getFromCache(Booking.class, id);
+            if (cached != null) {
+                return cached;
+            }
+            Booking b = mapRowToBooking(row);
+            putInCache(b, id);
+            return b;
+        } catch (NumberFormatException e) {
+            logger.log(Level.WARNING, "Invalid Booking ID in CSV row");
+            return null;
+        }
+    }
+
     private Booking mapRowToBooking(String[] row) throws DAOException {
         try {
             int bookingId = Integer.parseInt(row[COL_ID]);
@@ -406,18 +390,14 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
             String bookingKey = "Booking:" + bookingId;
 
-            // Check if we're in a circular loading situation
             if (DaoLoadingContext.isLoading(bookingKey)) {
-                // Already loading: just proceed to load/build (retrieveFan/Venue will handle their own cycles)
                 return loadAndBuildBooking(bookingId, fanUsername, venueId, row);
             }
 
-            // Not loading: mark as loading, then proceed
             DaoLoadingContext.startLoading(bookingKey);
             try {
                 return loadAndBuildBooking(bookingId, fanUsername, venueId, row);
             } finally {
-                // Always clean up the loading context
                 DaoLoadingContext.finishLoading(bookingKey);
             }
 
@@ -426,28 +406,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         }
     }
 
-    /**
-     * Helper method to retrieve dependencies and build the Booking object.
-     * <p>
-     * This centralizes the logic for loading the Fan and Venue and constructing
-     * the Booking entity, eliminating code duplication.
-     * </p>
-     *
-     * @param bookingId The ID of the booking
-     * @param fanUsername The username of the fan
-     * @param venueId The ID of the venue
-     * @param row The raw CSV row data containing other fields
-     * @return Fully constructed Booking object
-     * @throws DAOException If dependencies cannot be found
-     */
     private Booking loadAndBuildBooking(int bookingId, String fanUsername, int venueId, String[] row) throws DAOException {
-        // Retrieve Fan and Venue objects using DaoFactoryFacade (Factory pattern)
         BookingDaoHelper.BookingDependencies deps = BookingDaoHelper.loadDependencies(fanUsername, venueId);
 
         Fan fan = deps.fan();
         Venue venue = deps.venue();
 
-        // FIX: Parsing robusto usando il nuovo metodo di TeamNBA
         TeamNBA homeTeam = TeamNBA.robustValueOf(row[COL_HOME_TEAM]);
         TeamNBA awayTeam = TeamNBA.robustValueOf(row[COL_AWAY_TEAM]);
 
@@ -455,13 +419,12 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             throw new DAOException("Dati squadra non validi nel CSV per la prenotazione ID: " + bookingId);
         }
 
-        // Build Booking with loaded Fan and Venue
         return new Booking.Builder(
                 bookingId,
                 LocalDate.parse(row[COL_GAME_DATE]),
                 LocalTime.parse(row[COL_GAME_TIME]),
-                homeTeam, // Usa le variabili parsate
-                awayTeam, // Usa le variabili parsate
+                homeTeam,
+                awayTeam,
                 venue,
                 fan
         )

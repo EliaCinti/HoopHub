@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.session;
 
+import it.uniroma2.hoophub.dao.GlobalCache;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.User;
 
@@ -56,6 +57,7 @@ public enum SessionManager {
      */
     public void logout() {
         this.currentUser = null;
+        GlobalCache.getInstance().clearAll();
     }
 
     /**
