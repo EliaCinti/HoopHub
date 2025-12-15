@@ -1,0 +1,5 @@
+"id","name","type","address","city","max_capacity","venue_manager_username"
+"1","Arena Pro","LOUNGE","Via Roma 1","Rome","500","junit_venue_owner"
+"2","Arena Pro","LOUNGE","Via Roma 1","Rome","500","junit_venue_owner"
+"3","Arena Pro","LOUNGE","Via Roma 1","Rome","500","junit_venue_owner"
+"4","V","BAR","A","C","50","junit_vm"
