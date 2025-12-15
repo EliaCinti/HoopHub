@@ -56,7 +56,7 @@ jobs:
           sleep 10 
           # Esegui lo script SQL. 
           # SOSTITUISCI 'LA_TUA_PASSWORD' con quella che hai scritto nella sezione services sopra!
-          mysql -h 127.0.0.1 -P 3306 -u root -p "${{ secrets.DB_PASSWORD }}" hoophub < src/test/resources/schema.sql
+          mysql -h 127.0.0.1 -P 3306 -u root -p "${{ secrets.DB_PASSWORD }}" hoophub < src/test/resources/hoophub_script.sql
       # --------------------------------------
       # Importante: Aspettiamo che il DB sia pronto (opzionale ma consigliato se il servizio è lento)
       # In realtà l'opzione --health-cmd sopra ci aiuta già.
