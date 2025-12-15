@@ -1,5 +1,1 @@
-"id","user_id","user_type","type","message","related_booking_id","is_read","created_at"
-"1","junit_test_fan","FAN","BOOKING_APPROVED","Prenotazione Confermata!","","true","2025-12-15 14:45:15"
-"2","junit_vm","VENUE_MANAGER","BOOKING_REQUESTED","New booking request for Los Angeles Lakers vs Boston Celtics on 2025-12-20","1","false","2025-12-15 14:46:31"
-"3","junit_test_fan","FAN","BOOKING_APPROVED","Great news! Your booking for Los Angeles Lakers vs Boston Celtics has been APPROVED!","1","false","2025-12-15 14:46:31"
-"4","junit_test_fan","FAN","BOOKING_APPROVED","Prenotazione Confermata!","","true","2025-12-15 14:46:31"
+"id","user_id","type","title","message","booking_id","is_read","created_at"
