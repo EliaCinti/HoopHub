@@ -9,5 +9,6 @@
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/UserDaoMySql.java" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/VenueDaoMySql.java" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/src/main/java/it/uniroma2/hoophub/dao/mysql/VenueManagerDaoMySql.java" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/src/test/resources/hoophub_script.sql" dialect="MySQL" />
   </component>
 </project>
