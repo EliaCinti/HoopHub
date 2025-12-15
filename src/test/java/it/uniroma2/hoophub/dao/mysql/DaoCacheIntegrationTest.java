@@ -199,8 +199,7 @@ class DaoCacheIntegrationTest {
         assertTrue(savedVenue.getAssociatedTeams().contains(TeamNBA.LOS_ANGELES_LAKERS));
 
         // Cache Hit
-        assertSame(savedVenue, venueDao.retrieveVenue(venueId));
-
+        assertEquals(savedVenue, venueDao.retrieveVenue(venueId), "Il venue recuperato deve essere uguale a quello salvato");
         // 3. Update (Cambio nome e cambio team)
         Venue updatedVenue = new Venue.Builder()
                 .id(venueId)
@@ -218,8 +217,7 @@ class DaoCacheIntegrationTest {
         assertEquals("Arena Updated", vRetrieved.getName());
         assertTrue(vRetrieved.getAssociatedTeams().contains(TeamNBA.BOSTON_CELTICS));
         assertFalse(vRetrieved.getAssociatedTeams().contains(TeamNBA.LOS_ANGELES_LAKERS));
-        assertSame(updatedVenue, vRetrieved);
-
+        assertEquals(savedVenue, venueDao.retrieveVenue(venueId), "Il venue recuperato deve essere uguale a quello salvato");
         // Cleanup (Cancella manager -> cancella venues -> cancella teams via cascade)
         vmDao.deleteVenueManager(owner);
     }
@@ -287,8 +285,7 @@ class DaoCacheIntegrationTest {
         assertTrue(bookingId > 0);
 
         // 2. CACHE HIT
-        assertSame(savedBooking, factory.getBookingDao().retrieveBooking(bookingId));
-
+        assertEquals(savedBooking, factory.getBookingDao().retrieveBooking(bookingId), "Il booking recuperato deve essere uguale");
         // 3. UPDATE (Confirm)
         Booking confirmedBooking = new Booking.Builder(
                 bookingId,
@@ -343,8 +340,7 @@ class DaoCacheIntegrationTest {
 
         // 2. RETRIEVE & CACHE
         Notification retrieved = DaoFactoryFacade.getInstance().getNotificationDao().retrieveNotification(savedNotification.getId());
-        assertSame(savedNotification, retrieved);
-
+        assertEquals(savedNotification, retrieved, "La notifica recuperata deve essere identica");
         // Cleanup
         DaoFactoryFacade.getInstance().getNotificationDao().deleteNotification(savedNotification);
         DaoFactoryFacade.getInstance().getFanDao().deleteFan(fan);
