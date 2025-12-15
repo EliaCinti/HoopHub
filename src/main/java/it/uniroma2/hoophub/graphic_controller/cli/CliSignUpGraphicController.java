@@ -66,7 +66,7 @@ public class CliSignUpGraphicController extends CliGraphicController {
     private final SignUpController signUpController;
 
     public CliSignUpGraphicController() {
-        this.signUpController = SignUpController.getInstance();
+        this.signUpController = new SignUpController();
     }
 
     /**

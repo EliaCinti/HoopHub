@@ -29,7 +29,7 @@ public class LoginGraphicController {
     @FXML
     private Button loginButton;
 
-    private final LoginController loginController = LoginController.getInstance();
+    private final LoginController loginController = new LoginController();
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
     private static final Logger logger = Logger.getLogger(LoginGraphicController.class.getName());
 

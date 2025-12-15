@@ -51,7 +51,7 @@ public class CliLoginGraphicController extends CliGraphicController {
     private final LoginController loginController;
 
     public CliLoginGraphicController() {
-        this.loginController = LoginController.getInstance();
+        this.loginController = new LoginController();
     }
 
     private boolean userRequestedExit = false;
