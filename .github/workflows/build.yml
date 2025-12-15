@@ -12,17 +12,18 @@ jobs:
     name: Build and Analyze
     runs-on: ubuntu-latest
 
-    # --- AGGIUNTA FONDAMENTALE: IL DATABASE ---
+    # --- SERVIZIO DATABASE ---
     services:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}$      # <--- CONTROLLA CHE IL TUO CODICE JAVA USI QUESTA PASSWORD
-          MYSQL_DATABASE: hoophub        # <--- CONTROLLA CHE IL DB SI CHIAMI COSI NEL CODICE
+          # Corretto: rimosso il '$' finale che avevi per errore
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          MYSQL_DATABASE: hoophub
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-    # ------------------------------------------
+    # -------------------------
 
     steps:
       - uses: actions/checkout@v4
@@ -49,20 +50,26 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      # --- AGGIUNGI QUESTO STEP QUI SOTTO ---
+      # --- INIZIALIZZAZIONE DB (METODO SICURO) ---
       - name: Initialize Database Schema
+        env:
+          # Passiamo la password come variabile d'ambiente (evita errori di sintassi con spazi/quote)
+          MYSQL_PWD: ${{ secrets.DB_PASSWORD }}
         run: |
-          # Aspetta che MySQL sia pronto (opzionale ma sicuro)
+          echo "Verifica presenza file SQL..."
+          ls -l src/test/resources/hoophub_script.sql
+          
+          echo "Attesa avvio MySQL..."
           sleep 10 
-          # Esegui lo script SQL. 
-          # SOSTITUISCI 'LA_TUA_PASSWORD' con quella che hai scritto nella sezione services sopra!
-          mysql -h 127.0.0.1 -P 3306 -u root -p "${{ secrets.DB_PASSWORD }}" hoophub < src/test/resources/hoophub_script.sql
-      # --------------------------------------
-      # Importante: Aspettiamo che il DB sia pronto (opzionale ma consigliato se il servizio è lento)
-      # In realtà l'opzione --health-cmd sopra ci aiuta già.
+          
+          echo "Esecuzione script..."
+          # NOTA: Non serve -p, la password viene letta da MYSQL_PWD
+          mysql -h 127.0.0.1 -P 3306 -u root hoophub < src/test/resources/hoophub_script.sql
+      # -------------------------------------------
 
       - name: Build and analyze
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=EliaCinti_HoopHub2 -Dsonar.organization=eliacinti -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xmly sonar:sonar -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+        # Comando ripulito da typos (.xmly) e duplicati
+        run: mvn -B clean verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=EliaCinti_HoopHub2 -Dsonar.organization=eliacinti -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
