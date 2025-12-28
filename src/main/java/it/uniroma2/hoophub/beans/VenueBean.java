@@ -70,6 +70,12 @@ public class VenueBean {
         }
 
         public VenueBean build() {
+            if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("name required");
+            if (type == null) throw new IllegalArgumentException("Venue type required");
+
+            if (maxCapacity > type.getMaxCapacityLimit()) {
+                throw new IllegalArgumentException("Capacity too high for " + type.getDisplayName());
+            }
             return new VenueBean(this);
         }
     }

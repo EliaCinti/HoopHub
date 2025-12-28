@@ -15,7 +15,7 @@ import java.util.Objects;
  * </p>
  * <p>
  * This class is immutable. Its state is set at construction time via the Builder
- * and cannot be modified afterwards, ensuring consistency when displaying schedules.
+ * and cannot be modified after wards, ensuring consistency when displaying schedules.
  * </p>
  *
  * @author Elia Cinti
@@ -27,7 +27,6 @@ public class NbaGame {
     private final TeamNBA awayTeam;
     private final LocalDate date;
     private final LocalTime time;
-    private final String arenaName; // The actual NBA arena (e.g., "Madison Square Garden")
 
     /**
      * Private constructor for use by the Builder.
@@ -41,7 +40,6 @@ public class NbaGame {
         this.awayTeam = builder.awayTeam;
         this.date = builder.date;
         this.time = builder.time;
-        this.arenaName = builder.arenaName;
     }
 
     // ========================================================================
@@ -103,9 +101,6 @@ public class NbaGame {
         return time;
     }
 
-    public String getArenaName() {
-        return arenaName;
-    }
 
     // ========================================================================
     // BUILDER CLASS
@@ -120,7 +115,6 @@ public class NbaGame {
         private TeamNBA awayTeam;
         private LocalDate date;
         private LocalTime time;
-        private String arenaName;
 
         public Builder gameId(String gameId) {
             this.gameId = gameId;
@@ -144,11 +138,6 @@ public class NbaGame {
 
         public Builder time(LocalTime time) {
             this.time = time;
-            return this;
-        }
-
-        public Builder arenaName(String arenaName) {
-            this.arenaName = arenaName;
             return this;
         }
 
@@ -206,7 +195,6 @@ public class NbaGame {
                 ", matchup='" + getMatchup() + '\'' +
                 ", date=" + date +
                 ", time=" + time +
-                ", arena='" + arenaName + '\'' +
                 '}';
     }
 }

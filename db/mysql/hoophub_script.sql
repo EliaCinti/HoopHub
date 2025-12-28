@@ -64,7 +64,6 @@ CREATE TABLE venues (
         FOREIGN KEY (venue_manager_username) REFERENCES venue_managers(username)
         ON DELETE CASCADE,
     CONSTRAINT chk_max_capacity_positive CHECK (max_capacity > 0),
-    CONSTRAINT chk_max_capacity_limit CHECK (max_capacity <= 10000),
     INDEX idx_venue_manager (venue_manager_username),
     INDEX idx_city (city)
 ) ENGINE=InnoDB;

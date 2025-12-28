@@ -5,7 +5,6 @@ package it.uniroma2.hoophub.enums;
  * Provides type-safe team management and prevents invalid team names.
  */
 public enum TeamNBA {
-    // ... [MANTIENI TUTTI GLI ENUM ESISTENTI: BOSTON_CELTICS, ecc.] ...
     BOSTON_CELTICS("Boston Celtics", "BOS"),
     BROOKLYN_NETS("Brooklyn Nets", "BKN"),
     NEW_YORK_KNICKS("New York Knicks", "NYK"),

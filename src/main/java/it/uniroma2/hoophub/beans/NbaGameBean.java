@@ -18,7 +18,6 @@ public class NbaGameBean {
     private TeamNBA awayTeam;
     private LocalDate date;
     private LocalTime time;
-    private String arenaName;
 
     /**
      * Private constructor used by the Builder.
@@ -29,7 +28,6 @@ public class NbaGameBean {
         this.awayTeam = builder.awayTeam;
         this.date = builder.date;
         this.time = builder.time;
-        this.arenaName = builder.arenaName;
     }
 
     /**
@@ -41,7 +39,6 @@ public class NbaGameBean {
         private TeamNBA awayTeam;
         private LocalDate date;
         private LocalTime time;
-        private String arenaName;
 
         public Builder gameId(String gameId) {
             this.gameId = gameId;
@@ -65,11 +62,6 @@ public class NbaGameBean {
 
         public Builder time(LocalTime time) {
             this.time = time;
-            return this;
-        }
-
-        public Builder arenaName(String arenaName) {
-            this.arenaName = arenaName;
             return this;
         }
 
@@ -102,10 +94,6 @@ public class NbaGameBean {
         return time;
     }
 
-    public String getArenaName() {
-        return arenaName;
-    }
-
     // ========================================================================
     // SETTERS
     // ========================================================================
@@ -130,7 +118,4 @@ public class NbaGameBean {
         this.time = time;
     }
 
-    public void setArenaName(String arenaName) {
-        this.arenaName = arenaName;
-    }
 }

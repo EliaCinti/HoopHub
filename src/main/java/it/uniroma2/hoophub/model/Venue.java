@@ -415,6 +415,10 @@ public class Venue {
      * Validates core venue details.
      * Static to be reusable by the Builder and updateVenueDetails.
      */
+    /**
+     * Validates core venue details.
+     * Static to be reusable by the Builder and updateVenueDetails.
+     */
     private static void validateDetails(String name, VenueType type, String address, String city, int maxCapacity, Set<TeamNBA> associatedTeams) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Venue name cannot be null or empty");
@@ -431,9 +435,14 @@ public class Venue {
         if (maxCapacity <= 0) {
             throw new IllegalArgumentException("Max capacity must be greater than 0");
         }
-        if (maxCapacity > 10000) {
-            throw new IllegalArgumentException("Max capacity cannot exceed 10000");
+
+        // REFACTORING: Validazione dinamica basata sul tipo
+        if (maxCapacity > type.getMaxCapacityLimit()) {
+            throw new IllegalArgumentException(String.format(
+                    "Capacity %d exceeds the limit for %s (Max: %d)",
+                    maxCapacity, type.getDisplayName(), type.getMaxCapacityLimit()));
         }
+
         if (associatedTeams.isEmpty()) {
             throw new IllegalArgumentException("A venue must host at least one team.");
         }
