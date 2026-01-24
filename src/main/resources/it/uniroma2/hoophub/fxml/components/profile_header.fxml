@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.MenuButton?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.shape.Circle?>
+
+<!--
+    Profile Header Component - HoopHub
+    Reusable component for user profile display in top-right corner.
+    Include with: <fx:include source="components/profile_header.fxml"/>
+-->
+
+<HBox fx:id="profileHeader"
+      alignment="CENTER_RIGHT"
+      minHeight="70" maxHeight="70"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="it.uniroma2.hoophub.graphic_controller.gui.components.ProfileHeaderController">
+
+    <padding>
+        <Insets top="24" right="32" bottom="12" left="32"/>
+    </padding>
+
+    <MenuButton fx:id="profileMenuButton"
+                text="Username"
+                contentDisplay="RIGHT"
+                popupSide="BOTTOM"
+                styleClass="profile-menu-button">
+        <items>
+            <MenuItem text="Logout" onAction="#onLogoutClick"/>
+        </items>
+        <graphic>
+            <StackPane styleClass="avatar-container">
+                <Circle fx:id="avatarCircle" radius="20" strokeWidth="2.5" stroke="WHITE"/>
+                <Label fx:id="avatarInitials" styleClass="avatar-initials"/>
+            </StackPane>
+        </graphic>
+    </MenuButton>
+
+</HBox>

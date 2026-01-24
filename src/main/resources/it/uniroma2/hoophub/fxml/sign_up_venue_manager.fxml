@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<StackPane prefHeight="720" prefWidth="1280" stylesheets="@../css/tokens.css, @../css/components.css, @../css/pages/login.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="it.uniroma2.hoophub.graphic_controller.gui.sign_up.SignUpVenueManagerGraphicController">
+
+    <!-- Background Image Layer -->
+    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true" preserveRatio="false">
+        <Image backgroundLoading="true" url="@../images/sfondo_con_titolo.png" />
+    </ImageView>
+
+    <!-- Content Layer -->
+    <HBox alignment="CENTER" StackPane.alignment="CENTER">
+        <StackPane.margin>
+            <Insets top="150" />
+        </StackPane.margin>
+
+        <!-- Back Button -->
+        <Button onAction="#onBackClick" styleClass="btn-back" text="←">
+            <HBox.margin>
+                <Insets right="16" />
+            </HBox.margin>
+        </Button>
+
+        <!-- Sign Up Venue Manager Card -->
+        <VBox maxWidth="440" minWidth="440" spacing="0">
+
+            <VBox alignment="CENTER" spacing="16" styleClass="card">
+                <padding>
+                    <Insets bottom="24" left="32" right="32" top="24" />
+                </padding>
+
+                <!-- Message Label -->
+                <Label fx:id="msgLabel" maxWidth="360" styleClass="message-label" textAlignment="CENTER" wrapText="true">
+                    <VBox.margin>
+                        <Insets bottom="-10" />
+                    </VBox.margin>
+                </Label>
+
+                <!-- Form Fields -->
+                <VBox spacing="10" VBox.vgrow="NEVER">
+
+                    <!-- Company Name Field -->
+                    <VBox spacing="4">
+                        <Label styleClass="field-label" text="Company Name" />
+                        <TextField fx:id="companyNameField" maxWidth="360" minHeight="40" promptText="Enter your company name" styleClass="text-field" />
+                    </VBox>
+
+                    <!-- Phone Number Field -->
+                    <VBox spacing="4">
+                        <Label styleClass="field-label" text="Phone Number" />
+                        <TextField fx:id="phoneNumberField" maxWidth="360" minHeight="40" promptText="Enter your phone number" styleClass="text-field" />
+                    </VBox>
+
+                </VBox>
+
+                <!-- Sign Up Button -->
+                <Button fx:id="signUpButton" defaultButton="true" maxWidth="360" minHeight="40" minWidth="360" onAction="#onSignUpClick" styleClass="btn-primary" text="Sign Up" />
+
+                <!-- Sign In Link -->
+                <HBox translateY="15" alignment="CENTER" spacing="6">
+                    <Label styleClass="muted" text="Already have an account?" />
+                    <Hyperlink focusTraversable="false" onAction="#onSignInClick" styleClass="link" text="Sign in" />
+                </HBox>
+
+            </VBox>
+        </VBox>
+    </HBox>
+
+</StackPane>

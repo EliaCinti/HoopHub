@@ -1,0 +1,194 @@
+/* ========================================================================
+   HoopHub - Login Page Specific Styles
+   Stili utilizzati SOLO nella pagina di login con effetti speciali
+   ======================================================================== */
+
+/* ========= Login Specific Typography ========= */
+
+.sign-in-with {
+    -fx-text-fill: rgba(233, 237, 243, 0.50);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 11px;
+    -fx-font-weight: 500;
+    -fx-text-transform: uppercase;
+}
+
+/* ========= Login Card con Glassmorphism Avanzato ========= */
+
+.login-card {
+    /* Effetto vetro super avanzato */
+    -fx-background-color: rgba(22, 26, 34, 0.38);
+    -fx-background-radius: 26;
+    -fx-border-color: rgba(255, 255, 255, 0.18);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 26;
+    /* Shadow drammatica multi-layer */
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.7), 48, 0.45, 0, 20);
+}
+
+/* ========= Login Form Specifics ========= */
+
+.login-field {
+    -fx-pref-height: 44;
+    -fx-max-width: 360;
+}
+
+.login-button {
+    -fx-min-width: 360;
+    -fx-min-height: 44;
+    -fx-max-width: 360;
+}
+
+/* ========= Social Buttons Container ========= */
+
+.social-buttons-container {
+    -fx-spacing: 12;
+    -fx-alignment: center;
+}
+
+.social-buttons-container .btn-social {
+    -fx-min-width: 360;  /* Full width come nel mock */
+    -fx-min-height: 44;
+    -fx-max-width: 360;
+}
+
+/* ========= Login Divider con effetto sottile ========= */
+
+.login-divider {
+    -fx-max-width: 360;
+}
+
+.login-divider .separator {
+    -fx-background-color: transparent;
+}
+
+.login-divider .separator .line {
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-width: 0.5 0 0 0;
+}
+
+/* ========= Sign Up Section ========= */
+
+.signup-section {
+    -fx-spacing: 6;
+    -fx-alignment: center;
+}
+
+.signup-section .muted {
+    -fx-text-fill: rgba(233, 237, 243, 0.55);
+    -fx-font-size: 14px;
+}
+
+.signup-section .link {
+    -fx-text-fill: -fx-primary;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+}
+
+/* ========= Animazioni e Transizioni ========= */
+
+/* Effetto pulse sul focus degli input */
+@keyframes pulse {
+    0% {
+        -fx-scale-x: 1;
+        -fx-scale-y: 1;
+    }
+    50% {
+        -fx-scale-x: 1.01;
+        -fx-scale-y: 1.01;
+    }
+    100% {
+        -fx-scale-x: 1;
+        -fx-scale-y: 1;
+    }
+}
+
+/* ========= Special Effects ========= */
+
+/* Effetto glow sul bottone Sign In quando hover */
+.btn-primary:hover {
+    /* Inner glow effect */
+    -fx-background-insets: 0, 1;
+    -fx-background-color:
+            linear-gradient(to bottom, #FFA033 0%, #FF8C1A 50%, #F77F00 100%),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.2), transparent);
+}
+
+/* ========= Responsive Typography ========= */
+
+/* Se serve, puoi aggiungere classi per testi più grandi */
+.welcome-title {
+    /* Color */
+    -fx-text-fill: #FFFFFF;
+
+    /* Typography */
+    -fx-font-family: -fx-font-display;
+    -fx-font-size: 34px;
+    -fx-letter-spacing: 10px;
+
+    /* Layout */
+    -fx-alignment: center;
+    -fx-padding: 20 0 0 0;
+
+    /* Effect */
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.3), 6, 0.2, 0, 2);
+}
+
+/* ========= Input States Avanzati ========= */
+
+/* Stato disabled più evidente */
+.text-field:disabled, .password-field:disabled {
+    -fx-opacity: 0.4;
+    -fx-cursor: not-allowed;
+}
+
+/* Placeholder con animazione fade (simulata con opacity) */
+.text-field:focused:empty, .password-field:focused:empty {
+    -fx-prompt-text-fill: rgba(233, 237, 243, 0.25);
+}
+
+/* ========= Error State per gli input ========= */
+
+.text-field.error, .password-field.error {
+    -fx-border-color: -fx-error;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(one-pass-box, rgba(230, 57, 70, 0.4), 12, 0.4, 0, 0);
+}
+
+.text-field.error:hover, .password-field.error:hover {
+    -fx-border-color: derive(-fx-error, 15%);
+}
+
+/* ========= Success State per gli input ========= */
+
+.text-field.success, .password-field.success {
+    -fx-border-color: -fx-success;
+    -fx-border-width: 2;
+    -fx-effect: dropshadow(one-pass-box, rgba(76, 175, 80, 0.3), 10, 0.3, 0, 0);
+}
+
+/* ========= Loading State per bottoni ========= */
+
+.btn-primary.loading {
+    -fx-opacity: 0.7;
+    -fx-cursor: wait;
+}
+
+.btn-social.loading {
+    -fx-opacity: 0.6;
+    -fx-cursor: wait;
+}
+
+/* ========= Micro-interactions ========= */
+
+/* Subtle scale on all interactive elements */
+.text-field:hover, .password-field:hover {
+    -fx-scale-x: 1.005;
+    -fx-scale-y: 1.005;
+}
+
+/* Button press feedback */
+.hyperlink.link:pressed {
+    -fx-scale-x: 0.95;
+    -fx-scale-y: 0.95;
+}
