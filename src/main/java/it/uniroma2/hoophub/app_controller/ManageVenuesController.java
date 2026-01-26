@@ -17,13 +17,13 @@ import java.util.List;
 
 /**
  * Application controller for the "Manage Venues" use case.
- *
- * <p>Provides CRUD operations for venues with ownership verification.
- * Ensures only venue managers can access their own venues.</p>
+ * <p>
+ * Handles CRUD operations for venues, ensuring proper business rules
+ * and ownership verification. Used by both GUI and CLI graphic controllers.
+ * </p>
  *
  * @author Elia Cinti
  * @version 1.0
- * @see VenueBean
  */
 public class ManageVenuesController {
 
@@ -31,7 +31,7 @@ public class ManageVenuesController {
     private final VenueManagerDao venueManagerDao;
 
     /**
-     * Creates controller with DAOs from {@link DaoFactoryFacade}.
+     * Default constructor using DaoFactoryFacade.
      */
     public ManageVenuesController() {
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
@@ -42,11 +42,11 @@ public class ManageVenuesController {
     // ==================== READ OPERATIONS ====================
 
     /**
-     * Retrieves all venues owned by the current logged-in venue manager.
+     * Retrieves all venues managed by the currently logged-in venue manager.
      *
-     * @return list of {@link VenueBean} for the manager's venues
-     * @throws UserSessionException if not logged in or not a venue manager
-     * @throws DAOException if database access fails
+     * @return List of VenueBean representing the manager's venues
+     * @throws UserSessionException if no user is logged in or user is not a venue manager
+     * @throws DAOException         if database access fails
      */
     public List<VenueBean> getMyVenues() throws UserSessionException, DAOException {
         UserBean currentUser = getCurrentVenueManager();
@@ -59,12 +59,13 @@ public class ManageVenuesController {
     }
 
     /**
-     * Retrieves a venue by ID after verifying ownership.
+     * Retrieves a single venue by ID.
+     * Verifies that the current user owns the venue.
      *
-     * @param venueId the venue ID
-     * @return the {@link VenueBean}
-     * @throws UserSessionException if not logged in or doesn't own the venue
-     * @throws DAOException if venue not found
+     * @param venueId The venue ID
+     * @return The VenueBean
+     * @throws UserSessionException if no user is logged in, not a venue manager, or doesn't own the venue
+     * @throws DAOException         if venue not found or database access fails
      */
     public VenueBean getVenueById(int venueId) throws UserSessionException, DAOException {
         Venue venue = getOwnedVenue(venueId);
@@ -74,23 +75,26 @@ public class ManageVenuesController {
     // ==================== CREATE OPERATION ====================
 
     /**
-     * Creates a new venue for the current venue manager.
+     * Creates a new venue for the currently logged-in venue manager.
      *
-     * @param venueBean venue data to create
-     * @return created {@link VenueBean} with assigned ID
-     * @throws UserSessionException if not logged in or not a venue manager
-     * @throws DAOException if database access fails
+     * @param venueBean The venue data to create
+     * @throws UserSessionException     if no user is logged in or user is not a venue manager
+     * @throws DAOException             if database access fails
+     * @throws IllegalArgumentException if venueBean contains invalid data
      */
-    public VenueBean createVenue(VenueBean venueBean) throws UserSessionException, DAOException {
+    public void createVenue(VenueBean venueBean) throws UserSessionException, DAOException {
         UserBean currentUser = getCurrentVenueManager();
 
+        // Retrieve the VenueManager model
         VenueManager manager = venueManagerDao.retrieveVenueManager(currentUser.getUsername());
         if (manager == null) {
             throw new DAOException("Venue manager not found: " + currentUser.getUsername());
         }
 
+        // Get next available ID
         int newId = venueDao.getNextVenueId();
 
+        // Build the Venue model
         Venue.Builder venueBuilder = new Venue.Builder()
                 .id(newId)
                 .name(venueBean.getName())
@@ -100,34 +104,39 @@ public class ManageVenuesController {
                 .maxCapacity(venueBean.getMaxCapacity())
                 .venueManager(manager);
 
+        // Add associated teams
         for (TeamNBA team : venueBean.getAssociatedTeams()) {
             venueBuilder.addTeam(team);
         }
 
         Venue venue = venueBuilder.build();
+
+        // Save venue to database
         Venue savedVenue = venueDao.saveVenue(venue);
 
+        // Save team associations
         for (TeamNBA team : venueBean.getAssociatedTeams()) {
             venueDao.saveVenueTeam(savedVenue, team);
         }
 
+        // Add venue to manager's list
         manager.addVenue(savedVenue);
-
-        return convertToBean(savedVenue);
     }
 
     // ==================== UPDATE OPERATION ====================
 
     /**
-     * Updates an existing venue after verifying ownership.
+     * Updates an existing venue.
      *
-     * @param venueBean updated venue data (must include valid ID)
-     * @throws UserSessionException if not logged in or doesn't own the venue
-     * @throws DAOException if venue not found or database access fails
+     * @param venueBean The updated venue data (must include valid ID)
+     * @throws UserSessionException     if no user is logged in or user doesn't own the venue
+     * @throws DAOException             if database access fails or venue not found
+     * @throws IllegalArgumentException if venueBean contains invalid data
      */
     public void updateVenue(VenueBean venueBean) throws UserSessionException, DAOException {
         Venue existingVenue = getOwnedVenue(venueBean.getId());
 
+        // Update venue details using the model's business method
         existingVenue.updateVenueDetails(
                 venueBean.getName(),
                 venueBean.getType(),
@@ -137,8 +146,10 @@ public class ManageVenuesController {
                 venueBean.getAssociatedTeams()
         );
 
+        // Persist venue changes
         venueDao.updateVenue(existingVenue);
 
+        // Update team associations: remove all existing and re-add
         venueDao.deleteAllVenueTeams(existingVenue);
         for (TeamNBA team : venueBean.getAssociatedTeams()) {
             venueDao.saveVenueTeam(existingVenue, team);
@@ -148,30 +159,34 @@ public class ManageVenuesController {
     // ==================== DELETE OPERATION ====================
 
     /**
-     * Deletes a venue after verifying ownership and no existing bookings.
+     * Deletes a venue.
      *
-     * @param venueId ID of the venue to delete
-     * @throws UserSessionException if not logged in or doesn't own the venue
-     * @throws DAOException if venue has bookings or database access fails
+     * @param venueId The ID of the venue to delete
+     * @throws UserSessionException if no user is logged in or user doesn't own the venue
+     * @throws DAOException         if database access fails or venue not found
      */
     public void deleteVenue(int venueId) throws UserSessionException, DAOException {
         Venue existingVenue = getOwnedVenue(venueId);
 
+        // Check for existing bookings (business rule)
         if (!existingVenue.getAllBookings().isEmpty()) {
             throw new DAOException("Cannot delete venue with existing bookings. Please cancel all bookings first.");
         }
 
+        // Delete team associations first (foreign key constraint)
         venueDao.deleteAllVenueTeams(existingVenue);
+
+        // Delete the venue
         venueDao.deleteVenue(existingVenue);
     }
 
     // ==================== HELPER METHODS ====================
 
     /**
-     * Validates current user is a logged-in venue manager.
+     * Gets the current logged-in user and verifies they are a venue manager.
      *
-     * @return current user as {@link UserBean}
-     * @throws UserSessionException if not logged in or not a venue manager
+     * @return The current user as UserBean
+     * @throws UserSessionException if no user is logged in or user is not a venue manager
      */
     private UserBean getCurrentVenueManager() throws UserSessionException {
         UserBean currentUser = SessionManager.INSTANCE.getCurrentUser();
@@ -188,12 +203,12 @@ public class ManageVenuesController {
     }
 
     /**
-     * Retrieves a venue and verifies the current user owns it.
+     * Retrieves a venue and verifies that the current user owns it.
      *
-     * @param venueId the venue ID
-     * @return the {@link Venue} model
-     * @throws UserSessionException if a user doesn't own the venue
-     * @throws DAOException if venue not found
+     * @param venueId The venue ID to retrieve
+     * @return The Venue model
+     * @throws UserSessionException if no user is logged in, not a venue manager, or doesn't own the venue
+     * @throws DAOException         if venue not found or database access fails
      */
     private Venue getOwnedVenue(int venueId) throws UserSessionException, DAOException {
         UserBean currentUser = getCurrentVenueManager();
@@ -211,10 +226,10 @@ public class ManageVenuesController {
     }
 
     /**
-     * Converts a Venue model to VenueBean.
+     * Converts a Venue model to a VenueBean.
      *
-     * @param venue the venue model
-     * @return corresponding {@link VenueBean}
+     * @param venue The Venue model
+     * @return The corresponding VenueBean
      */
     private VenueBean convertToBean(Venue venue) {
         return new VenueBean.Builder()

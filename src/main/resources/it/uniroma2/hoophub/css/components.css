@@ -777,3 +777,321 @@
 .profile-menu-button .menu-item:focused {
     -fx-background-color: rgba(255, 255, 255, 0.15);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   VENUE CARDS
+   ══════════════════════════════════════════════════════════════ */
+
+.venue-card {
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-background-radius: 16;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-width: 1.5;
+    -fx-border-radius: 16;
+    -fx-padding: 16;
+}
+
+.venue-card:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.10);
+    -fx-border-color: rgba(255, 255, 255, 0.22);
+}
+
+.venue-card-name {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-family: -fx-font-display;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.venue-card-details {
+    -fx-text-fill: rgba(233, 237, 243, 0.70);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 13px;
+}
+
+.venue-card-stats {
+    -fx-text-fill: rgba(233, 237, 243, 0.55);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 12px;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ICON BUTTONS (Edit/Delete)
+   ══════════════════════════════════════════════════════════════ */
+
+.btn-icon {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-text-fill: rgba(255, 255, 255, 0.9);
+    -fx-font-size: 16px;
+    -fx-padding: 8 12;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.btn-icon:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-icon:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-icon-danger {
+    -fx-background-color: rgba(220, 53, 69, 0.15);
+    -fx-text-fill: rgba(255, 107, 122, 0.9);
+    -fx-font-size: 16px;
+    -fx-padding: 8 12;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(220, 53, 69, 0.3);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.btn-icon-danger:hover {
+    -fx-background-color: rgba(220, 53, 69, 0.25);
+    -fx-text-fill: #ff6b7a;
+    -fx-border-color: rgba(220, 53, 69, 0.5);
+}
+
+.btn-icon-danger:pressed {
+    -fx-background-color: rgba(220, 53, 69, 0.35);
+}
+
+/* ScrollPane transparent background */
+.venues-scroll-pane {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+}
+
+.venues-scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* Teams ListView */
+.teams-list {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 12;
+    -fx-border-color: rgba(255, 255, 255, 0.12);
+    -fx-border-radius: 12;
+}
+
+.teams-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 14px;
+    -fx-padding: 8 12;
+}
+
+.teams-list .list-cell:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+}
+
+.teams-list .list-cell:selected {
+    -fx-background-color: rgba(247, 127, 0, 0.20);
+    -fx-text-fill: #FFFFFF;
+}
+
+.teams-list .list-cell:selected:hover {
+    -fx-background-color: rgba(247, 127, 0, 0.30);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SPINNER
+   ══════════════════════════════════════════════════════════════ */
+
+.spinner {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.spinner > .text-field {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-background-radius: 24 0 0 24;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 24 0 0 24;
+    -fx-border-width: 1 0 1 1;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 15px;
+    -fx-padding: 8 12;
+}
+
+.spinner > .text-field:focused {
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2 0 2 2;
+    -fx-background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Arrow buttons container */
+.spinner > .increment-arrow-button,
+.spinner > .decrement-arrow-button {
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-width: 1;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+}
+
+.spinner > .increment-arrow-button {
+    -fx-background-radius: 0 24 0 0;
+    -fx-border-radius: 0 24 0 0;
+    -fx-border-width: 1 1 0 0;
+}
+
+.spinner > .decrement-arrow-button {
+    -fx-background-radius: 0 0 24 0;
+    -fx-border-radius: 0 0 24 0;
+    -fx-border-width: 0 1 1 0;
+}
+
+.spinner > .increment-arrow-button:hover,
+.spinner > .decrement-arrow-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+.spinner > .increment-arrow-button:pressed,
+.spinner > .decrement-arrow-button:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.20);
+}
+
+/* Arrows */
+.spinner > .increment-arrow-button > .increment-arrow,
+.spinner > .decrement-arrow-button > .decrement-arrow {
+    -fx-background-color: rgba(255, 255, 255, 0.7);
+    -fx-padding: 3;
+}
+
+.spinner > .increment-arrow-button:hover > .increment-arrow,
+.spinner > .decrement-arrow-button:hover > .decrement-arrow {
+    -fx-background-color: #FFFFFF;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SCROLLBAR
+   ══════════════════════════════════════════════════════════════ */
+
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.scroll-bar > .track {
+    -fx-background-color: rgba(255, 255, 255, 0.05);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.scroll-bar > .thumb {
+    -fx-background-color: rgba(255, 255, 255, 0.25);
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+}
+
+.scroll-bar > .thumb:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.35);
+}
+
+.scroll-bar > .thumb:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Hide increment/decrement buttons */
+.scroll-bar > .increment-button,
+.scroll-bar > .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-pref-width: 0;
+    -fx-pref-height: 0;
+}
+
+.scroll-bar > .increment-button > .increment-arrow,
+.scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
+/* Vertical scrollbar specific */
+.scroll-bar:vertical {
+    -fx-pref-width: 10;
+}
+
+.scroll-bar:vertical > .track {
+    -fx-pref-width: 8;
+}
+
+.scroll-bar:vertical > .thumb {
+    -fx-pref-width: 8;
+}
+
+/* Horizontal scrollbar specific */
+.scroll-bar:horizontal {
+    -fx-pref-height: 10;
+}
+
+.scroll-bar:horizontal > .track {
+    -fx-pref-height: 8;
+}
+
+.scroll-bar:horizontal > .thumb {
+    -fx-pref-height: 8;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SMALL ACTION BUTTONS
+   ══════════════════════════════════════════════════════════════ */
+
+.btn-secondary-small {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-text-fill: rgba(255, 255, 255, 0.9);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 16;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(255, 255, 255, 0.2);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.btn-secondary-small:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-text-fill: #FFFFFF;
+    -fx-border-color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-secondary-small:pressed {
+    -fx-background-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-danger-small {
+    -fx-background-color: rgba(220, 53, 69, 0.15);
+    -fx-text-fill: rgba(255, 107, 122, 0.9);
+    -fx-font-family: -fx-font-sans;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-padding: 8 16;
+    -fx-background-radius: 20;
+    -fx-border-radius: 20;
+    -fx-border-color: rgba(220, 53, 69, 0.3);
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+}
+
+.btn-danger-small:hover {
+    -fx-background-color: rgba(220, 53, 69, 0.25);
+    -fx-text-fill: #ff6b7a;
+    -fx-border-color: rgba(220, 53, 69, 0.5);
+}
+
+.btn-danger-small:pressed {
+    -fx-background-color: rgba(220, 53, 69, 0.35);
+}

@@ -20,7 +20,7 @@
            fx:controller="it.uniroma2.hoophub.graphic_controller.gui.VenueManagerHomepageGraphicController">
 
     <!-- Background Image -->
-    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true" preserveRatio="false">
+    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true">
         <Image backgroundLoading="true" url="@../images/sfondo_con_titolo.png"/>
     </ImageView>
 
@@ -31,11 +31,11 @@
         <fx:include source="components/profile_header.fxml"/>
 
         <!-- Spacer -->
-        <Region VBox.vgrow="ALWAYS"/>
+        <Region prefHeight="150"/>
 
         <!-- Main Action Buttons -->
         <HBox alignment="CENTER" spacing="32">
-
+            <Region prefWidth="-25"/>
             <!-- Manage Venues Button -->
             <Button fx:id="manageVenuesButton"
                     minWidth="160" minHeight="120"

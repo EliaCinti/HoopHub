@@ -17,6 +17,11 @@ import java.util.Set;
  */
 public class VenueBean {
 
+    // Validation constants
+    private static final int NAME_MIN_LENGTH = 3;
+    private static final int NAME_MAX_LENGTH = 100;
+
+    // Fields
     private int id;
     private String name;
     private VenueType type;
@@ -26,6 +31,9 @@ public class VenueBean {
     private String venueManagerUsername;
     private Set<TeamNBA> associatedTeams;
 
+    /**
+     * Private constructor - use Builder.
+     */
     private VenueBean(Builder builder) {
         this.id = builder.id;
         this.name = builder.name;
@@ -39,27 +47,34 @@ public class VenueBean {
                 : new HashSet<>();
     }
 
-    // ========================================================================
-    // STATIC VALIDATION METHODS
-    // ========================================================================
+    // ==================== STATIC VALIDATION METHODS ====================
 
     /**
-     * Validates venue name (3-100 characters).
+     * Validates venue name syntax.
+     *
+     * @param name The name to validate
+     * @throws IllegalArgumentException if validation fails
      */
     public static void validateNameSyntax(String name) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Venue name cannot be empty");
         }
-        if (name.trim().length() < 3) {
-            throw new IllegalArgumentException("Venue name must be at least 3 characters");
+        String trimmed = name.trim();
+        if (trimmed.length() < NAME_MIN_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Venue name must be at least " + NAME_MIN_LENGTH + " characters");
         }
-        if (name.trim().length() > 100) {
-            throw new IllegalArgumentException("Venue name cannot exceed 100 characters");
+        if (trimmed.length() > NAME_MAX_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Venue name cannot exceed " + NAME_MAX_LENGTH + " characters");
         }
     }
 
     /**
-     * Validates address (not empty).
+     * Validates address syntax.
+     *
+     * @param address The address to validate
+     * @throws IllegalArgumentException if validation fails
      */
     public static void validateAddressSyntax(String address) {
         if (address == null || address.trim().isEmpty()) {
@@ -68,7 +83,10 @@ public class VenueBean {
     }
 
     /**
-     * Validates city (not empty).
+     * Validates city syntax.
+     *
+     * @param city The city to validate
+     * @throws IllegalArgumentException if validation fails
      */
     public static void validateCitySyntax(String city) {
         if (city == null || city.trim().isEmpty()) {
@@ -77,7 +95,11 @@ public class VenueBean {
     }
 
     /**
-     * Validates capacity against venue type limits.
+     * Validates capacity for a given venue type.
+     *
+     * @param capacity The capacity to validate
+     * @param type     The venue type (for max capacity check)
+     * @throws IllegalArgumentException if validation fails
      */
     public static void validateCapacity(int capacity, VenueType type) {
         if (capacity <= 0) {
@@ -91,7 +113,11 @@ public class VenueBean {
     }
 
     /**
-     * Validates team associations (at least one required, Fan Club allows only one).
+     * Validates associated teams.
+     *
+     * @param teams The teams to validate
+     * @param type  The venue type (FAN_CLUB has special rules)
+     * @throws IllegalArgumentException if validation fails
      */
     public static void validateTeams(Set<TeamNBA> teams, VenueType type) {
         if (teams == null || teams.isEmpty()) {
@@ -102,12 +128,10 @@ public class VenueBean {
         }
     }
 
-    // ========================================================================
-    // BUILDER CLASS
-    // ========================================================================
+    // ==================== BUILDER ====================
 
     /**
-     * Builder for VenueBean with validation on build.
+     * Builder for VenueBean.
      */
     public static class Builder {
         private int id;
@@ -119,13 +143,40 @@ public class VenueBean {
         private String venueManagerUsername;
         private Set<TeamNBA> associatedTeams = new HashSet<>();
 
-        public Builder id(int id) { this.id = id; return this; }
-        public Builder name(String name) { this.name = name; return this; }
-        public Builder type(VenueType type) { this.type = type; return this; }
-        public Builder address(String address) { this.address = address; return this; }
-        public Builder city(String city) { this.city = city; return this; }
-        public Builder maxCapacity(int maxCapacity) { this.maxCapacity = maxCapacity; return this; }
-        public Builder venueManagerUsername(String username) { this.venueManagerUsername = username; return this; }
+        public Builder id(int id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder type(VenueType type) {
+            this.type = type;
+            return this;
+        }
+
+        public Builder address(String address) {
+            this.address = address;
+            return this;
+        }
+
+        public Builder city(String city) {
+            this.city = city;
+            return this;
+        }
+
+        public Builder maxCapacity(int maxCapacity) {
+            this.maxCapacity = maxCapacity;
+            return this;
+        }
+
+        public Builder venueManagerUsername(String venueManagerUsername) {
+            this.venueManagerUsername = venueManagerUsername;
+            return this;
+        }
 
         public Builder associatedTeams(Set<TeamNBA> teams) {
             this.associatedTeams = teams != null ? new HashSet<>(teams) : new HashSet<>();
@@ -133,10 +184,18 @@ public class VenueBean {
         }
 
         public Builder addTeam(TeamNBA team) {
-            if (team != null) this.associatedTeams.add(team);
+            if (team != null) {
+                this.associatedTeams.add(team);
+            }
             return this;
         }
 
+        /**
+         * Builds the VenueBean, validating all fields.
+         *
+         * @return The built VenueBean
+         * @throws IllegalArgumentException if validation fails
+         */
         public VenueBean build() {
             validateNameSyntax(name);
             validateAddressSyntax(address);
@@ -147,25 +206,88 @@ public class VenueBean {
         }
     }
 
-    // Getters
-    public int getId() { return id; }
-    public String getName() { return name; }
-    public VenueType getType() { return type; }
-    public String getAddress() { return address; }
-    public String getCity() { return city; }
-    public int getMaxCapacity() { return maxCapacity; }
-    public String getVenueManagerUsername() { return venueManagerUsername; }
-    public Set<TeamNBA> getAssociatedTeams() { return new HashSet<>(associatedTeams); }
+    // ==================== GETTERS ====================
 
-    // Setters
-    public void setId(int id) { this.id = id; }
-    public void setName(String name) { this.name = name; }
-    public void setType(VenueType type) { this.type = type; }
-    public void setAddress(String address) { this.address = address; }
-    public void setCity(String city) { this.city = city; }
-    public void setMaxCapacity(int maxCapacity) { this.maxCapacity = maxCapacity; }
-    public void setVenueManagerUsername(String username) { this.venueManagerUsername = username; }
+    public int getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public VenueType getType() {
+        return type;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public int getMaxCapacity() {
+        return maxCapacity;
+    }
+
+    public String getVenueManagerUsername() {
+        return venueManagerUsername;
+    }
+
+    /**
+     * Returns a copy of the associated teams set.
+     */
+    public Set<TeamNBA> getAssociatedTeams() {
+        return new HashSet<>(associatedTeams);
+    }
+
+    // ==================== SETTERS ====================
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setType(VenueType type) {
+        this.type = type;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public void setMaxCapacity(int maxCapacity) {
+        this.maxCapacity = maxCapacity;
+    }
+
+    public void setVenueManagerUsername(String username) {
+        this.venueManagerUsername = username;
+    }
+
     public void setAssociatedTeams(Set<TeamNBA> teams) {
         this.associatedTeams = teams != null ? new HashSet<>(teams) : new HashSet<>();
+    }
+
+    // ==================== UTILITY METHODS ====================
+
+    @Override
+    public String toString() {
+        return "VenueBean{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", type=" + type +
+                ", city='" + city + '\'' +
+                ", maxCapacity=" + maxCapacity +
+                ", teamsCount=" + associatedTeams.size() +
+                '}';
     }
 }

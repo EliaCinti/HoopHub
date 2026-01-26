@@ -3,7 +3,10 @@ package it.uniroma2.hoophub.graphic_controller.gui;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.stage.Stage;
 
+import java.io.IOException;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -38,8 +41,12 @@ public class VenueManagerHomepageGraphicController {
      */
     @FXML
     private void onManageVenuesClick() {
-        // TODO: Navigate to manage venues page
-        logger.info("Manage Venues clicked");
+        try {
+            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/manage_venues.fxml");
+            closeCurrentStage();
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Unable to load manage venues page", e);
+        }
     }
 
     /**
@@ -49,5 +56,13 @@ public class VenueManagerHomepageGraphicController {
     private void onViewBookingsClick() {
         // TODO: Navigate to view bookings page
         logger.info("View Bookings clicked");
+    }
+
+    /**
+     * Closes the current stage.
+     */
+    private void closeCurrentStage() {
+        Stage stage = (Stage) manageVenuesButton.getScene().getWindow();
+        stage.close();
     }
 }

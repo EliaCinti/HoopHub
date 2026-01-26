@@ -68,4 +68,32 @@ public class NavigatorSingleton {
         stagePage.setResizable(false);
         stagePage.show();
     }
+
+    /**
+     * Navigates to a new page and returns its controller for initialization.
+     * <p>
+     * Use this overload when you need to pass data to the destination controller.
+     * The controller is returned AFTER the FXML is loaded, so you can call
+     * initialization methods on it.
+     * </p>
+     *
+     * @param fxmlPath        the relative path to the FXML file to load
+     * @param controllerClass the class of the controller (for type safety)
+     * @param <T>             the controller type
+     * @return the controller instance, ready for initialization
+     * @throws IOException if an error occurs while loading the FXML file
+     */
+    public <T> T gotoPage(String fxmlPath, Class<T> controllerClass) throws IOException {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlPath));
+        Parent root = loader.load();
+        T controller = loader.getController();
+
+        Stage stagePage = new Stage();
+        stagePage.setScene(new Scene(root));
+        stagePage.setTitle("HoopHub");
+        stagePage.setResizable(false);
+        stagePage.show();
+
+        return controller;
+    }
 }

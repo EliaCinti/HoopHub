@@ -31,11 +31,11 @@
         <fx:include fx:id="profileHeader" source="components/profile_header.fxml"/>
 
         <!-- Spacer -->
-        <Region VBox.vgrow="ALWAYS"/>
+        <Region prefHeight="150"/>
 
         <!-- Main Action Buttons -->
         <HBox alignment="CENTER" spacing="32">
-
+            <Region prefWidth="-25"/>
             <Button fx:id="bookSeatButton"
                     minWidth="160" minHeight="120"
                     maxWidth="160" maxHeight="120"
