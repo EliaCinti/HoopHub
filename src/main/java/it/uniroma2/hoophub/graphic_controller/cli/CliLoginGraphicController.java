@@ -154,8 +154,6 @@ public class CliLoginGraphicController extends CliGraphicController {
             UserBean loggedUser = loginController.login(credentials);
 
             displayLoginSuccess(loggedUser);
-            logSuccessfulLogin(username, loggedUser);
-
             return Optional.of(loggedUser);
 
         } catch (DAOException e) {
@@ -188,11 +186,6 @@ public class CliLoginGraphicController extends CliGraphicController {
         printSuccess(String.format(LOGIN_SUCCESS_MSG, userBean.getFullName()));
         printInfo(String.format(USER_TYPE_MSG, userBean.getType()));
         printNewLine();
-    }
-
-    private void logSuccessfulLogin(String username, UserBean userBean) {
-        LOGGER.log(Level.INFO, "User logged in via CLI: {0} ({1})",
-                new Object[]{username, userBean.getType()});
     }
 
     private boolean handleDAOException(String username, DAOException e) {

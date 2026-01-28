@@ -66,8 +66,8 @@ public class CliVenueManagerHomepageGraphicController extends AbstractCliHomepag
     }
 
     private void onManageVenuesSelected() {
-        LOGGER.info("Venue Manager selected: Manage Venues");
-        showNotImplemented();
+        CliManageVenuesGraphicController manageVenuesController = new CliManageVenuesGraphicController();
+        manageVenuesController.execute();
     }
 
     private void onViewBookingsSelected() {

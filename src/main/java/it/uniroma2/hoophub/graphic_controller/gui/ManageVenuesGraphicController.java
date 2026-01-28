@@ -26,7 +26,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 /**
  * JavaFX graphic controller for the Manage Venues screen.
@@ -159,18 +158,7 @@ public class ManageVenuesGraphicController {
      * Formats the teams text for display.
      */
     private String formatTeamsText(Set<TeamNBA> teams) {
-        if (teams == null || teams.isEmpty()) {
-            return "No teams";
-        }
-        if (teams.size() == 1) {
-            return teams.iterator().next().getDisplayName();
-        }
-        if (teams.size() == 2) {
-            return teams.stream()
-                    .map(TeamNBA::getDisplayName)
-                    .collect(Collectors.joining(", "));
-        }
-        return teams.size() + " teams";
+        return VenueBean.formatTeamsForDisplay(teams);
     }
 
     /**

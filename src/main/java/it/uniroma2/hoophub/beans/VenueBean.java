@@ -5,6 +5,7 @@ import it.uniroma2.hoophub.enums.VenueType;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * DTO for venue data transfer.
@@ -278,6 +279,27 @@ public class VenueBean {
     }
 
     // ==================== UTILITY METHODS ====================
+
+    /**
+     * Formats the associated teams for display.
+     *
+     * @param teams The teams to format
+     * @return Formatted string representation
+     */
+    public static String formatTeamsForDisplay(Set<TeamNBA> teams) {
+        if (teams == null || teams.isEmpty()) {
+            return "No teams";
+        }
+        if (teams.size() == 1) {
+            return teams.iterator().next().getDisplayName();
+        }
+        if (teams.size() == 2) {
+            return teams.stream()
+                    .map(TeamNBA::getDisplayName)
+                    .collect(Collectors.joining(", "));
+        }
+        return teams.size() + " teams";
+    }
 
     @Override
     public String toString() {

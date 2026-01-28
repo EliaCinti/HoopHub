@@ -94,7 +94,7 @@ public class ManageVenuesController {
         // Get next available ID
         int newId = venueDao.getNextVenueId();
 
-        // Build the Venue model
+        // Build the Venue model with teams
         Venue.Builder venueBuilder = new Venue.Builder()
                 .id(newId)
                 .name(venueBean.getName())
@@ -104,20 +104,15 @@ public class ManageVenuesController {
                 .maxCapacity(venueBean.getMaxCapacity())
                 .venueManager(manager);
 
-        // Add associated teams
+        // Add associated teams to the model
         for (TeamNBA team : venueBean.getAssociatedTeams()) {
             venueBuilder.addTeam(team);
         }
 
         Venue venue = venueBuilder.build();
 
-        // Save venue to database
+        // Save venue to database (saveVenue already persists team associations)
         Venue savedVenue = venueDao.saveVenue(venue);
-
-        // Save team associations
-        for (TeamNBA team : venueBean.getAssociatedTeams()) {
-            venueDao.saveVenueTeam(savedVenue, team);
-        }
 
         // Add venue to manager's list
         manager.addVenue(savedVenue);
