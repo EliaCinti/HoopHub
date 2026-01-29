@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 public class MockNbaScheduleApi {
 
     private static final Logger logger = Logger.getLogger(MockNbaScheduleApi.class.getName());
-    private static final String MOCK_FILE = "/json/nba_schedule_mock.json";
+    private static final String MOCK_FILE = "/it/uniroma2/hoophub/json/nba_schedule_mock.json";
 
     /**
      * Fetches NBA game schedule data from the mock JSON file.

@@ -1,142 +1,142 @@
 [
   {
-    "id": "GAME_2025_001",
+    "id": "GAME_2026_001",
     "homeTeamCode": "LAL",
     "awayTeamCode": "BOS",
-    "date": "2025-12-25",
+    "date": "2026-01-30",
     "time": "20:00"
   },
   {
-    "id": "GAME_2025_002",
+    "id": "GAME_2026_002",
     "homeTeamCode": "GSW",
     "awayTeamCode": "PHX",
-    "date": "2025-12-26",
+    "date": "2026-01-31",
     "time": "21:30"
   },
   {
-    "id": "GAME_2025_003",
+    "id": "GAME_2026_003",
     "homeTeamCode": "MIA",
     "awayTeamCode": "NYK",
-    "date": "2025-12-25",
+    "date": "2026-01-30",
     "time": "18:00"
   },
   {
-    "id": "GAME_2025_004",
+    "id": "GAME_2026_004",
     "homeTeamCode": "MIL",
     "awayTeamCode": "PHI",
-    "date": "2025-12-25",
+    "date": "2026-01-31",
     "time": "23:00"
   },
   {
-    "id": "GAME_2025_005",
+    "id": "GAME_2026_005",
     "homeTeamCode": "DEN",
     "awayTeamCode": "DAL",
-    "date": "2025-12-25",
+    "date": "2026-02-01",
     "time": "22:30"
   },
   {
-    "id": "GAME_2025_006",
+    "id": "GAME_2026_006",
     "homeTeamCode": "BKN",
     "awayTeamCode": "TOR",
-    "date": "2025-12-26",
+    "date": "2026-02-01",
     "time": "19:00"
   },
   {
-    "id": "GAME_2025_007",
+    "id": "GAME_2026_007",
     "homeTeamCode": "CHI",
     "awayTeamCode": "CLE",
-    "date": "2025-12-26",
+    "date": "2026-02-02",
     "time": "20:00"
   },
   {
-    "id": "GAME_2025_008",
+    "id": "GAME_2026_008",
     "homeTeamCode": "LAC",
     "awayTeamCode": "SAC",
-    "date": "2025-12-26",
+    "date": "2026-02-02",
     "time": "22:30"
   },
   {
-    "id": "GAME_2025_009",
+    "id": "GAME_2026_009",
     "homeTeamCode": "HOU",
     "awayTeamCode": "SAS",
-    "date": "2025-12-27",
+    "date": "2026-02-03",
     "time": "20:00"
   },
   {
-    "id": "GAME_2025_010",
+    "id": "GAME_2026_010",
     "homeTeamCode": "MIN",
     "awayTeamCode": "OKC",
-    "date": "2025-12-27",
+    "date": "2026-02-04",
     "time": "21:00"
   },
   {
-    "id": "GAME_2025_011",
+    "id": "GAME_2026_011",
     "homeTeamCode": "NOP",
     "awayTeamCode": "MEM",
-    "date": "2025-12-27",
+    "date": "2026-02-05",
     "time": "19:30"
   },
   {
-    "id": "GAME_2025_012",
+    "id": "GAME_2026_012",
     "homeTeamCode": "ATL",
     "awayTeamCode": "ORL",
-    "date": "2025-12-28",
+    "date": "2026-02-06",
     "time": "18:00"
   },
   {
-    "id": "GAME_2025_013",
+    "id": "GAME_2026_013",
     "homeTeamCode": "WAS",
     "awayTeamCode": "CHA",
-    "date": "2025-12-28",
+    "date": "2026-02-07",
     "time": "19:00"
   },
   {
-    "id": "GAME_2025_014",
+    "id": "GAME_2026_014",
     "homeTeamCode": "DET",
     "awayTeamCode": "IND",
-    "date": "2025-12-28",
+    "date": "2026-02-08",
     "time": "19:30"
   },
   {
-    "id": "GAME_2025_015",
+    "id": "GAME_2026_015",
     "homeTeamCode": "UTA",
     "awayTeamCode": "POR",
-    "date": "2025-12-29",
+    "date": "2026-02-09",
     "time": "21:00"
   },
   {
-    "id": "GAME_2025_016",
+    "id": "GAME_2026_016",
     "homeTeamCode": "BOS",
     "awayTeamCode": "LAL",
-    "date": "2025-12-29",
+    "date": "2026-02-10",
     "time": "22:00"
   },
   {
-    "id": "GAME_2025_017",
+    "id": "GAME_2026_017",
     "homeTeamCode": "PHX",
     "awayTeamCode": "GSW",
-    "date": "2025-12-29",
+    "date": "2026-02-10",
     "time": "22:30"
   },
   {
-    "id": "GAME_2025_018",
+    "id": "GAME_2026_018",
     "homeTeamCode": "NYK",
     "awayTeamCode": "BKN",
-    "date": "2025-12-30",
+    "date": "2026-02-11",
     "time": "19:30"
   },
   {
-    "id": "GAME_2025_019",
+    "id": "GAME_2026_019",
     "homeTeamCode": "DAL",
     "awayTeamCode": "HOU",
-    "date": "2025-12-30",
+    "date": "2026-02-11",
     "time": "20:30"
   },
   {
-    "id": "GAME_2025_020",
+    "id": "GAME_2026_020",
     "homeTeamCode": "MIL",
     "awayTeamCode": "CHI",
-    "date": "2025-12-30",
+    "date": "2026-02-11",
     "time": "20:00"
   }
 ]
