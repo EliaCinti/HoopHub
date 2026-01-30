@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.ManageSeatsController;
+import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
@@ -19,6 +20,8 @@ import java.util.logging.Logger;
  *
  * <p>Provides navigation to game booking and seat management features.
  * Shows notification badge on Manage Seats button when unread notifications exist.</p>
+ *
+ * <p>Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -39,10 +42,13 @@ public class FanHomepageGraphicController {
     private Label notificationBadge;
 
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private final ManageSeatsController manageSeatsController;
+
+    // ISP: dipende dall'interfaccia, non dalla classe concreta
+    private final FanBooking fanBookingController;
 
     public FanHomepageGraphicController() {
-        this.manageSeatsController = new ManageSeatsController();
+        // L'implementazione concreta viene istanziata qui
+        this.fanBookingController = new BookGameSeatController();
     }
 
     @FXML
@@ -55,7 +61,7 @@ public class FanHomepageGraphicController {
      */
     private void checkUnreadNotifications() {
         try {
-            int unreadCount = manageSeatsController.getUnreadNotificationsCount();
+            int unreadCount = fanBookingController.getFanUnreadNotificationsCount();
             UIHelper.updateNotificationBadge(notificationBadge, manageSeatsButton, unreadCount, NOTIFICATION_STYLE);
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error checking notifications", e);
@@ -66,7 +72,12 @@ public class FanHomepageGraphicController {
     @FXML
     private void onBookSeatClick() {
         try {
-            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/select_game.fxml");
+            SelectGameGraphicController controller = navigatorSingleton.gotoPage(
+                    "/it/uniroma2/hoophub/fxml/select_game.fxml",
+                    SelectGameGraphicController.class
+            );
+            // Passa l'interfaccia FanBooking
+            controller.initWithController(fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Unable to load select game page", e);
@@ -80,7 +91,8 @@ public class FanHomepageGraphicController {
                     "/it/uniroma2/hoophub/fxml/manage_seats.fxml",
                     ManageSeatsGraphicController.class
             );
-            controller.initWithController(manageSeatsController);
+            // Passa l'interfaccia FanBooking
+            controller.initWithController(fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Unable to load manage seats page", e);

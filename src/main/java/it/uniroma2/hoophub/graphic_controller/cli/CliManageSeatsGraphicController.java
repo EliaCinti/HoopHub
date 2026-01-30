@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.graphic_controller.cli;
 
-import it.uniroma2.hoophub.app_controller.ManageSeatsController;
+import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -15,6 +16,8 @@ import java.util.logging.Logger;
  *
  * <p>Extends {@link AbstractCliBookingListController} implementing the
  * Template Method pattern with Fan-specific actions (cancel).</p>
+ *
+ * <p>Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -41,10 +44,12 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
     private static final String BOOKING_SELECT_PROMPT = "Enter booking number to cancel (or B to go back): ";
     private static final String CANCEL_CONFIRM_PROMPT = "Are you sure you want to CANCEL this booking? (y/n): ";
 
-    private final ManageSeatsController manageSeatsController;
+    // ISP: dipende dall'interfaccia
+    private final FanBooking fanBookingController;
 
     public CliManageSeatsGraphicController() {
-        this.manageSeatsController = new ManageSeatsController();
+        // L'implementazione concreta viene istanziata qui
+        this.fanBookingController = new BookGameSeatController();
     }
 
     // ==================== ABSTRACT METHOD IMPLEMENTATIONS ====================
@@ -72,7 +77,7 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
     @Override
     protected int fetchUnreadNotificationsCount() {
         try {
-            return manageSeatsController.getUnreadNotificationsCount();
+            return fanBookingController.getFanUnreadNotificationsCount();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error checking notifications", e);
             return -1;
@@ -82,7 +87,7 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
     @Override
     protected void markAllNotificationsAsRead() {
         try {
-            manageSeatsController.markNotificationsAsRead();
+            fanBookingController.markFanNotificationsAsRead();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error marking notifications as read", e);
         }
@@ -91,7 +96,7 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
     @Override
     protected void loadBookings(BookingStatus statusFilter) {
         try {
-            currentBookings = manageSeatsController.getMyBookings(statusFilter);
+            currentBookings = fanBookingController.getMyBookings(statusFilter);
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.SEVERE, "Error loading bookings", e);
             printError(LOAD_ERROR_MSG + ": " + e.getMessage());
@@ -150,7 +155,7 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
      */
     private boolean isCancellable(BookingBean booking) {
         try {
-            return manageSeatsController.canCancelBooking(booking.getId());
+            return fanBookingController.canCancelBooking(booking.getId());
         } catch (DAOException | UserSessionException e) {
             return false;
         }
@@ -191,7 +196,7 @@ public class CliManageSeatsGraphicController extends AbstractCliBookingListContr
      */
     private void cancelBooking(BookingBean booking) {
         try {
-            manageSeatsController.cancelBooking(booking.getId());
+            fanBookingController.cancelBooking(booking.getId());
             printNewLine();
             printSuccess(CANCEL_SUCCESS_MSG);
             printInfo(VENUE_NOTIFIED_MSG);

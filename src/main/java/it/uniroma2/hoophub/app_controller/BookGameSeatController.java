@@ -2,25 +2,30 @@ package it.uniroma2.hoophub.app_controller;
 
 import it.uniroma2.hoophub.api.MockNbaScheduleApi;
 import it.uniroma2.hoophub.api.dto.NbaApiDto;
+import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.dao.BookingDao;
-import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.FanDao;
+import it.uniroma2.hoophub.dao.NotificationDao;
+import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.enums.BookingStatus;
+import it.uniroma2.hoophub.enums.NotificationType;
 import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.model.Booking;
 import it.uniroma2.hoophub.model.Fan;
+import it.uniroma2.hoophub.model.Notification;
 import it.uniroma2.hoophub.model.Venue;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -29,29 +34,45 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Application controller for the "Book Game Seat" use case.
+ * Unified application controller for the "Book Game Seat" use case.
  *
- * <p>Handles the booking flow for fans: fetching upcoming games,
- * finding venues that broadcast selected games, checking seat availability,
- * and creating booking requests with notifications.</p>
+ * <p>Implements both {@link FanBooking} and {@link VenueManagerBooking} interfaces,
+ * following the Interface Segregation Principle (ISP). Each actor (Fan, VenueManager)
+ * only sees the methods relevant to their role.</p>
  *
- * <p>Used by both GUI and CLI graphic controllers.</p>
+ * <h3>Fan Operations (via FanBooking interface)</h3>
+ * <ul>
+ *   <li>Browse upcoming NBA games</li>
+ *   <li>Find venues broadcasting a game</li>
+ *   <li>Create booking requests</li>
+ *   <li>View and cancel own bookings</li>
+ * </ul>
+ *
+ * <h3>VenueManager Operations (via VenueManagerBooking interface)</h3>
+ * <ul>
+ *   <li>View booking requests for owned venues</li>
+ *   <li>Approve or reject bookings</li>
+ * </ul>
  *
  * @author Elia Cinti
  * @version 1.0
  */
-public class BookGameSeatController {
+public class BookGameSeatController implements FanBooking, VenueManagerBooking {
 
     private static final Logger LOGGER = Logger.getLogger(BookGameSeatController.class.getName());
 
     /** Number of days ahead to show games (2 weeks). */
     private static final int SCHEDULE_DAYS_AHEAD = 14;
 
+    /** Days before game date when cancellation is no longer allowed. */
+    private static final int CANCELLATION_DEADLINE_DAYS = 2;
 
+    // DAOs
     private final MockNbaScheduleApi nbaApi;
     private final VenueDao venueDao;
     private final BookingDao bookingDao;
     private final FanDao fanDao;
+    private final NotificationDao notificationDao;
 
     /**
      * Default constructor using DaoFactoryFacade.
@@ -62,15 +83,16 @@ public class BookGameSeatController {
         this.venueDao = daoFactory.getVenueDao();
         this.bookingDao = daoFactory.getBookingDao();
         this.fanDao = daoFactory.getFanDao();
+        this.notificationDao = daoFactory.getNotificationDao();
     }
 
-    // ==================== STEP 1: GET UPCOMING GAMES ====================
+    // ========================================================================
+    // FAN BOOKING INTERFACE IMPLEMENTATION
+    // ========================================================================
 
-    /**
-     * Retrieves upcoming NBA games within the schedule window (2 weeks).
-     *
-     * @return List of NbaGameBean for display
-     */
+    // ==================== GAME BROWSING ====================
+
+    @Override
     public List<NbaGameBean> getUpcomingGames() {
         LocalDate today = LocalDate.now();
         LocalDate endDate = today.plusDays(SCHEDULE_DAYS_AHEAD);
@@ -86,15 +108,9 @@ public class BookGameSeatController {
                 .toList();
     }
 
-    // ==================== STEP 2: GET VENUES FOR GAME ====================
+    // ==================== VENUE SELECTION ====================
 
-    /**
-     * Retrieves all venues that broadcast at least one of the teams in the game.
-     *
-     * @param game The selected game
-     * @return List of VenueBean with availability info
-     * @throws DAOException if database access fails
-     */
+    @Override
     public List<VenueBean> getVenuesForGame(NbaGameBean game) throws DAOException {
         List<Venue> allVenues = venueDao.retrieveAllVenues();
 
@@ -104,17 +120,7 @@ public class BookGameSeatController {
                 .toList();
     }
 
-    /**
-     * Retrieves venues for a game with optional filters.
-     * Optimized to query the DB by city if a city filter is provided.
-     *
-     * @param game              The selected game
-     * @param cityFilter        Filter by city (null or empty to skip)
-     * @param typeFilter        Filter by venue type (null to skip)
-     * @param onlyWithSeats     If true, only return venues with available seats
-     * @return Filtered list of VenueBean
-     * @throws DAOException if database access fails
-     */
+    @Override
     public List<VenueBean> getVenuesForGame(NbaGameBean game, String cityFilter,
                                             String typeFilter, boolean onlyWithSeats) throws DAOException {
 
@@ -128,24 +134,14 @@ public class BookGameSeatController {
 
         return rawVenues.stream()
                 .filter(venue -> venueShowsGame(venue, game))
-
                 .map(this::convertToVenueBean)
-
                 .filter(v -> typeFilter == null || typeFilter.isEmpty()
                         || v.getType().name().equalsIgnoreCase(typeFilter))
-
                 .filter(v -> !onlyWithSeats || getAvailableSeats(v.getId(), game) > 0)
-
                 .toList();
     }
 
-    /**
-     * Gets all unique cities from venues that show a specific game.
-     *
-     * @param game The selected game
-     * @return List of city names for filter dropdown
-     * @throws DAOException if database access fails
-     */
+    @Override
     public List<String> getAvailableCitiesForGame(NbaGameBean game) throws DAOException {
         return getVenuesForGame(game).stream()
                 .map(VenueBean::getCity)
@@ -154,17 +150,9 @@ public class BookGameSeatController {
                 .toList();
     }
 
-    // ==================== STEP 3: CHECK AVAILABILITY ====================
+    // ==================== SEAT AVAILABILITY ====================
 
-    /**
-     * Calculates available seats for a venue and game.
-     *
-     * <p>Formula: maxCapacity - count(PENDING + CONFIRMED bookings for the same venue/game)</p>
-     *
-     * @param venueId The venue ID
-     * @param game    The game
-     * @return Number of available seats (0 if full)
-     */
+    @Override
     public int getAvailableSeats(int venueId, NbaGameBean game) {
         try {
             Venue venue = venueDao.retrieveVenue(venueId);
@@ -189,25 +177,12 @@ public class BookGameSeatController {
         }
     }
 
-    /**
-     * Checks if a venue has available seats for a game.
-     *
-     * @param venueId The venue ID
-     * @param game    The game
-     * @return true if at least one seat is available
-     */
+    @Override
     public boolean hasAvailableSeats(int venueId, NbaGameBean game) {
         return getAvailableSeats(venueId, game) > 0;
     }
 
-    /**
-     * Checks if the current fan has already booked this game.
-     *
-     * @param game The game to check
-     * @return true if already booked (PENDING or CONFIRMED)
-     * @throws DAOException if database access fails
-     * @throws UserSessionException if no fan is logged in
-     */
+    @Override
     public boolean hasAlreadyBooked(NbaGameBean game) throws DAOException, UserSessionException {
         UserBean currentUser = getCurrentFan();
         List<Booking> fanBookings = bookingDao.retrieveBookingsByFan(currentUser.getUsername());
@@ -220,31 +195,18 @@ public class BookGameSeatController {
                         || b.getStatus() == BookingStatus.CONFIRMED));
     }
 
-    // ==================== STEP 4: CREATE BOOKING ====================
+    // ==================== BOOKING CREATION ====================
 
-    /**
-     * Creates a new booking request (status: PENDING).
-     *
-     * <p>Also creates a notification for the VenueManager.</p>
-     *
-     * @param game    The selected game
-     * @param venueId The selected venue ID
-     * @throws UserSessionException if no fan is logged in
-     * @throws DAOException         if database access fails
-     * @throws IllegalStateException if no seats available
-     */
+    @Override
     public void createBookingRequest(NbaGameBean game, int venueId)
             throws UserSessionException, DAOException {
 
-        // Verify fan is logged in
         UserBean currentUser = getCurrentFan();
 
-        // Verify seats available
         if (!hasAvailableSeats(venueId, game)) {
             throw new IllegalStateException("No seats available for this game at this venue");
         }
 
-        // Get entities
         Venue venue = venueDao.retrieveVenue(venueId);
         if (venue == null) {
             throw new DAOException("Venue not found: " + venueId);
@@ -255,7 +217,6 @@ public class BookGameSeatController {
             throw new DAOException("Fan not found: " + currentUser.getUsername());
         }
 
-        // Create booking
         int bookingId = bookingDao.getNextBookingId();
         Booking booking = new Booking.Builder(
                 bookingId,
@@ -272,10 +233,191 @@ public class BookGameSeatController {
         LOGGER.log(Level.INFO, "Booking request created: {0}", booking);
     }
 
-    // ==================== HELPER METHODS ====================
+    // ==================== FAN BOOKING MANAGEMENT ====================
+
+    @Override
+    public List<BookingBean> getMyBookings() throws DAOException, UserSessionException {
+        return getMyBookings(null);
+    }
+
+    @Override
+    public List<BookingBean> getMyBookings(BookingStatus statusFilter)
+            throws DAOException, UserSessionException {
+
+        UserBean currentUser = getCurrentFan();
+        String username = currentUser.getUsername();
+
+        List<Booking> bookings;
+        if (statusFilter != null) {
+            bookings = bookingDao.retrieveBookingsByStatus(username, statusFilter);
+        } else {
+            bookings = bookingDao.retrieveBookingsByFan(username);
+        }
+
+        List<BookingBean> bookingBeans = new ArrayList<>();
+        for (Booking booking : bookings) {
+            Venue venue = venueDao.retrieveVenue(booking.getVenueId());
+            bookingBeans.add(convertToBookingBean(booking, venue));
+        }
+
+        bookingBeans.sort(Comparator
+                .comparing((BookingBean b) -> isTerminalStatus(b.getStatus()))
+                .thenComparing(BookingBean::getGameDate, Comparator.reverseOrder()));
+
+        return bookingBeans;
+    }
+
+    @Override
+    public List<BookingBean> getCancellableBookings() throws DAOException, UserSessionException {
+        List<BookingBean> allBookings = getMyBookings();
+        return allBookings.stream()
+                .filter(this::canBeCancelled)
+                .toList();
+    }
+
+    @Override
+    public void cancelBooking(int bookingId) throws DAOException, UserSessionException {
+        Booking booking = getAndValidateFanBooking(bookingId);
+
+        validateCancellation(booking);
+
+        booking.cancel();
+        bookingDao.updateBooking(booking);
+
+        notifyVenueManagerOfCancellation(booking);
+
+        LOGGER.log(Level.INFO, "Booking {0} cancelled by fan", bookingId);
+    }
+
+    @Override
+    public boolean canCancelBooking(int bookingId) throws DAOException, UserSessionException {
+        try {
+            Booking booking = getAndValidateFanBooking(bookingId);
+            validateCancellation(booking);
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
+    // ==================== FAN NOTIFICATIONS ====================
+
+    @Override
+    public int getFanUnreadNotificationsCount() throws DAOException, UserSessionException {
+        UserBean currentUser = getCurrentFan();
+        return notificationDao.getUnreadCount(currentUser.getUsername(), UserType.FAN);
+    }
+
+    @Override
+    public void markFanNotificationsAsRead() throws DAOException, UserSessionException {
+        UserBean currentUser = getCurrentFan();
+        notificationDao.markAllAsReadForUser(currentUser.getUsername(), UserType.FAN);
+
+        LOGGER.log(Level.INFO, "Marked all notifications as read for Fan: {0}",
+                currentUser.getUsername());
+    }
+
+    // ========================================================================
+    // VENUE MANAGER BOOKING INTERFACE IMPLEMENTATION
+    // ========================================================================
+
+    // ==================== VM BOOKING RETRIEVAL ====================
+
+    @Override
+    public List<BookingBean> getBookingsForMyVenues() throws DAOException, UserSessionException {
+        return getBookingsForMyVenues(null);
+    }
+
+    @Override
+    public List<BookingBean> getBookingsForMyVenues(BookingStatus statusFilter)
+            throws DAOException, UserSessionException {
+
+        UserBean currentUser = getCurrentVenueManager();
+
+        List<Booking> allBookings = bookingDao.retrieveBookingsByVenueManager(currentUser.getUsername());
+        List<BookingBean> result = new ArrayList<>();
+
+        for (Booking booking : allBookings) {
+            if (statusFilter == null || booking.getStatus() == statusFilter) {
+                Venue venue = venueDao.retrieveVenue(booking.getVenueId());
+                BookingBean bean = convertToBookingBean(booking, venue);
+                result.add(bean);
+            }
+        }
+
+        result.sort((b1, b2) -> {
+            if (b1.getStatus() == BookingStatus.PENDING && b2.getStatus() != BookingStatus.PENDING) {
+                return -1;
+            }
+            if (b2.getStatus() == BookingStatus.PENDING && b1.getStatus() != BookingStatus.PENDING) {
+                return 1;
+            }
+            return b2.getGameDate().compareTo(b1.getGameDate());
+        });
+
+        return result;
+    }
+
+    @Override
+    public List<BookingBean> getPendingBookings() throws DAOException, UserSessionException {
+        return getBookingsForMyVenues(BookingStatus.PENDING);
+    }
+
+    // ==================== VM BOOKING ACTIONS ====================
+
+    @Override
+    public void approveBooking(int bookingId) throws DAOException, UserSessionException {
+        Booking booking = getAndValidateVmBooking(bookingId);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING bookings can be approved");
+        }
+
+        booking.confirm();
+        bookingDao.updateBooking(booking);
+
+        LOGGER.log(Level.INFO, "Booking {0} approved", bookingId);
+    }
+
+    @Override
+    public void rejectBooking(int bookingId) throws DAOException, UserSessionException {
+        Booking booking = getAndValidateVmBooking(bookingId);
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalStateException("Only PENDING bookings can be rejected");
+        }
+
+        booking.reject();
+        bookingDao.updateBooking(booking);
+
+        LOGGER.log(Level.INFO, "Booking {0} rejected", bookingId);
+    }
+
+    // ==================== VM NOTIFICATIONS ====================
+
+    @Override
+    public int getVmUnreadNotificationsCount() throws DAOException, UserSessionException {
+        UserBean currentUser = getCurrentVenueManager();
+        return notificationDao.getUnreadCount(currentUser.getUsername(), UserType.VENUE_MANAGER);
+    }
+
+    @Override
+    public void markVmNotificationsAsRead() throws DAOException, UserSessionException {
+        UserBean currentUser = getCurrentVenueManager();
+        notificationDao.markAllAsReadForUser(currentUser.getUsername(), UserType.VENUE_MANAGER);
+
+        LOGGER.log(Level.INFO, "Marked all notifications as read for VenueManager: {0}",
+                currentUser.getUsername());
+    }
+
+    // ========================================================================
+    // PRIVATE HELPER METHODS
+    // ========================================================================
+
+    // ==================== SESSION HELPERS ====================
 
     /**
-     * Gets the current logged-in user and verifies they are a fan.
+     * Gets the current logged-in Fan.
      */
     private UserBean getCurrentFan() throws UserSessionException {
         UserBean currentUser = SessionManager.INSTANCE.getCurrentUser();
@@ -292,6 +434,99 @@ public class BookGameSeatController {
     }
 
     /**
+     * Gets the current logged-in VenueManager.
+     */
+    private UserBean getCurrentVenueManager() throws UserSessionException {
+        UserBean currentUser = SessionManager.INSTANCE.getCurrentUser();
+
+        if (currentUser == null) {
+            throw new UserSessionException("No user logged in");
+        }
+
+        if (currentUser.getType() != UserType.VENUE_MANAGER) {
+            throw new UserSessionException("Current user is not a VenueManager");
+        }
+
+        return currentUser;
+    }
+
+    // ==================== VALIDATION HELPERS ====================
+
+    /**
+     * Retrieves and validates Fan booking ownership.
+     */
+    private Booking getAndValidateFanBooking(int bookingId) throws DAOException, UserSessionException {
+        Booking booking = bookingDao.retrieveBooking(bookingId);
+        if (booking == null) {
+            throw new IllegalStateException("Booking not found: " + bookingId);
+        }
+
+        UserBean currentUser = getCurrentFan();
+        if (!booking.getFanUsername().equals(currentUser.getUsername())) {
+            throw new IllegalStateException("Booking does not belong to you");
+        }
+
+        return booking;
+    }
+
+    /**
+     * Retrieves and validates VenueManager booking ownership.
+     */
+    private Booking getAndValidateVmBooking(int bookingId) throws DAOException, UserSessionException {
+        UserBean currentUser = getCurrentVenueManager();
+
+        Booking booking = bookingDao.retrieveBooking(bookingId);
+        if (booking == null) {
+            throw new IllegalStateException("Booking not found: " + bookingId);
+        }
+
+        Venue venue = venueDao.retrieveVenue(booking.getVenueId());
+        if (venue == null || !venue.getVenueManagerUsername().equals(currentUser.getUsername())) {
+            throw new IllegalStateException("Booking does not belong to your venues");
+        }
+
+        return booking;
+    }
+
+    /**
+     * Validates that a booking can be canceled.
+     */
+    private void validateCancellation(Booking booking) {
+        if (booking.getStatus() != BookingStatus.PENDING &&
+                booking.getStatus() != BookingStatus.CONFIRMED) {
+            throw new IllegalStateException("Only PENDING or CONFIRMED bookings can be cancelled");
+        }
+
+        LocalDate deadline = booking.getGameDate().minusDays(CANCELLATION_DEADLINE_DAYS);
+        if (LocalDate.now().isAfter(deadline)) {
+            throw new IllegalStateException(
+                    String.format("Cannot cancel bookings within %d days of the game", CANCELLATION_DEADLINE_DAYS));
+        }
+    }
+
+    // ==================== STATUS HELPERS ====================
+
+    /**
+     * Checks if a status is terminal (cannot be canceled).
+     */
+    private boolean isTerminalStatus(BookingStatus status) {
+        return status == BookingStatus.REJECTED || status == BookingStatus.CANCELLED;
+    }
+
+    /**
+     * Checks if a booking can be canceled (status + deadline).
+     */
+    private boolean canBeCancelled(BookingBean booking) {
+        if (isTerminalStatus(booking.getStatus())) {
+            return false;
+        }
+        LocalDate deadline = booking.getGameDate().minusDays(CANCELLATION_DEADLINE_DAYS);
+        return !LocalDate.now().isAfter(deadline);
+    }
+
+    // ==================== VENUE HELPERS ====================
+
+    /**
      * Checks if a venue broadcasts at least one team from the game.
      */
     private boolean venueShowsGame(Venue venue, NbaGameBean game) {
@@ -299,6 +534,34 @@ public class BookGameSeatController {
         return venueTeams.contains(game.getHomeTeam())
                 || venueTeams.contains(game.getAwayTeam());
     }
+
+    // ==================== NOTIFICATION HELPERS ====================
+
+    /**
+     * Notifies the VenueManager about a cancellation.
+     */
+    private void notifyVenueManagerOfCancellation(Booking booking) throws DAOException {
+        Venue venue = venueDao.retrieveVenue(booking.getVenueId());
+        if (venue == null) {
+            LOGGER.log(Level.WARNING, "Venue not found for booking {0}", booking.getId());
+            return;
+        }
+
+        Notification notification = new Notification.Builder()
+                .username(venue.getVenueManagerUsername())
+                .userType(UserType.VENUE_MANAGER)
+                .type(NotificationType.BOOKING_CANCELLED)
+                .message(String.format("Booking cancelled: %s for %s on %s",
+                        booking.getFanUsername(),
+                        booking.getMatchup(),
+                        booking.getGameDate()))
+                .bookingId(booking.getId())
+                .build();
+
+        notificationDao.saveNotification(notification);
+    }
+
+    // ==================== CONVERSION HELPERS ====================
 
     /**
      * Converts NbaApiDto to NbaGameBean.
@@ -340,6 +603,24 @@ public class BookGameSeatController {
                 .maxCapacity(venue.getMaxCapacity())
                 .venueManagerUsername(venue.getVenueManagerUsername())
                 .associatedTeams(venue.getAssociatedTeams())
+                .build();
+    }
+
+    /**
+     * Converts a Booking model to BookingBean.
+     */
+    private BookingBean convertToBookingBean(Booking booking, Venue venue) {
+        return new BookingBean.Builder()
+                .id(booking.getId())
+                .gameDate(booking.getGameDate())
+                .gameTime(booking.getGameTime())
+                .homeTeam(booking.getHomeTeam())
+                .awayTeam(booking.getAwayTeam())
+                .venueId(booking.getVenueId())
+                .venueName(venue != null ? venue.getName() : "Unknown")
+                .fanUsername(booking.getFanUsername())
+                .status(booking.getStatus())
+                .createdAt(booking.getCreatedAt())
                 .build();
     }
 }

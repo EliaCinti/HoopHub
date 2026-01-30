@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.enums.VenueType;
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  * GUI controller for Step 2 of Book Game Seat: Select Venue.
  *
  * <p>Displays venues that broadcast the selected game and allows filtering.
- * Uses the same {@link BookGameSeatController} as the CLI version.</p>
+ * Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -70,7 +70,9 @@ public class SelectVenueGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private BookGameSeatController bookGameSeatController;
+
+    // ISP: dipende dall'interfaccia
+    private FanBooking fanBookingController;
 
     // State
     private NbaGameBean selectedGame;
@@ -89,14 +91,15 @@ public class SelectVenueGraphicController {
     // ==================== INITIALIZATION ====================
 
     /**
-     * Initializes the controller with the selected game.
+     * Initializes the controller with the selected game and FanBooking interface.
      * Called by SelectGameGraphicController after navigation.
      *
-     * @param game The selected game
+     * @param game       The selected game
+     * @param controller The FanBooking interface instance
      */
-    public void initWithGame(NbaGameBean game, BookGameSeatController bookGameSeatController) {
+    public void initWithGame(NbaGameBean game, FanBooking controller) {
         this.selectedGame = game;
-        this.bookGameSeatController = bookGameSeatController;
+        this.fanBookingController = controller;
         updateGameInfoLabel();
         loadCityFilter();
         loadVenues();
@@ -119,14 +122,12 @@ public class SelectVenueGraphicController {
      * Sets up filter components.
      */
     private void setupFilters() {
-        // Type filter
         typeFilter.getItems().add(ALL_TYPES);
         for (VenueType type : VenueType.values()) {
             typeFilter.getItems().add(type.getDisplayName());
         }
         typeFilter.setValue(ALL_TYPES);
 
-        // Filter change listeners
         cityFilter.setOnAction(e -> applyFilters());
         typeFilter.setOnAction(e -> applyFilters());
         availableOnlyFilter.setOnAction(e -> applyFilters());
@@ -137,7 +138,7 @@ public class SelectVenueGraphicController {
      */
     private void loadCityFilter() {
         try {
-            List<String> cities = bookGameSeatController.getAvailableCitiesForGame(selectedGame);
+            List<String> cities = fanBookingController.getAvailableCitiesForGame(selectedGame);
             cityFilter.getItems().clear();
             cityFilter.getItems().add(ALL_CITIES);
             cityFilter.getItems().addAll(cities);
@@ -165,7 +166,7 @@ public class SelectVenueGraphicController {
             String type = getSelectedType();
             boolean onlyAvailable = availableOnlyFilter.isSelected();
 
-            currentVenues = bookGameSeatController.getVenuesForGame(
+            currentVenues = fanBookingController.getVenuesForGame(
                     selectedGame, city, type, onlyAvailable);
 
             if (currentVenues.isEmpty()) {
@@ -196,7 +197,6 @@ public class SelectVenueGraphicController {
         if (ALL_TYPES.equals(selected)) {
             return null;
         }
-        // Convert display name back to enum name
         for (VenueType type : VenueType.values()) {
             if (type.getDisplayName().equals(selected)) {
                 return type.name();
@@ -248,21 +248,15 @@ public class SelectVenueGraphicController {
         card.setPadding(new Insets(16));
         card.setCursor(Cursor.HAND);
 
-        int availableSeats = bookGameSeatController.getAvailableSeats(venue.getId(), selectedGame);
+        int availableSeats = fanBookingController.getAvailableSeats(venue.getId(), selectedGame);
 
-        // Header row (name + availability)
         HBox headerRow = createVenueHeaderRow(venue, availableSeats);
-
-        // Details row
         HBox detailsRow = createVenueDetailsRow(venue);
 
-        // Address row
         Label addressLabel = new Label(venue.getAddress() + ", " + venue.getCity());
         addressLabel.getStyleClass().add("card-detail");
 
         card.getChildren().addAll(headerRow, detailsRow, addressLabel);
-
-        // Click handler
         card.setOnMouseClicked(e -> onVenueSelected(venue, availableSeats));
 
         return card;
@@ -275,15 +269,12 @@ public class SelectVenueGraphicController {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // Venue name
         Label nameLabel = new Label(venue.getName());
         nameLabel.getStyleClass().add("card-title");
 
-        // Spacer
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Availability badge
         Label availabilityLabel;
         if (availableSeats > 0) {
             availabilityLabel = new Label(String.format(SEATS_AVAILABLE_MSG, availableSeats));
@@ -304,11 +295,9 @@ public class SelectVenueGraphicController {
         HBox row = new HBox(16);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // Type
         Label typeLabel = new Label(venue.getType().getDisplayName());
         typeLabel.getStyleClass().add("card-subtitle");
 
-        // Teams
         Label teamsLabel = new Label(VenueBean.formatTeamsForDisplay(venue.getAssociatedTeams()));
         teamsLabel.getStyleClass().add("card-detail");
 
@@ -329,8 +318,8 @@ public class SelectVenueGraphicController {
                     "/it/uniroma2/hoophub/fxml/booking_summary.fxml",
                     BookingSummaryGraphicController.class
             );
-            // Passa game, venue, seats E il controller applicativo
-            controller.initWithData(selectedGame, venue, availableSeats, bookGameSeatController);
+            // Passa game, venue, seats E l'interfaccia FanBooking
+            controller.initWithData(selectedGame, venue, availableSeats, fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error navigating to booking summary", e);
@@ -341,7 +330,11 @@ public class SelectVenueGraphicController {
     @FXML
     private void onBackClick() {
         try {
-            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/select_game.fxml");
+            SelectGameGraphicController controller = navigatorSingleton.gotoPage(
+                    "/it/uniroma2/hoophub/fxml/select_game.fxml",
+                    SelectGameGraphicController.class
+            );
+            controller.initWithController(fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error navigating back", e);

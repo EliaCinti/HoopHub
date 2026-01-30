@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
 import it.uniroma2.hoophub.utilities.UIHelper;
@@ -26,7 +26,7 @@ import java.util.logging.Logger;
  * GUI controller for Step 1 of Book Game Seat: Select Game.
  *
  * <p>Displays upcoming NBA games and allows the fan to select one.
- * Uses the same {@link BookGameSeatController} as the CLI version.</p>
+ * Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -56,18 +56,32 @@ public class SelectGameGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private final BookGameSeatController bookGameSeatController;
+
+    // ISP: dipende dall'interfaccia
+    private FanBooking fanBookingController;
 
     // State
     private List<NbaGameBean> currentGames;
 
     public SelectGameGraphicController() {
-        this.bookGameSeatController = new BookGameSeatController();
+        // Controller verrà passato via initWithController()
     }
 
     @FXML
     public void initialize() {
         UIHelper.showTitle(msgLabel, PAGE_TITLE);
+    }
+
+    // ==================== INITIALIZATION ====================
+
+    /**
+     * Initializes the controller with the FanBooking interface.
+     * Called by FanHomepageGraphicController after navigation.
+     *
+     * @param controller The FanBooking interface instance
+     */
+    public void initWithController(FanBooking controller) {
+        this.fanBookingController = controller;
         loadGames();
     }
 
@@ -78,7 +92,7 @@ public class SelectGameGraphicController {
      */
     private void loadGames() {
         try {
-            currentGames = bookGameSeatController.getUpcomingGames();
+            currentGames = fanBookingController.getUpcomingGames();
 
             if (currentGames.isEmpty()) {
                 showEmptyState();
@@ -128,15 +142,10 @@ public class SelectGameGraphicController {
         card.setPadding(new Insets(16));
         card.setCursor(Cursor.HAND);
 
-        // Matchup row
         HBox matchupRow = createMatchupRow(game);
-
-        // Date/Time row
         HBox dateTimeRow = createDateTimeRow(game);
 
         card.getChildren().addAll(matchupRow, dateTimeRow);
-
-        // Click handler
         card.setOnMouseClicked(e -> onGameSelected(game));
 
         return card;
@@ -149,23 +158,18 @@ public class SelectGameGraphicController {
         HBox row = new HBox(12);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // Away team
         Label awayLabel = new Label(game.getAwayTeam().getDisplayName());
         awayLabel.getStyleClass().add("card-title");
 
-        // @ symbol
         Label atLabel = new Label("@");
         atLabel.getStyleClass().add("card-subtitle");
 
-        // Home team
         Label homeLabel = new Label(game.getHomeTeam().getDisplayName());
         homeLabel.getStyleClass().add("card-title");
 
-        // Spacer
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        // Arrow indicator
         Label arrowLabel = new Label("→");
         arrowLabel.getStyleClass().add("card-arrow");
 
@@ -180,11 +184,9 @@ public class SelectGameGraphicController {
         HBox row = new HBox(16);
         row.setAlignment(Pos.CENTER_LEFT);
 
-        // Date
         Label dateLabel = new Label(game.getDate().format(DATE_FORMATTER));
         dateLabel.getStyleClass().add("card-detail");
 
-        // Time
         Label timeLabel = new Label(game.getTime().format(TIME_FORMATTER));
         timeLabel.getStyleClass().add("card-detail");
 
@@ -206,8 +208,8 @@ public class SelectGameGraphicController {
                     "/it/uniroma2/hoophub/fxml/select_venue.fxml",
                     SelectVenueGraphicController.class
             );
-            // Passa sia il game che il controller applicativo
-            controller.initWithGame(game, bookGameSeatController);
+            // Passa sia il game che l'interfaccia FanBooking
+            controller.initWithGame(game, fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error navigating to venue selection", e);

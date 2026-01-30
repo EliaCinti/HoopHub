@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -24,7 +24,7 @@ import java.util.logging.Logger;
  * GUI controller for Step 3 of Book Game Seat: Booking Summary.
  *
  * <p>Displays booking summary and handles confirmation or waitlist.
- * Uses the same {@link BookGameSeatController} as the CLI version.</p>
+ * Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -71,7 +71,9 @@ public class BookingSummaryGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private BookGameSeatController bookGameSeatController;
+
+    // ISP: dipende dall'interfaccia
+    private FanBooking fanBookingController;
 
     // State
     private NbaGameBean selectedGame;
@@ -92,20 +94,20 @@ public class BookingSummaryGraphicController {
     // ==================== INITIALIZATION ====================
 
     /**
-     * Initializes the controller with booking data and application controller.
+     * Initializes the controller with booking data and FanBooking interface.
      * Called by SelectVenueGraphicController after navigation.
      *
-     * @param game The selected game
-     * @param venue The selected venue
+     * @param game           The selected game
+     * @param venue          The selected venue
      * @param availableSeats Number of available seats
-     * @param appController The application controller instance
+     * @param controller     The FanBooking interface instance
      */
     public void initWithData(NbaGameBean game, VenueBean venue, int availableSeats,
-                             BookGameSeatController appController) {
+                             FanBooking controller) {
         this.selectedGame = game;
         this.selectedVenue = venue;
         this.availableSeats = availableSeats;
-        this.bookGameSeatController = appController;
+        this.fanBookingController = controller;
         this.isWaitlistMode = availableSeats <= 0;
 
         if (isWaitlistMode) {
@@ -123,19 +125,16 @@ public class BookingSummaryGraphicController {
      * Displays the booking summary.
      */
     private void displaySummary() {
-        // Game info
         String matchup = selectedGame.getAwayTeam().getDisplayName() +
                 " @ " + selectedGame.getHomeTeam().getDisplayName();
         matchupLabel.setText(matchup);
         dateLabel.setText(selectedGame.getDate().format(DATE_FORMATTER));
         timeLabel.setText(selectedGame.getTime().format(TIME_FORMATTER));
 
-        // Venue info
         venueNameLabel.setText(selectedVenue.getName());
         venueTypeLabel.setText(selectedVenue.getType().getDisplayName());
         venueAddressLabel.setText(selectedVenue.getAddress() + ", " + selectedVenue.getCity());
 
-        // Availability
         if (availableSeats > 0) {
             availabilityLabel.setText(String.format(SEATS_AVAILABLE_MSG, availableSeats));
             availabilityLabel.getStyleClass().addAll("badge", "badge-success");
@@ -161,16 +160,13 @@ public class BookingSummaryGraphicController {
      */
     private void handleBooking() {
         try {
-            // Check if already booked
-            if (bookGameSeatController.hasAlreadyBooked(selectedGame)) {
+            if (fanBookingController.hasAlreadyBooked(selectedGame)) {
                 UIHelper.showErrorThenTitle(msgLabel, ALREADY_BOOKED_MSG, PAGE_TITLE);
                 return;
             }
 
-            // Create booking
-            bookGameSeatController.createBookingRequest(selectedGame, selectedVenue.getId());
+            fanBookingController.createBookingRequest(selectedGame, selectedVenue.getId());
 
-            // Show success
             showSuccessAndRedirect();
 
         } catch (UserSessionException | DAOException | IllegalStateException e) {
@@ -191,15 +187,12 @@ public class BookingSummaryGraphicController {
      * Shows success message and starts redirect countdown.
      */
     private void showSuccessAndRedirect() {
-        // Disable buttons
         confirmButton.setDisable(true);
         cancelButton.setDisable(true);
         backButton.setDisable(true);
 
-        // Show success message
         UIHelper.showSuccess(msgLabel, BOOKING_SUCCESS_MSG);
 
-        // Show status
         statusLabel.setText(BOOKING_PENDING_MSG);
         statusLabel.setVisible(true);
         statusLabel.setManaged(true);
@@ -211,7 +204,6 @@ public class BookingSummaryGraphicController {
      * Shows redirect countdown and navigates to homepage using JavaFX Timeline.
      */
     private void showRedirectCountdown() {
-        // Disable buttons
         confirmButton.setDisable(true);
         cancelButton.setDisable(true);
 
@@ -220,7 +212,7 @@ public class BookingSummaryGraphicController {
         updateCountdownOrNavigate(REDIRECT_DELAY_SECONDS);
 
         Timeline timeline = new Timeline();
-        timeline.setCycleCount(REDIRECT_DELAY_SECONDS); // Esegui 5 volte
+        timeline.setCycleCount(REDIRECT_DELAY_SECONDS);
 
         final int[] timeSeconds = {REDIRECT_DELAY_SECONDS};
 
@@ -271,8 +263,7 @@ public class BookingSummaryGraphicController {
                     "/it/uniroma2/hoophub/fxml/select_venue.fxml",
                     SelectVenueGraphicController.class
             );
-            // Passa game E il controller applicativo
-            controller.initWithGame(selectedGame, bookGameSeatController);
+            controller.initWithGame(selectedGame, fanBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error navigating back", e);

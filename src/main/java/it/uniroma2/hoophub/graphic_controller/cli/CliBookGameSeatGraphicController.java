@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.graphic_controller.cli;
 
 import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.beans.VenueBean;
 import it.uniroma2.hoophub.enums.VenueType;
@@ -17,7 +18,7 @@ import java.util.logging.Logger;
  * CLI graphic controller for the Book Game Seat use case.
  *
  * <p>Provides text-based booking flow for fans: select game → select venue → confirm booking.
- * Uses the same {@link BookGameSeatController} as the GUI version.</p>
+ * Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -63,13 +64,15 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
     // Redirect delay
     private static final int REDIRECT_DELAY_SECONDS = 5;
 
-    private final BookGameSeatController bookGameSeatController;
+    // ISP: dipende dall'interfaccia
+    private final FanBooking fanBookingController;
     private List<NbaGameBean> currentGames;
     private List<VenueBean> currentVenues;
     private NbaGameBean selectedGame;
 
     public CliBookGameSeatGraphicController() {
-        this.bookGameSeatController = new BookGameSeatController();
+        // L'implementazione concreta viene istanziata qui
+        this.fanBookingController = new BookGameSeatController();
         this.currentGames = new ArrayList<>();
         this.currentVenues = new ArrayList<>();
     }
@@ -97,13 +100,13 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
     /**
      * Displays games and handles selection.
      *
-     * @return Selected game or null if cancelled
+     * @return Selected game or null if canceled
      */
     private NbaGameBean selectGame() {
         clearScreen();
         printTitle(TITLE_SELECT_GAME);
 
-        currentGames = bookGameSeatController.getUpcomingGames();
+        currentGames = fanBookingController.getUpcomingGames();
 
         if (currentGames.isEmpty()) {
             printWarning(NO_GAMES_MSG);
@@ -255,7 +258,7 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
      */
     private void loadVenuesWithFilters(VenueFilters filters) {
         try {
-            currentVenues = bookGameSeatController.getVenuesForGame(
+            currentVenues = fanBookingController.getVenuesForGame(
                     selectedGame,
                     filters.city,
                     filters.type,
@@ -287,7 +290,7 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
      * Displays a single venue item with availability.
      */
     private void displayVenueItem(int number, VenueBean venue) {
-        int availableSeats = bookGameSeatController.getAvailableSeats(venue.getId(), selectedGame);
+        int availableSeats = fanBookingController.getAvailableSeats(venue.getId(), selectedGame);
         String availabilityText = availableSeats > 0
                 ? availableSeats + " seats available"
                 : "FULL - Waitlist only";
@@ -333,7 +336,7 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
         clearScreen();
         printTitle(TITLE_BOOKING_SUMMARY);
 
-        int availableSeats = bookGameSeatController.getAvailableSeats(venue.getId(), selectedGame);
+        int availableSeats = fanBookingController.getAvailableSeats(venue.getId(), selectedGame);
 
         displayBookingSummary(venue, availableSeats);
 
@@ -385,13 +388,13 @@ public class CliBookGameSeatGraphicController extends CliGraphicController {
 
         try {
             // Controlla se ha già prenotato questa partita
-            if (bookGameSeatController.hasAlreadyBooked(selectedGame)) {
+            if (fanBookingController.hasAlreadyBooked(selectedGame)) {
                 printError("You have already booked this game!");
                 pauseBeforeContinue();
                 return;
             }
 
-            bookGameSeatController.createBookingRequest(selectedGame, venue.getId());
+            fanBookingController.createBookingRequest(selectedGame, venue.getId());
 
             printNewLine();
             printSuccess(BOOKING_SUCCESS_MSG);

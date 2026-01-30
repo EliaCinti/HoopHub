@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.graphic_controller.cli;
 
-import it.uniroma2.hoophub.app_controller.ViewBookingsController;
+import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.VenueManagerBooking;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -15,6 +16,8 @@ import java.util.logging.Logger;
  *
  * <p>Extends {@link AbstractCliBookingListController} implementing the
  * Template Method pattern with VenueManager-specific actions (approve/reject).</p>
+ *
+ * <p>Depends on {@link VenueManagerBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -50,10 +53,12 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
     private static final String APPROVE_CONFIRM_PROMPT = "Are you sure you want to APPROVE this booking? (y/n): ";
     private static final String REJECT_CONFIRM_PROMPT = "Are you sure you want to REJECT this booking? (y/n): ";
 
-    private final ViewBookingsController viewBookingsController;
+    // ISP: dipende dall'interfaccia
+    private final VenueManagerBooking vmBookingController;
 
     public CliViewBookingsGraphicController() {
-        this.viewBookingsController = new ViewBookingsController();
+        // L'implementazione concreta viene istanziata qui
+        this.vmBookingController = new BookGameSeatController();
     }
 
     // ==================== ABSTRACT METHOD IMPLEMENTATIONS ====================
@@ -81,7 +86,7 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
     @Override
     protected int fetchUnreadNotificationsCount() {
         try {
-            return viewBookingsController.getUnreadNotificationsCount();
+            return vmBookingController.getVmUnreadNotificationsCount();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error checking notifications", e);
             return -1;
@@ -91,7 +96,7 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
     @Override
     protected void markAllNotificationsAsRead() {
         try {
-            viewBookingsController.markNotificationsAsRead();
+            vmBookingController.markVmNotificationsAsRead();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error marking notifications as read", e);
         }
@@ -100,7 +105,7 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
     @Override
     protected void loadBookings(BookingStatus statusFilter) {
         try {
-            currentBookings = viewBookingsController.getBookingsForMyVenues(statusFilter);
+            currentBookings = vmBookingController.getBookingsForMyVenues(statusFilter);
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.SEVERE, "Error loading bookings", e);
             printError(LOAD_ERROR_MSG + ": " + e.getMessage());
@@ -213,7 +218,7 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
         }
 
         try {
-            viewBookingsController.approveBooking(booking.getId());
+            vmBookingController.approveBooking(booking.getId());
             printNewLine();
             printSuccess(APPROVE_SUCCESS_MSG);
             printInfo(FAN_NOTIFIED_MSG);
@@ -239,7 +244,7 @@ public class CliViewBookingsGraphicController extends AbstractCliBookingListCont
         }
 
         try {
-            viewBookingsController.rejectBooking(booking.getId());
+            vmBookingController.rejectBooking(booking.getId());
             printNewLine();
             printSuccess(REJECT_SUCCESS_MSG);
             printInfo(FAN_NOTIFIED_MSG);

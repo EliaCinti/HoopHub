@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.ViewBookingsController;
+import it.uniroma2.hoophub.app_controller.VenueManagerBooking;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -29,6 +29,8 @@ import java.util.logging.Logger;
  *
  * <p>Displays booking requests for venues owned by the current VenueManager,
  * allowing approval or rejection of pending bookings.</p>
+ *
+ * <p>Depends on {@link VenueManagerBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -63,7 +65,9 @@ public class ViewBookingsGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private ViewBookingsController viewBookingsController;
+
+    // ISP: dipende dall'interfaccia
+    private VenueManagerBooking vmBookingController;
 
     // State
     private List<BookingBean> currentBookings;
@@ -76,8 +80,14 @@ public class ViewBookingsGraphicController {
 
     // ==================== INITIALIZATION ====================
 
-    public void initWithController(ViewBookingsController appController) {
-        this.viewBookingsController = appController;
+    /**
+     * Initializes the controller with the VenueManagerBooking interface.
+     * Called by VenueManagerHomepageGraphicController after navigation.
+     *
+     * @param controller The VenueManagerBooking interface instance
+     */
+    public void initWithController(VenueManagerBooking controller) {
+        this.vmBookingController = controller;
         markNotificationsAsRead();
         loadBookings();
     }
@@ -93,7 +103,7 @@ public class ViewBookingsGraphicController {
 
     private void markNotificationsAsRead() {
         try {
-            viewBookingsController.markNotificationsAsRead();
+            vmBookingController.markVmNotificationsAsRead();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error marking notifications as read", e);
         }
@@ -102,13 +112,13 @@ public class ViewBookingsGraphicController {
     // ==================== DATA LOADING ====================
 
     private void loadBookings() {
-        if (viewBookingsController == null) {
+        if (vmBookingController == null) {
             return;
         }
 
         try {
             BookingStatus statusFilterValue = getSelectedStatus();
-            currentBookings = viewBookingsController.getBookingsForMyVenues(statusFilterValue);
+            currentBookings = vmBookingController.getBookingsForMyVenues(statusFilterValue);
 
             if (currentBookings.isEmpty()) {
                 showEmptyState();
@@ -162,18 +172,12 @@ public class ViewBookingsGraphicController {
         card.getStyleClass().add("booking-card");
         card.setPadding(new Insets(16));
 
-        // Header row: matchup + status badge (using helper)
         HBox headerRow = BookingCardHelper.createHeaderRowBase(booking);
-
-        // Details row: date, time, venue (using helper)
         HBox detailsRow = BookingCardHelper.createDetailsRow(booking);
-
-        // Fan row
         HBox fanRow = createFanRow(booking);
 
         card.getChildren().addAll(headerRow, detailsRow, fanRow);
 
-        // Actions row (only for PENDING)
         if (booking.getStatus() == BookingStatus.PENDING) {
             HBox actionsRow = createActionsRow(booking);
             card.getChildren().add(actionsRow);
@@ -214,7 +218,7 @@ public class ViewBookingsGraphicController {
 
     private void onApproveClick(BookingBean booking) {
         try {
-            viewBookingsController.approveBooking(booking.getId());
+            vmBookingController.approveBooking(booking.getId());
             UIHelper.showSuccessThenTitle(msgLabel, APPROVE_SUCCESS_MSG, PAGE_TITLE);
             loadBookings();
         } catch (DAOException | UserSessionException | IllegalStateException e) {
@@ -225,7 +229,7 @@ public class ViewBookingsGraphicController {
 
     private void onRejectClick(BookingBean booking) {
         try {
-            viewBookingsController.rejectBooking(booking.getId());
+            vmBookingController.rejectBooking(booking.getId());
             UIHelper.showSuccessThenTitle(msgLabel, REJECT_SUCCESS_MSG, PAGE_TITLE);
             loadBookings();
         } catch (DAOException | UserSessionException | IllegalStateException e) {

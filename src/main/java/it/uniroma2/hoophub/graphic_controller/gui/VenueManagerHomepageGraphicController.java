@@ -1,6 +1,7 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.ViewBookingsController;
+import it.uniroma2.hoophub.app_controller.BookGameSeatController;
+import it.uniroma2.hoophub.app_controller.VenueManagerBooking;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
@@ -19,6 +20,8 @@ import java.util.logging.Logger;
  *
  * <p>Provides navigation to venue management and booking approval features.
  * Shows notification badge on View Bookings button when unread notifications exist.</p>
+ *
+ * <p>Depends on {@link VenueManagerBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -39,10 +42,13 @@ public class VenueManagerHomepageGraphicController {
     private Label notificationBadge;
 
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private final ViewBookingsController viewBookingsController;
+
+    // ISP: dipende dall'interfaccia, non dalla classe concreta
+    private final VenueManagerBooking vmBookingController;
 
     public VenueManagerHomepageGraphicController() {
-        this.viewBookingsController = new ViewBookingsController();
+        // L'implementazione concreta viene istanziata qui
+        this.vmBookingController = new BookGameSeatController();
     }
 
     @FXML
@@ -55,7 +61,7 @@ public class VenueManagerHomepageGraphicController {
      */
     private void checkUnreadNotifications() {
         try {
-            int unreadCount = viewBookingsController.getUnreadNotificationsCount();
+            int unreadCount = vmBookingController.getVmUnreadNotificationsCount();
             UIHelper.updateNotificationBadge(notificationBadge, viewBookingsButton, unreadCount, NOTIFICATION_STYLE);
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error checking notifications", e);
@@ -80,7 +86,8 @@ public class VenueManagerHomepageGraphicController {
                     "/it/uniroma2/hoophub/fxml/view_bookings.fxml",
                     ViewBookingsGraphicController.class
             );
-            controller.initWithController(viewBookingsController);
+            // Passa l'interfaccia VenueManagerBooking
+            controller.initWithController(vmBookingController);
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Unable to load view bookings page", e);

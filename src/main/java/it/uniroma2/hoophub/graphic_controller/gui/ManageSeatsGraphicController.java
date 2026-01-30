@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.ManageSeatsController;
+import it.uniroma2.hoophub.app_controller.FanBooking;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -30,6 +30,8 @@ import java.util.logging.Logger;
  *
  * <p>Displays bookings for the current Fan, allowing cancellation
  * of pending or confirmed bookings within the deadline.</p>
+ *
+ * <p>Depends on {@link FanBooking} interface (ISP compliance).</p>
  *
  * @author Elia Cinti
  * @version 1.0
@@ -65,7 +67,9 @@ public class ManageSeatsGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private ManageSeatsController manageSeatsController;
+
+    // ISP: dipende dall'interfaccia
+    private FanBooking fanBookingController;
 
     // State
     private List<BookingBean> currentBookings;
@@ -78,8 +82,14 @@ public class ManageSeatsGraphicController {
 
     // ==================== INITIALIZATION ====================
 
-    public void initWithController(ManageSeatsController appController) {
-        this.manageSeatsController = appController;
+    /**
+     * Initializes the controller with the FanBooking interface.
+     * Called by FanHomepageGraphicController after navigation.
+     *
+     * @param controller The FanBooking interface instance
+     */
+    public void initWithController(FanBooking controller) {
+        this.fanBookingController = controller;
         markNotificationsAsRead();
         loadBookings();
     }
@@ -95,7 +105,7 @@ public class ManageSeatsGraphicController {
 
     private void markNotificationsAsRead() {
         try {
-            manageSeatsController.markNotificationsAsRead();
+            fanBookingController.markFanNotificationsAsRead();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error marking notifications as read", e);
         }
@@ -104,13 +114,13 @@ public class ManageSeatsGraphicController {
     // ==================== DATA LOADING ====================
 
     private void loadBookings() {
-        if (manageSeatsController == null) {
+        if (fanBookingController == null) {
             return;
         }
 
         try {
             BookingStatus statusFilterValue = getSelectedStatus();
-            currentBookings = manageSeatsController.getMyBookings(statusFilterValue);
+            currentBookings = fanBookingController.getMyBookings(statusFilterValue);
 
             if (currentBookings.isEmpty()) {
                 showEmptyState();
@@ -164,15 +174,11 @@ public class ManageSeatsGraphicController {
         card.getStyleClass().add("booking-card");
         card.setPadding(new Insets(16));
 
-        // Header row: matchup + (can cancel) + status badge
         HBox headerRow = createHeaderRow(booking);
-
-        // Details row: date, time, venue (using helper)
         HBox detailsRow = BookingCardHelper.createDetailsRow(booking);
 
         card.getChildren().addAll(headerRow, detailsRow);
 
-        // Actions row (only for cancellable bookings)
         if (canBeCancelled(booking)) {
             HBox actionsRow = createActionsRow(booking);
             card.getChildren().add(actionsRow);
@@ -183,11 +189,9 @@ public class ManageSeatsGraphicController {
 
     private HBox createHeaderRow(BookingBean booking) {
         if (canBeCancelled(booking)) {
-            // With cancellable badge
             Label cancellableBadge = BookingCardHelper.createCancellableBadge();
             return BookingCardHelper.createHeaderRowWithExtra(booking, cancellableBadge);
         } else {
-            // Without extra badge
             return BookingCardHelper.createHeaderRowBase(booking);
         }
     }
@@ -221,7 +225,7 @@ public class ManageSeatsGraphicController {
 
     private void onCancelClick(BookingBean booking) {
         try {
-            manageSeatsController.cancelBooking(booking.getId());
+            fanBookingController.cancelBooking(booking.getId());
             UIHelper.showSuccessThenTitle(msgLabel, CANCEL_SUCCESS_MSG, PAGE_TITLE);
             loadBookings();
         } catch (DAOException | UserSessionException | IllegalStateException e) {
