@@ -4,6 +4,7 @@ import it.uniroma2.hoophub.app_controller.ViewBookingsController;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
+import it.uniroma2.hoophub.utilities.UIHelper;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -26,6 +27,8 @@ public class VenueManagerHomepageGraphicController {
 
     private static final Logger LOGGER = Logger.getLogger(VenueManagerHomepageGraphicController.class.getName());
 
+    private static final String NOTIFICATION_STYLE = "card-with-notification";
+
     @FXML
     private Button manageVenuesButton;
 
@@ -42,9 +45,6 @@ public class VenueManagerHomepageGraphicController {
         this.viewBookingsController = new ViewBookingsController();
     }
 
-    /**
-     * Initializes the controller and checks for unread notifications.
-     */
     @FXML
     public void initialize() {
         checkUnreadNotifications();
@@ -56,33 +56,13 @@ public class VenueManagerHomepageGraphicController {
     private void checkUnreadNotifications() {
         try {
             int unreadCount = viewBookingsController.getUnreadNotificationsCount();
-
-            if (unreadCount > 0) {
-                // Show badge with count
-                notificationBadge.setText(String.valueOf(unreadCount));
-                notificationBadge.setVisible(true);
-                notificationBadge.setManaged(true);
-
-                // Add orange border to button
-                viewBookingsButton.getStyleClass().add("card-with-notification");
-            } else {
-                // Hide badge
-                notificationBadge.setVisible(false);
-                notificationBadge.setManaged(false);
-
-                // Remove orange border
-                viewBookingsButton.getStyleClass().remove("card-with-notification");
-            }
+            UIHelper.updateNotificationBadge(notificationBadge, viewBookingsButton, unreadCount, NOTIFICATION_STYLE);
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error checking notifications", e);
-            notificationBadge.setVisible(false);
-            notificationBadge.setManaged(false);
+            UIHelper.hideNotificationBadge(notificationBadge, viewBookingsButton, NOTIFICATION_STYLE);
         }
     }
 
-    /**
-     * Handles "Manage Venues" button click.
-     */
     @FXML
     private void onManageVenuesClick() {
         try {
@@ -93,9 +73,6 @@ public class VenueManagerHomepageGraphicController {
         }
     }
 
-    /**
-     * Handles "View Bookings" button click.
-     */
     @FXML
     private void onViewBookingsClick() {
         try {
@@ -103,7 +80,6 @@ public class VenueManagerHomepageGraphicController {
                     "/it/uniroma2/hoophub/fxml/view_bookings.fxml",
                     ViewBookingsGraphicController.class
             );
-            // Pass the application controller instance
             controller.initWithController(viewBookingsController);
             closeCurrentStage();
         } catch (IOException e) {
@@ -111,9 +87,6 @@ public class VenueManagerHomepageGraphicController {
         }
     }
 
-    /**
-     * Closes the current stage.
-     */
     private void closeCurrentStage() {
         Stage stage = (Stage) manageVenuesButton.getScene().getWindow();
         stage.close();

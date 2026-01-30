@@ -1,5 +1,6 @@
 package it.uniroma2.hoophub.utilities;
 
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 
 /**
@@ -97,5 +98,41 @@ public class UIHelper {
         label.getStyleClass().removeAll(INFO, ERROR, TITLE);
         label.getStyleClass().add(SUCCESS);
         new LabelDuration().durationThenResetToTitle(label, message, pageTitle, TITLE);
+    }
+
+    // ==================== NOTIFICATION BADGE ====================
+
+    /**
+     * Updates a notification badge and button based on unread count.
+     *
+     * @param badge The notification badge label
+     * @param button The button to highlight
+     * @param unreadCount Number of unread notifications
+     * @param notificationStyleClass Style class for button highlight
+     */
+    public static void updateNotificationBadge(Label badge, Button button, int unreadCount, String notificationStyleClass) {
+        if (unreadCount > 0) {
+            badge.setText(String.valueOf(unreadCount));
+            badge.setVisible(true);
+            badge.setManaged(true);
+            if (!button.getStyleClass().contains(notificationStyleClass)) {
+                button.getStyleClass().add(notificationStyleClass);
+            }
+        } else {
+            hideNotificationBadge(badge, button, notificationStyleClass);
+        }
+    }
+
+    /**
+     * Hides a notification badge and removes button highlight.
+     *
+     * @param badge The notification badge label
+     * @param button The button to un-highlight
+     * @param notificationStyleClass Style class to remove
+     */
+    public static void hideNotificationBadge(Label badge, Button button, String notificationStyleClass) {
+        badge.setVisible(false);
+        badge.setManaged(false);
+        button.getStyleClass().remove(notificationStyleClass);
     }
 }

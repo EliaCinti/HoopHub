@@ -120,27 +120,20 @@ public class BookGameSeatController {
 
         List<Venue> rawVenues;
 
-        // 1. OTTIMIZZAZIONE: Se c'è un filtro città, usa il metodo specifico del DAO.
-        // Altrimenti, scarica tutte le venue.
         if (cityFilter != null && !cityFilter.isEmpty()) {
             rawVenues = venueDao.retrieveVenuesByCity(cityFilter);
         } else {
             rawVenues = venueDao.retrieveAllVenues();
         }
 
-        // 2. Pipeline di filtraggio e conversione
         return rawVenues.stream()
-                // A. Filtro Business: La venue trasmette questa partita? (Squadra Casa o Ospite)
                 .filter(venue -> venueShowsGame(venue, game))
 
-                // B. Conversione: Da Model (Venue) a Bean (VenueBean)
                 .map(this::convertToVenueBean)
 
-                // C. Filtro Tipo (In memoria)
                 .filter(v -> typeFilter == null || typeFilter.isEmpty()
                         || v.getType().name().equalsIgnoreCase(typeFilter))
 
-                // D. Filtro Posti (Richiede query extra per i posti, quindi va fatto alla fine)
                 .filter(v -> !onlyWithSeats || getAvailableSeats(v.getId(), game) > 0)
 
                 .toList();

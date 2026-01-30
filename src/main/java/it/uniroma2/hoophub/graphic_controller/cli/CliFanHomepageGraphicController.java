@@ -49,12 +49,14 @@ public class CliFanHomepageGraphicController extends AbstractCliHomepageControll
     }
 
     private void onBookSeatSelected() {
+        LOGGER.info("Fan selected: Book Game Seat");
         CliBookGameSeatGraphicController bookController = new CliBookGameSeatGraphicController();
         bookController.execute();
     }
 
     private void onManageSeatsSelected() {
         LOGGER.info("Fan selected: Manage My Seats");
-        showNotImplemented(); // TODO: Implement CliManageSeatsGraphicController
+        CliManageSeatsGraphicController manageSeatsController = new CliManageSeatsGraphicController();
+        manageSeatsController.execute();
     }
 }

@@ -1,6 +1,6 @@
 package it.uniroma2.hoophub.graphic_controller.gui;
 
-import it.uniroma2.hoophub.app_controller.ViewBookingsController;
+import it.uniroma2.hoophub.app_controller.ManageSeatsController;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.exception.DAOException;
@@ -20,37 +20,39 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * GUI controller for View Bookings use case (VenueManager side).
+ * GUI controller for Manage Seats use case (Fan side).
  *
- * <p>Displays booking requests for venues owned by the current VenueManager,
- * allowing approval or rejection of pending bookings.</p>
+ * <p>Displays bookings for the current Fan, allowing cancellation
+ * of pending or confirmed bookings within the deadline.</p>
  *
  * @author Elia Cinti
  * @version 1.0
  */
-public class ViewBookingsGraphicController {
+public class ManageSeatsGraphicController {
 
-    private static final Logger LOGGER = Logger.getLogger(ViewBookingsGraphicController.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(ManageSeatsGraphicController.class.getName());
 
     // Page title
-    private static final String PAGE_TITLE = "View Bookings";
+    private static final String PAGE_TITLE = "My Bookings";
 
     // Messages
     private static final String BOOKINGS_COUNT_MSG = "Showing %d booking(s)";
     private static final String LOAD_ERROR_MSG = "Failed to load bookings";
     private static final String NAV_ERROR_MSG = "Navigation error";
-    private static final String APPROVE_SUCCESS_MSG = "Booking approved successfully!";
-    private static final String REJECT_SUCCESS_MSG = "Booking rejected";
-    private static final String APPROVE_ERROR_MSG = "Failed to approve booking";
-    private static final String REJECT_ERROR_MSG = "Failed to reject booking";
+    private static final String CANCEL_SUCCESS_MSG = "Booking cancelled successfully!";
+    private static final String CANCEL_ERROR_MSG = "Failed to cancel booking";
 
     // Filter options
     private static final String ALL_STATUSES = "All Statuses";
+
+    // Cancellation deadline
+    private static final int CANCELLATION_DEADLINE_DAYS = 2;
 
     // FXML Components
     @FXML private Button backButton;
@@ -63,7 +65,7 @@ public class ViewBookingsGraphicController {
 
     // Dependencies
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
-    private ViewBookingsController viewBookingsController;
+    private ManageSeatsController manageSeatsController;
 
     // State
     private List<BookingBean> currentBookings;
@@ -76,8 +78,8 @@ public class ViewBookingsGraphicController {
 
     // ==================== INITIALIZATION ====================
 
-    public void initWithController(ViewBookingsController appController) {
-        this.viewBookingsController = appController;
+    public void initWithController(ManageSeatsController appController) {
+        this.manageSeatsController = appController;
         markNotificationsAsRead();
         loadBookings();
     }
@@ -93,7 +95,7 @@ public class ViewBookingsGraphicController {
 
     private void markNotificationsAsRead() {
         try {
-            viewBookingsController.markNotificationsAsRead();
+            manageSeatsController.markNotificationsAsRead();
         } catch (DAOException | UserSessionException e) {
             LOGGER.log(Level.WARNING, "Error marking notifications as read", e);
         }
@@ -102,13 +104,13 @@ public class ViewBookingsGraphicController {
     // ==================== DATA LOADING ====================
 
     private void loadBookings() {
-        if (viewBookingsController == null) {
+        if (manageSeatsController == null) {
             return;
         }
 
         try {
             BookingStatus statusFilterValue = getSelectedStatus();
-            currentBookings = viewBookingsController.getBookingsForMyVenues(statusFilterValue);
+            currentBookings = manageSeatsController.getMyBookings(statusFilterValue);
 
             if (currentBookings.isEmpty()) {
                 showEmptyState();
@@ -162,19 +164,16 @@ public class ViewBookingsGraphicController {
         card.getStyleClass().add("booking-card");
         card.setPadding(new Insets(16));
 
-        // Header row: matchup + status badge (using helper)
-        HBox headerRow = BookingCardHelper.createHeaderRowBase(booking);
+        // Header row: matchup + (can cancel) + status badge
+        HBox headerRow = createHeaderRow(booking);
 
         // Details row: date, time, venue (using helper)
         HBox detailsRow = BookingCardHelper.createDetailsRow(booking);
 
-        // Fan row
-        HBox fanRow = createFanRow(booking);
+        card.getChildren().addAll(headerRow, detailsRow);
 
-        card.getChildren().addAll(headerRow, detailsRow, fanRow);
-
-        // Actions row (only for PENDING)
-        if (booking.getStatus() == BookingStatus.PENDING) {
+        // Actions row (only for cancellable bookings)
+        if (canBeCancelled(booking)) {
             HBox actionsRow = createActionsRow(booking);
             card.getChildren().add(actionsRow);
         }
@@ -182,15 +181,15 @@ public class ViewBookingsGraphicController {
         return card;
     }
 
-    private HBox createFanRow(BookingBean booking) {
-        HBox row = new HBox(8);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        Label fanLabel = new Label("👤 " + booking.getFanUsername());
-        fanLabel.getStyleClass().add("card-subtitle");
-
-        row.getChildren().add(fanLabel);
-        return row;
+    private HBox createHeaderRow(BookingBean booking) {
+        if (canBeCancelled(booking)) {
+            // With cancellable badge
+            Label cancellableBadge = BookingCardHelper.createCancellableBadge();
+            return BookingCardHelper.createHeaderRowWithExtra(booking, cancellableBadge);
+        } else {
+            // Without extra badge
+            return BookingCardHelper.createHeaderRowBase(booking);
+        }
     }
 
     private HBox createActionsRow(BookingBean booking) {
@@ -198,39 +197,36 @@ public class ViewBookingsGraphicController {
         row.setAlignment(Pos.CENTER_RIGHT);
         row.setPadding(new Insets(8, 0, 0, 0));
 
-        Button approveBtn = new Button("✓ Approve");
-        approveBtn.getStyleClass().add("btn-success-small");
-        approveBtn.setOnAction(e -> onApproveClick(booking));
+        Button cancelBtn = new Button("✗ Cancel Booking");
+        cancelBtn.getStyleClass().add("btn-danger-small");
+        cancelBtn.setOnAction(e -> onCancelClick(booking));
 
-        Button rejectBtn = new Button("✗ Reject");
-        rejectBtn.getStyleClass().add("btn-danger-small");
-        rejectBtn.setOnAction(e -> onRejectClick(booking));
-
-        row.getChildren().addAll(approveBtn, rejectBtn);
+        row.getChildren().add(cancelBtn);
         return row;
+    }
+
+    // ==================== BUSINESS LOGIC ====================
+
+    private boolean canBeCancelled(BookingBean booking) {
+        if (booking.getStatus() != BookingStatus.PENDING &&
+                booking.getStatus() != BookingStatus.CONFIRMED) {
+            return false;
+        }
+
+        LocalDate deadline = booking.getGameDate().minusDays(CANCELLATION_DEADLINE_DAYS);
+        return !LocalDate.now().isAfter(deadline);
     }
 
     // ==================== ACTIONS ====================
 
-    private void onApproveClick(BookingBean booking) {
+    private void onCancelClick(BookingBean booking) {
         try {
-            viewBookingsController.approveBooking(booking.getId());
-            UIHelper.showSuccessThenTitle(msgLabel, APPROVE_SUCCESS_MSG, PAGE_TITLE);
+            manageSeatsController.cancelBooking(booking.getId());
+            UIHelper.showSuccessThenTitle(msgLabel, CANCEL_SUCCESS_MSG, PAGE_TITLE);
             loadBookings();
         } catch (DAOException | UserSessionException | IllegalStateException e) {
-            LOGGER.log(Level.SEVERE, "Error approving booking", e);
-            UIHelper.showErrorThenTitle(msgLabel, APPROVE_ERROR_MSG + ": " + e.getMessage(), PAGE_TITLE);
-        }
-    }
-
-    private void onRejectClick(BookingBean booking) {
-        try {
-            viewBookingsController.rejectBooking(booking.getId());
-            UIHelper.showSuccessThenTitle(msgLabel, REJECT_SUCCESS_MSG, PAGE_TITLE);
-            loadBookings();
-        } catch (DAOException | UserSessionException | IllegalStateException e) {
-            LOGGER.log(Level.SEVERE, "Error rejecting booking", e);
-            UIHelper.showErrorThenTitle(msgLabel, REJECT_ERROR_MSG + ": " + e.getMessage(), PAGE_TITLE);
+            LOGGER.log(Level.SEVERE, "Error cancelling booking", e);
+            UIHelper.showErrorThenTitle(msgLabel, CANCEL_ERROR_MSG + ": " + e.getMessage(), PAGE_TITLE);
         }
     }
 
@@ -239,7 +235,7 @@ public class ViewBookingsGraphicController {
     @FXML
     private void onBackClick() {
         try {
-            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/venue_manager_homepage.fxml");
+            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/fan_homepage.fxml");
             closeCurrentStage();
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Error navigating back", e);
