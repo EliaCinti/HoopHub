@@ -36,6 +36,7 @@
         <!-- Main Action Buttons -->
         <HBox alignment="CENTER" spacing="32">
             <Region prefWidth="-25"/>
+
             <!-- Manage Venues Button -->
             <Button fx:id="manageVenuesButton"
                     minWidth="160" minHeight="120"
@@ -50,19 +51,28 @@
                 </graphic>
             </Button>
 
-            <!-- View Bookings Button -->
-            <Button fx:id="viewBookingsButton"
-                    minWidth="160" minHeight="120"
-                    maxWidth="160" maxHeight="120"
-                    onAction="#onViewBookingsClick"
-                    styleClass="user-type-card">
-                <graphic>
-                    <VBox alignment="CENTER" spacing="4">
-                        <Label styleClass="user-type-title" text="VIEW"/>
-                        <Label styleClass="user-type-title" text="BOOKINGS"/>
-                    </VBox>
-                </graphic>
-            </Button>
+            <!-- View the Bookings Button with Notification Badge -->
+            <StackPane>
+                <Button fx:id="viewBookingsButton"
+                        minWidth="160" minHeight="120"
+                        maxWidth="160" maxHeight="120"
+                        onAction="#onViewBookingsClick"
+                        styleClass="user-type-card">
+                    <graphic>
+                        <VBox alignment="CENTER" spacing="4">
+                            <Label styleClass="user-type-title" text="VIEW"/>
+                            <Label styleClass="user-type-title" text="BOOKINGS"/>
+                        </VBox>
+                    </graphic>
+                </Button>
+
+                <!-- Notification Badge -->
+                <Label fx:id="notificationBadge"
+                       styleClass="notification-badge"
+                       visible="false" managed="false"
+                       StackPane.alignment="TOP_RIGHT"
+                       translateX="-10" translateY="10"/>
+            </StackPane>
 
         </HBox>
 

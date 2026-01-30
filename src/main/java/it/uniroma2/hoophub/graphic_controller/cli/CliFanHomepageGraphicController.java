@@ -17,7 +17,6 @@ public class CliFanHomepageGraphicController extends AbstractCliHomepageControll
 
     private static final String OPTION_BOOK_SEAT = "Book Game Seat";
     private static final String OPTION_MANAGE_SEATS = "Manage My Seats";
-    private static final String OPTION_NOTIFICATIONS = "Notifications";
     private static final String OPTION_LOGOUT = "Logout";
 
     private static final String TITLE = "HOOPHUB - FAN DASHBOARD";
@@ -32,7 +31,6 @@ public class CliFanHomepageGraphicController extends AbstractCliHomepageControll
         return new String[]{
                 OPTION_BOOK_SEAT,
                 OPTION_MANAGE_SEATS,
-                OPTION_NOTIFICATIONS,
                 OPTION_LOGOUT
         };
     }
@@ -42,8 +40,7 @@ public class CliFanHomepageGraphicController extends AbstractCliHomepageControll
         switch (option) {
             case 1 -> onBookSeatSelected();
             case 2 -> onManageSeatsSelected();
-            case 3 -> onNotificationsSelected();
-            case 4 -> performLogout();
+            case 3 -> performLogout();
             default -> {
                 printWarning(INVALID_OPTION_MSG);
                 pauseBeforeContinue();
@@ -52,18 +49,12 @@ public class CliFanHomepageGraphicController extends AbstractCliHomepageControll
     }
 
     private void onBookSeatSelected() {
-        LOGGER.info("Fan selected: Book Game Seat");
         CliBookGameSeatGraphicController bookController = new CliBookGameSeatGraphicController();
         bookController.execute();
     }
 
     private void onManageSeatsSelected() {
         LOGGER.info("Fan selected: Manage My Seats");
-        showNotImplemented();
-    }
-
-    private void onNotificationsSelected() {
-        LOGGER.info("Fan selected: Notifications");
-        showNotImplemented();
+        showNotImplemented(); // TODO: Implement CliManageSeatsGraphicController
     }
 }

@@ -14,7 +14,7 @@
 <StackPane prefHeight="720" prefWidth="1280" stylesheets="@../css/tokens.css, @../css/components.css, @../css/pages/login.css" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="it.uniroma2.hoophub.graphic_controller.gui.sign_up.SignUpVenueManagerGraphicController">
 
     <!-- Background Image Layer -->
-    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true" preserveRatio="false">
+    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true">
         <Image backgroundLoading="true" url="@../images/sfondo_con_titolo.png" />
     </ImageView>
 
@@ -32,7 +32,7 @@
         </Button>
 
         <!-- Sign Up Venue Manager Card -->
-        <VBox maxWidth="440" minWidth="440" spacing="0">
+        <VBox maxWidth="440" minWidth="440">
 
             <VBox alignment="CENTER" spacing="16" styleClass="card">
                 <padding>

@@ -20,7 +20,6 @@ public class CliVenueManagerHomepageGraphicController extends AbstractCliHomepag
 
     private static final String OPTION_MANAGE_VENUES = "Manage Venues";
     private static final String OPTION_VIEW_BOOKINGS = "View Bookings";
-    private static final String OPTION_NOTIFICATIONS = "Notifications";
     private static final String OPTION_LOGOUT = "Logout";
 
     private static final String TITLE = "HOOPHUB - VENUE MANAGER DASHBOARD";
@@ -36,7 +35,6 @@ public class CliVenueManagerHomepageGraphicController extends AbstractCliHomepag
         return new String[]{
                 OPTION_MANAGE_VENUES,
                 OPTION_VIEW_BOOKINGS,
-                OPTION_NOTIFICATIONS,
                 OPTION_LOGOUT
         };
     }
@@ -56,8 +54,7 @@ public class CliVenueManagerHomepageGraphicController extends AbstractCliHomepag
         switch (option) {
             case 1 -> onManageVenuesSelected();
             case 2 -> onViewBookingsSelected();
-            case 3 -> onNotificationsSelected();
-            case 4 -> performLogout();
+            case 3 -> performLogout();
             default -> {
                 printWarning(INVALID_OPTION_MSG);
                 pauseBeforeContinue();
@@ -72,11 +69,7 @@ public class CliVenueManagerHomepageGraphicController extends AbstractCliHomepag
 
     private void onViewBookingsSelected() {
         LOGGER.info("Venue Manager selected: View Bookings");
-        showNotImplemented();
-    }
-
-    private void onNotificationsSelected() {
-        LOGGER.info("Venue Manager selected: Notifications");
-        showNotImplemented();
+        CliViewBookingsGraphicController viewBookingsController = new CliViewBookingsGraphicController();
+        viewBookingsController.execute();
     }
 }

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+    View Bookings Screen - HoopHub
+    Shows booking requests for venues owned by the current Venue Manager
+-->
+
+<StackPane prefHeight="720" prefWidth="1280"
+           stylesheets="@../css/tokens.css, @../css/components.css, @../css/pages/login.css"
+           xmlns="http://javafx.com/javafx/21"
+           xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="it.uniroma2.hoophub.graphic_controller.gui.ViewBookingsGraphicController">
+
+    <!-- Background Image -->
+    <ImageView fitHeight="720" fitWidth="1280" pickOnBounds="true">
+        <Image backgroundLoading="true" url="@../images/sfondo_con_titolo.png"/>
+    </ImageView>
+
+    <!-- Main Content Container -->
+    <VBox alignment="TOP_CENTER">
+
+        <!-- Top Bar with Back Button -->
+        <HBox alignment="CENTER_LEFT">
+            <padding>
+                <Insets top="24" left="32" right="32"/>
+            </padding>
+            <Button fx:id="backButton" onAction="#onBackClick" styleClass="btn-back" text="←"/>
+        </HBox>
+
+        <!-- Spacer to push content below HoopHub logo -->
+        <Region prefHeight="90"/>
+
+        <!-- Message Label (page title) -->
+        <Label fx:id="msgLabel" maxWidth="600" styleClass="message-label" textAlignment="CENTER" wrapText="true">
+            <VBox.margin>
+                <Insets top="10" bottom="8"/>
+            </VBox.margin>
+        </Label>
+
+        <!-- Filter Row -->
+        <HBox alignment="CENTER" spacing="16">
+            <VBox.margin>
+                <Insets bottom="16"/>
+            </VBox.margin>
+            <Label text="Filter by status:" style="-fx-text-fill: white; -fx-font-size: 14px;"/>
+            <ComboBox fx:id="statusFilter" prefWidth="180" styleClass="filter-combo"/>
+        </HBox>
+
+        <!-- Content Card -->
+        <VBox maxWidth="900" minWidth="900" VBox.vgrow="ALWAYS">
+            <VBox.margin>
+                <Insets left="32" right="32" bottom="32"/>
+            </VBox.margin>
+
+            <VBox alignment="TOP_CENTER" spacing="16" styleClass="card" VBox.vgrow="ALWAYS">
+                <padding>
+                    <Insets top="24" left="24" right="24" bottom="24"/>
+                </padding>
+
+                <!-- Bookings List Container -->
+                <ScrollPane fx:id="bookingsScrollPane" fitToWidth="true"
+                            styleClass="venues-scroll-pane" VBox.vgrow="ALWAYS"
+                            hbarPolicy="NEVER">
+                    <VBox fx:id="bookingsList" spacing="12" alignment="TOP_CENTER">
+                        <padding>
+                            <Insets top="4" left="4" right="12" bottom="4"/>
+                        </padding>
+                    </VBox>
+                </ScrollPane>
+
+                <!-- Empty State -->
+                <VBox fx:id="emptyState" alignment="CENTER" spacing="8" visible="false" managed="false">
+                    <Label styleClass="muted" text="No bookings found."/>
+                    <Label styleClass="small-text" text="Bookings will appear here when fans make reservations."/>
+                </VBox>
+
+                <!-- Info Label -->
+                <Label fx:id="infoLabel" style="-fx-text-fill: white; -fx-font-size: 13px;">
+                    <VBox.margin>
+                        <Insets top="8"/>
+                    </VBox.margin>
+                </Label>
+
+            </VBox>
+        </VBox>
+
+    </VBox>
+</StackPane>
