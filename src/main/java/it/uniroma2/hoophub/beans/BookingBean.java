@@ -2,7 +2,9 @@ package it.uniroma2.hoophub.beans;
 
 import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.enums.BookingStatus;
+
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -22,9 +24,11 @@ public class BookingBean {
     private TeamNBA homeTeam;
     private TeamNBA awayTeam;
     private int venueId;
+    private String venueName;
     private String fanUsername;
     private BookingStatus status;
     private boolean notified;
+    private LocalDateTime createdAt;
 
     private BookingBean(Builder builder) {
         this.id = builder.id;
@@ -33,9 +37,11 @@ public class BookingBean {
         this.homeTeam = builder.homeTeam;
         this.awayTeam = builder.awayTeam;
         this.venueId = builder.venueId;
+        this.venueName = builder.venueName;
         this.fanUsername = builder.fanUsername;
         this.status = builder.status;
         this.notified = builder.notified;
+        this.createdAt = builder.createdAt;
     }
 
     /**
@@ -48,9 +54,11 @@ public class BookingBean {
         private TeamNBA homeTeam;
         private TeamNBA awayTeam;
         private int venueId;
+        private String venueName;
         private String fanUsername;
         private BookingStatus status = BookingStatus.PENDING;
         private boolean notified = false;
+        private LocalDateTime createdAt;
 
         public Builder id(int id) {
             this.id = id;
@@ -82,6 +90,11 @@ public class BookingBean {
             return this;
         }
 
+        public Builder venueName(String venueName) {
+            this.venueName = venueName;
+            return this;
+        }
+
         public Builder fanUsername(String fanUsername) {
             this.fanUsername = fanUsername;
             return this;
@@ -97,30 +110,41 @@ public class BookingBean {
             return this;
         }
 
+        public Builder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+            return this;
+        }
+
         public BookingBean build() {
             return new BookingBean(this);
         }
     }
 
-    // Getters
+    // ==================== GETTERS ====================
+
     public int getId() { return id; }
     public LocalDate getGameDate() { return gameDate; }
     public LocalTime getGameTime() { return gameTime; }
     public TeamNBA getHomeTeam() { return homeTeam; }
     public TeamNBA getAwayTeam() { return awayTeam; }
     public int getVenueId() { return venueId; }
+    public String getVenueName() { return venueName; }
     public String getFanUsername() { return fanUsername; }
     public BookingStatus getStatus() { return status; }
     public boolean isNotified() { return notified; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
-    // Setters
+    // ==================== SETTERS ====================
+
     public void setId(int id) { this.id = id; }
     public void setGameDate(LocalDate gameDate) { this.gameDate = gameDate; }
     public void setGameTime(LocalTime gameTime) { this.gameTime = gameTime; }
     public void setHomeTeam(TeamNBA homeTeam) { this.homeTeam = homeTeam; }
     public void setAwayTeam(TeamNBA awayTeam) { this.awayTeam = awayTeam; }
     public void setVenueId(int venueId) { this.venueId = venueId; }
+    public void setVenueName(String venueName) { this.venueName = venueName; }
     public void setFanUsername(String fanUsername) { this.fanUsername = fanUsername; }
     public void setStatus(BookingStatus status) { this.status = status; }
     public void setNotified(boolean notified) { this.notified = notified; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

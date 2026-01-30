@@ -60,7 +60,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     }
 
     @Override
-    public synchronized Booking saveBooking(Booking booking) throws DAOException {
+    public synchronized void saveBooking(Booking booking) throws DAOException {
         validateNotNull(booking, BOOKING);
 
         int id = booking.getId();
@@ -96,8 +96,6 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         CsvUtilities.writeFile(csvFile, newRow);
         putInCache(savedBooking, id);
         notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), savedBooking);
-
-        return savedBooking;
     }
 
     @Override

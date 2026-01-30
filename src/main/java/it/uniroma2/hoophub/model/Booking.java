@@ -4,6 +4,7 @@ import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.enums.TeamNBA;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
@@ -36,6 +37,7 @@ public class Booking {
     private final TeamNBA awayTeam;
     private final Venue venue;
     private final Fan fan;
+    private final LocalDateTime createdAt;
 
     /** Mutable state managed by business operations. */
     private BookingStatus status;
@@ -61,6 +63,7 @@ public class Booking {
         this.fan = builder.fan;
         this.status = builder.status;
         this.notified = builder.notified;
+        this.createdAt = builder.createdAt;
     }
 
     // ========================================================================
@@ -190,6 +193,10 @@ public class Booking {
         return notified;
     }
 
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     // ========================================================================
     // BUILDER CLASS
     // ========================================================================
@@ -208,6 +215,7 @@ public class Booking {
 
         private BookingStatus status = BookingStatus.PENDING;
         private boolean notified = false;
+        private LocalDateTime createdAt = LocalDateTime.now();
 
         /**
          * Creates builder with all required parameters.
@@ -230,6 +238,11 @@ public class Booking {
 
         public Builder notified(boolean notified) {
             this.notified = notified;
+            return this;
+        }
+
+        public Builder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
             return this;
         }
 
@@ -291,7 +304,9 @@ public class Booking {
                 getHomeTeam().equals(booking.getHomeTeam()) &&
                 getAwayTeam().equals(booking.getAwayTeam()) &&
                 getFanUsername().equals(booking.getFanUsername()) &&
-                getStatus() == booking.getStatus();
+                getStatus() == booking.getStatus() &&
+                ((getCreatedAt() == null && booking.getCreatedAt() == null) ||
+                        (getCreatedAt() != null && getCreatedAt().equals(booking.getCreatedAt())));
     }
 
     @Override
@@ -315,6 +330,7 @@ public class Booking {
                 ", venue='" + venue.getName() + '\'' +
                 ", fan='" + fan.getUsername() + '\'' +
                 ", status=" + status +
+                ", createdAt=" + createdAt +
                 '}';
     }
 }

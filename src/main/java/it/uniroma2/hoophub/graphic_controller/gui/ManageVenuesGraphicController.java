@@ -207,7 +207,8 @@ public class ManageVenuesGraphicController {
                     "/it/uniroma2/hoophub/fxml/add_edit_venue.fxml",
                     AddEditVenueGraphicController.class
             );
-            controller.initAddMode();
+            // Passa il controller applicativo
+            controller.initAddMode(manageVenuesController);
             closeCurrentStage();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Unable to load add venue page", e);
@@ -224,7 +225,8 @@ public class ManageVenuesGraphicController {
                     "/it/uniroma2/hoophub/fxml/add_edit_venue.fxml",
                     AddEditVenueGraphicController.class
             );
-            controller.initEditMode(venue);
+            // Passa venue E il controller applicativo
+            controller.initEditMode(venue, manageVenuesController);
             closeCurrentStage();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Unable to load edit venue page", e);

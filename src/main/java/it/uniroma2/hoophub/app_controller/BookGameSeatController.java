@@ -106,6 +106,7 @@ public class BookGameSeatController {
 
     /**
      * Retrieves venues for a game with optional filters.
+     * Optimized to query the DB by city if a city filter is provided.
      *
      * @param game              The selected game
      * @param cityFilter        Filter by city (null or empty to skip)
@@ -116,14 +117,32 @@ public class BookGameSeatController {
      */
     public List<VenueBean> getVenuesForGame(NbaGameBean game, String cityFilter,
                                             String typeFilter, boolean onlyWithSeats) throws DAOException {
-        List<VenueBean> venues = getVenuesForGame(game);
 
-        return venues.stream()
-                .filter(v -> cityFilter == null || cityFilter.isEmpty()
-                        || v.getCity().toLowerCase().contains(cityFilter.toLowerCase()))
+        List<Venue> rawVenues;
+
+        // 1. OTTIMIZZAZIONE: Se c'è un filtro città, usa il metodo specifico del DAO.
+        // Altrimenti, scarica tutte le venue.
+        if (cityFilter != null && !cityFilter.isEmpty()) {
+            rawVenues = venueDao.retrieveVenuesByCity(cityFilter);
+        } else {
+            rawVenues = venueDao.retrieveAllVenues();
+        }
+
+        // 2. Pipeline di filtraggio e conversione
+        return rawVenues.stream()
+                // A. Filtro Business: La venue trasmette questa partita? (Squadra Casa o Ospite)
+                .filter(venue -> venueShowsGame(venue, game))
+
+                // B. Conversione: Da Model (Venue) a Bean (VenueBean)
+                .map(this::convertToVenueBean)
+
+                // C. Filtro Tipo (In memoria)
                 .filter(v -> typeFilter == null || typeFilter.isEmpty()
                         || v.getType().name().equalsIgnoreCase(typeFilter))
+
+                // D. Filtro Posti (Richiede query extra per i posti, quindi va fatto alla fine)
                 .filter(v -> !onlyWithSeats || getAvailableSeats(v.getId(), game) > 0)
+
                 .toList();
     }
 
@@ -147,7 +166,7 @@ public class BookGameSeatController {
     /**
      * Calculates available seats for a venue and game.
      *
-     * <p>Formula: maxCapacity - count(PENDING + CONFIRMED bookings for same venue/game)</p>
+     * <p>Formula: maxCapacity - count(PENDING + CONFIRMED bookings for the same venue/game)</p>
      *
      * @param venueId The venue ID
      * @param game    The game

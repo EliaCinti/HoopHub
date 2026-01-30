@@ -69,7 +69,7 @@ public class AddEditVenueGraphicController {
     @FXML private Label teamsCountLabel;
     @FXML private Button saveButton;
 
-    private final ManageVenuesController manageVenuesController = new ManageVenuesController();
+    private ManageVenuesController manageVenuesController;
     private final NavigatorSingleton navigatorSingleton = NavigatorSingleton.getInstance();
 
     // State
@@ -97,8 +97,11 @@ public class AddEditVenueGraphicController {
 
     /**
      * Initializes the form in ADD mode.
+     *
+     * @param appController The application controller instance
      */
-    public void initAddMode() {
+    public void initAddMode(ManageVenuesController appController) {
+        this.manageVenuesController = appController;
         isEditMode = false;
         venueToEdit = null;
         currentPageTitle = ADD_TITLE;
@@ -111,8 +114,10 @@ public class AddEditVenueGraphicController {
      * Initializes the form in EDIT mode with existing venue data.
      *
      * @param venue The venue to edit
+     * @param appController The application controller instance
      */
-    public void initEditMode(VenueBean venue) {
+    public void initEditMode(VenueBean venue, ManageVenuesController appController) {
+        this.manageVenuesController = appController;
         isEditMode = true;
         venueToEdit = venue;
         currentPageTitle = EDIT_TITLE;

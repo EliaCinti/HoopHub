@@ -62,7 +62,7 @@ public class FanHomepageGraphicController {
     @FXML
     private void onBookSeatClick() {
         try {
-            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/book_seat.fxml");
+            navigatorSingleton.gotoPage("/it/uniroma2/hoophub/fxml/select_game.fxml");
             closeCurrentWindow();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Unable to load book seat page", e);

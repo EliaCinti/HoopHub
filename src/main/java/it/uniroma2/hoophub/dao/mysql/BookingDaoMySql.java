@@ -95,7 +95,7 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     private static final String ERR_BOOKING_NOT_FOUND = "Booking not found";
 
     @Override
-    public Booking saveBooking(Booking booking) throws DAOException {
+    public void saveBooking(Booking booking) throws DAOException {
         if (booking == null) {
             throw new IllegalArgumentException("Booking cannot be null");
         }
@@ -157,8 +157,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     putInCache(savedBooking, newId);
                     logger.log(Level.INFO, "Booking saved successfully with ID: {0}", newId);
                     notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
-
-                    return savedBooking;
 
                 } else {
                     conn.rollback();

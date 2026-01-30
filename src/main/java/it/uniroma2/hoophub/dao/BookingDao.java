@@ -23,10 +23,9 @@ public interface BookingDao {
      * Saves a new booking.
      *
      * @param booking the booking model to save
-     * @return the saved booking with generated ID
      * @throws DAOException if save fails
      */
-    Booking saveBooking(Booking booking) throws DAOException;
+    void saveBooking(Booking booking) throws DAOException;
 
     /**
      * Retrieves a booking by ID.

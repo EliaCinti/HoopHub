@@ -37,7 +37,7 @@ package it.uniroma2.hoophub.sync;
 public class SyncContext {
 
     /**
-     * Thread-local flag indicating if current thread is performing sync.
+     * Thread-local flag indicating if the current thread is performing sync.
      * Initialized to {@code false} for each new thread.
      */
     private static final ThreadLocal<Boolean> isSyncing = ThreadLocal.withInitial(() -> false);
