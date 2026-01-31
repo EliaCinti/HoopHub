@@ -49,4 +49,6 @@ module it.uniroma2.hoophub {
     exports it.uniroma2.hoophub.utilities;
     exports it.uniroma2.hoophub.dao.helper_dao;
     opens it.uniroma2.hoophub.graphic_controller.gui.sign_up to javafx.fxml;
+    exports it.uniroma2.hoophub.dao.inmemory;
+    opens it.uniroma2.hoophub.dao.inmemory to javafx.fxml;
 }

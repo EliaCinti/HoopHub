@@ -3,6 +3,7 @@ package it.uniroma2.hoophub.patterns.factory;
 import it.uniroma2.hoophub.dao.FanDao;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.csv.FanDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.FanDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.FanDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -13,7 +14,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * dependency management without direct instantiation in DAOs.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class FanDaoFactory {
 
@@ -29,6 +30,7 @@ public class FanDaoFactory {
         return switch (persistenceType) {
             case CSV -> createFanDaoCsv(userDao);
             case MYSQL -> createFanDaoMySql(userDao);
+            case IN_MEMORY -> createFanDaoInMemory(userDao);
         };
     }
 
@@ -38,5 +40,9 @@ public class FanDaoFactory {
 
     private FanDao createFanDaoMySql(UserDao userDao) {
         return new FanDaoMySql(userDao);
+    }
+
+    private FanDao createFanDaoInMemory(UserDao userDao) {
+        return new FanDaoInMemory(userDao);
     }
 }

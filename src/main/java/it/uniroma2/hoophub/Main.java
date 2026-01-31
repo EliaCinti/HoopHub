@@ -22,7 +22,7 @@ import java.util.logging.Logger;
  *     <li><b>Persistence setup:</b> Configures the data access layer with automatic fallback
  *         mechanism (MySQL → CSV) in case of connection failures</li>
  *     <li><b>Data synchronization:</b> Performs initial sync between persistence layers to
- *         ensure data consistency</li>
+ *         ensure data consistency (skipped for IN_MEMORY)</li>
  *     <li><b>Interface launch:</b> Starts either the JavaFX GUI or CLI interface based on
  *         user preference</li>
  * </ol>
@@ -36,18 +36,21 @@ import java.util.logging.Logger;
  *   java Main mysql gui        # MySQL + GUI
  *   java Main csv cli          # CSV + CLI
  *   java Main mysql cli        # MySQL + CLI
+ *   java Main inmemory gui     # IN_MEMORY + GUI (demo mode)
+ *   java Main inmemory cli     # IN_MEMORY + CLI (demo mode)
  * }</pre>
  *
  * <p><b>Design considerations:</b></p>
  * <ul>
  *     <li>Implements a <i>fail-safe</i> approach: if MySQL connection fails, the application
  *         gracefully degrades to CSV persistence</li>
+ *     <li>IN_MEMORY mode requires no external dependencies (no DB, no files)</li>
  *     <li>Designed as a utility class with private constructor to prevent instantiation</li>
  *     <li>Uses {@link java.util.logging.Logger} for consistent application logging</li>
  * </ul>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  * @see DaoFactoryFacade
  * @see InitialSyncManager
  * @see GuiApplication
@@ -69,6 +72,9 @@ public class Main {
 
     /** Configuration constant for CSV persistence type. */
     private static final String PERSISTENCE_CSV = "csv";
+
+    /** Configuration constant for IN_MEMORY persistence type. */
+    private static final String PERSISTENCE_INMEMORY = "inmemory";
 
     /** Configuration constant for GUI interface type. */
     private static final String INTERFACE_GUI = "gui";
@@ -92,21 +98,21 @@ public class Main {
      * Main method and entry point for the HoopHub application.
      *
      * <p>Parses command-line arguments, configures the persistence layer with automatic
-     * fallback support, performs initial data synchronization, and launches the
+     * fallback support, performs initial data synchronization (if applicable), and launches the
      * appropriate user interface.</p>
      *
      * <p><b>Execution flow:</b></p>
      * <ol>
      *     <li>Parse and validate command-line arguments (with defaults)</li>
      *     <li>Configure persistence type via {@link #configurePersistence(String)}</li>
-     *     <li>Synchronize data via {@link #performInitialSync(PersistenceType)}</li>
+     *     <li>Synchronize data via {@link #performInitialSync(PersistenceType)} (skipped for IN_MEMORY)</li>
      *     <li>Launch interface via {@link #launchInterface(String, String[])}</li>
      * </ol>
      *
      * @param args command-line arguments where:
      *             <ul>
-     *                 <li>{@code args[0]} (optional): Persistence type - {@code "mysql"} or
-     *                     {@code "csv"}. Defaults to {@code "mysql"}</li>
+     *                 <li>{@code args[0]} (optional): Persistence type - {@code "mysql"}, {@code "csv"},
+     *                     or {@code "inmemory"}. Defaults to {@code "mysql"}</li>
      *                 <li>{@code args[1]} (optional): Interface type - {@code "gui"} or
      *                     {@code "cli"}. Defaults to {@code "gui"}</li>
      *             </ul>
@@ -123,7 +129,7 @@ public class Main {
         // Configure persistence
         PersistenceType primaryPersistenceType = configurePersistence(persistenceType);
 
-        // Perform initial synchronization
+        // Perform initial synchronization (only for MYSQL and CSV)
         performInitialSync(primaryPersistenceType);
 
         // Launch appropriate interface
@@ -143,11 +149,12 @@ public class Main {
      *     <li><b>mysql:</b> Tests connection via {@link ConnectionFactory#testConnection()}.
      *         Falls back to CSV on failure.</li>
      *     <li><b>csv:</b> Directly returns CSV persistence type without additional checks.</li>
+     *     <li><b>inmemory:</b> Returns IN_MEMORY persistence type (no external dependencies).</li>
      *     <li><b>unknown:</b> Logs a warning and defaults to MySQL (with connection test).</li>
      * </ul>
      *
      * @param persistenceType the requested persistence type as a lowercase string
-     *                        ({@code "mysql"} or {@code "csv"})
+     *                        ({@code "mysql"}, {@code "csv"}, or {@code "inmemory"})
      * @return the actual {@link PersistenceType} to be used, which may differ from the
      *         requested type if MySQL connection fails
      * @see ConnectionFactory#testConnection()
@@ -156,32 +163,43 @@ public class Main {
     private static PersistenceType configurePersistence(String persistenceType) {
         DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
 
-        if (PERSISTENCE_MYSQL.equals(persistenceType)) {
-            daoFactoryFacade.setPersistenceType(PersistenceType.MYSQL);
+        switch (persistenceType) {
+            case PERSISTENCE_MYSQL:
+                daoFactoryFacade.setPersistenceType(PersistenceType.MYSQL);
+                try {
+                    boolean connectionOk = ConnectionFactory.testConnection();
 
-            try {
-                boolean connectionOk = ConnectionFactory.testConnection();
+                    if (!connectionOk) {
+                        LOGGER.warning("Database connection test failed. Switching to CSV persistence.");
+                        daoFactoryFacade.setPersistenceType(PersistenceType.CSV);
+                        return PersistenceType.CSV;
+                    }
 
-                if (!connectionOk) {
-                    LOGGER.warning("Database connection test failed. Switching to CSV persistence.");
+                    LOGGER.info("Database connection test successful");
+                    return PersistenceType.MYSQL;
+
+                } catch (Exception e) {
+                    LOGGER.log(Level.WARNING, "Error testing database connection", e);
+                    LOGGER.info("Switching to CSV persistence due to connection error");
+                    daoFactoryFacade.setPersistenceType(PersistenceType.CSV);
                     return PersistenceType.CSV;
                 }
 
-                LOGGER.info("Database connection test successful");
-                return PersistenceType.MYSQL;
-
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error testing database connection", e);
-                LOGGER.info("Switching to CSV persistence due to connection error");
+            case PERSISTENCE_CSV:
+                LOGGER.info("Using CSV persistence as specified");
+                daoFactoryFacade.setPersistenceType(PersistenceType.CSV);
                 return PersistenceType.CSV;
-            }
-        } else if (PERSISTENCE_CSV.equals(persistenceType)) {
-            LOGGER.info("Using CSV persistence as specified");
-            return PersistenceType.CSV;
-        } else {
-            LOGGER.log(Level.WARNING,
-                    () -> "Unknown persistence type: " + persistenceType + ". Defaulting to MySql.");
-            return PersistenceType.MYSQL;
+
+            case PERSISTENCE_INMEMORY:
+                LOGGER.info("Using IN_MEMORY persistence (demo mode - data will not persist)");
+                daoFactoryFacade.setPersistenceType(PersistenceType.IN_MEMORY);
+                return PersistenceType.IN_MEMORY;
+
+            default:
+                LOGGER.log(Level.WARNING,
+                        () -> "Unknown persistence type: " + persistenceType + ". Defaulting to MySQL.");
+                // Ricorsione per gestire il default come se fosse MySQL
+                return configurePersistence(PERSISTENCE_MYSQL);
         }
     }
 
@@ -193,9 +211,8 @@ public class Main {
      * {@link DaoFactoryFacade} to use the specified primary persistence type for all
      * subsequent data access operations.</p>
      *
-     * <p>The synchronization is handled by {@link InitialSyncManager}, which manages
-     * the complexities of cross-persistence data transfer while maintaining data
-     * integrity.</p>
+     * <p><b>Note:</b> Synchronization is skipped for IN_MEMORY persistence type,
+     * as it operates in standalone mode without external data sources.</p>
      *
      * @param primaryPersistenceType the primary {@link PersistenceType} that will be
      *                               used as the target for synchronization and for
@@ -203,6 +220,13 @@ public class Main {
      * @see InitialSyncManager#performInitialSync(PersistenceType)
      */
     private static void performInitialSync(PersistenceType primaryPersistenceType) {
+        // Skip sync for IN_MEMORY - it starts fresh with no data
+        if (primaryPersistenceType == PersistenceType.IN_MEMORY) {
+            LOGGER.info("Skipping initial sync for IN_MEMORY persistence (standalone mode)");
+            DaoFactoryFacade.getInstance().setPersistenceType(primaryPersistenceType);
+            return;
+        }
+
         InitialSyncManager initialSyncManager = new InitialSyncManager();
         initialSyncManager.performInitialSync(primaryPersistenceType);
 

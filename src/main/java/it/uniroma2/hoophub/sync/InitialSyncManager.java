@@ -162,7 +162,7 @@ public class InitialSyncManager {
     }
 
     /**
-     * Reinitializes a CSV file with only its header row.
+     * Reinitialized a CSV file with only its header row.
      */
     private void reinitializeCsvFile(java.io.File file, String[] header) throws java.io.IOException {
         try (com.opencsv.CSVWriter writer = new com.opencsv.CSVWriter(new java.io.FileWriter(file))) {

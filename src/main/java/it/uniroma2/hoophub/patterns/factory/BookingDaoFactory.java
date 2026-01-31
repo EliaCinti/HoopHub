@@ -2,6 +2,7 @@ package it.uniroma2.hoophub.patterns.factory;
 
 import it.uniroma2.hoophub.dao.BookingDao;
 import it.uniroma2.hoophub.dao.csv.BookingDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.BookingDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.BookingDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -11,7 +12,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * <p>Abstracts DAO creation, enabling runtime persistence mechanism selection.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class BookingDaoFactory {
 
@@ -25,6 +26,7 @@ public class BookingDaoFactory {
         return switch (persistenceType) {
             case CSV -> createBookingDaoCsv();
             case MYSQL -> createBookingDaoMySql();
+            case IN_MEMORY -> createBookingDaoInMemory();
         };
     }
 
@@ -34,5 +36,9 @@ public class BookingDaoFactory {
 
     private BookingDao createBookingDaoMySql() {
         return new BookingDaoMySql();
+    }
+
+    private BookingDao createBookingDaoInMemory() {
+        return new BookingDaoInMemory();
     }
 }

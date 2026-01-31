@@ -2,6 +2,7 @@ package it.uniroma2.hoophub.patterns.factory;
 
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.csv.VenueDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.VenueDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.VenueDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -11,7 +12,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * <p>Enables flexible persistence strategy selection for venue data.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class VenueDaoFactory {
 
@@ -25,6 +26,7 @@ public class VenueDaoFactory {
         return switch (persistenceType) {
             case CSV -> createVenueDaoCsv();
             case MYSQL -> createVenueDaoMySql();
+            case IN_MEMORY -> createVenueDaoInMemory();
         };
     }
 
@@ -34,5 +36,9 @@ public class VenueDaoFactory {
 
     private VenueDao createVenueDaoMySql() {
         return new VenueDaoMySql();
+    }
+
+    private VenueDao createVenueDaoInMemory() {
+        return new VenueDaoInMemory();
     }
 }

@@ -48,8 +48,4 @@ public enum SessionManager {
     public UserBean getCurrentUser() {
         return currentUser;
     }
-
-    public boolean isLoggedIn() {
-        return currentUser != null;
-    }
 }

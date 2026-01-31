@@ -2,6 +2,7 @@ package it.uniroma2.hoophub.patterns.factory;
 
 import it.uniroma2.hoophub.dao.NotificationDao;
 import it.uniroma2.hoophub.dao.csv.NotificationDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.NotificationDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.NotificationDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -12,7 +13,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * with compile-time exhaustiveness checking.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class NotificationDaoFactory {
 
@@ -26,6 +27,7 @@ public class NotificationDaoFactory {
         return switch (persistenceType) {
             case CSV -> createNotificationDaoCsv();
             case MYSQL -> createNotificationDaoMySql();
+            case IN_MEMORY -> createNotificationDaoInMemory();
         };
     }
 
@@ -35,5 +37,9 @@ public class NotificationDaoFactory {
 
     private NotificationDao createNotificationDaoMySql() {
         return new NotificationDaoMySql();
+    }
+
+    private NotificationDao createNotificationDaoInMemory() {
+        return new NotificationDaoInMemory();
     }
 }

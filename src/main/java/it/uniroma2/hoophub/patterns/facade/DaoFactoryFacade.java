@@ -33,11 +33,12 @@ import it.uniroma2.hoophub.patterns.observer.ObservableDao;
  * <ul>
  *   <li>MySQL as primary → syncs changes to CSV</li>
  *   <li>CSV as primary → syncs changes to MySQL</li>
+ *   <li>IN_MEMORY → no synchronization (standalone mode)</li>
  * </ul>
  * </p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 @SuppressWarnings("java:S6548")
 public class DaoFactoryFacade {
@@ -73,7 +74,7 @@ public class DaoFactoryFacade {
     /**
      * Gets the current persistence type.
      *
-     * @return current persistence type (MYSQL or CSV)
+     * @return current persistence type (MYSQL, CSV, or IN_MEMORY)
      */
     public PersistenceType getPersistenceType() {
         return persistenceType;
@@ -97,68 +98,64 @@ public class DaoFactoryFacade {
     }
 
     /**
-     * Gets UserDao with sync observer configured.
+     * Gets UserDao with sync observer configured (if applicable).
      *
      * @return cached or new UserDao instance
      */
     public UserDao getUserDao() {
         if (userDao == null) {
             userDao = new UserDaoFactory().getUserDao(this.persistenceType);
-            DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) userDao).addObserver(syncObserver);
+            attachSyncObserverIfNeeded((ObservableDao) userDao);
         }
         return userDao;
     }
 
     /**
-     * Gets FanDao with sync observer configured.
+     * Gets FanDao with sync observer configured (if applicable).
      *
      * @return cached or new FanDao instance
      */
     public FanDao getFanDao() {
         if (fanDao == null) {
             fanDao = new FanDaoFactory().getFanDao(this.persistenceType);
-            DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) fanDao).addObserver(syncObserver);
+            attachSyncObserverIfNeeded((ObservableDao) fanDao);
         }
         return fanDao;
     }
 
     /**
-     * Gets VenueManagerDao with sync observer configured.
+     * Gets VenueManagerDao with sync observer configured (if applicable).
      *
      * @return cached or new VenueManagerDao instance
      */
     public VenueManagerDao getVenueManagerDao() {
         if (venueManagerDao == null) {
             venueManagerDao = new VenueManagerDaoFactory().getVenueManagerDao(this.persistenceType);
-            DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) venueManagerDao).addObserver(syncObserver);
+            attachSyncObserverIfNeeded((ObservableDao) venueManagerDao);
         }
         return venueManagerDao;
     }
 
     /**
-     * Gets VenueDao with sync observer configured.
+     * Gets VenueDao with sync observer configured (if applicable).
      *
      * @return cached or new VenueDao instance
      */
     public VenueDao getVenueDao() {
         if (venueDao == null) {
             venueDao = new VenueDaoFactory().getVenueDao(this.persistenceType);
-            DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) venueDao).addObserver(syncObserver);
+            attachSyncObserverIfNeeded((ObservableDao) venueDao);
         }
         return venueDao;
     }
 
     /**
-     * Gets BookingDao with both sync and notification observers.
+     * Gets BookingDao with both sync and notification observers (if applicable).
      *
      * <p>BookingDao has two observers:
      * <ul>
-     *   <li>CrossPersistenceSyncObserver for MySQL ↔ CSV sync</li>
-     *   <li>NotificationBookingObserver for automatic notifications</li>
+     *   <li>CrossPersistenceSyncObserver for MySQL ↔ CSV sync (not for IN_MEMORY)</li>
+     *   <li>NotificationBookingObserver for automatic notifications (all types)</li>
      * </ul>
      * </p>
      *
@@ -168,9 +165,10 @@ public class DaoFactoryFacade {
         if (bookingDao == null) {
             bookingDao = new BookingDaoFactory().getBookingDao(this.persistenceType);
 
-            DaoObserver syncObserver = getSyncObserver();
-            ((ObservableDao) bookingDao).addObserver(syncObserver);
+            // Sync observer only for MYSQL and CSV
+            attachSyncObserverIfNeeded((ObservableDao) bookingDao);
 
+            // Notification observer for ALL persistence types (including IN_MEMORY)
             DaoObserver notificationObserver = observerFactory.getNotificationBookingObserver();
             ((ObservableDao) bookingDao).addObserver(notificationObserver);
         }
@@ -178,27 +176,43 @@ public class DaoFactoryFacade {
     }
 
     /**
-     * Gets NotificationDao with sync observer configured.
+     * Gets NotificationDao with sync observer configured (if applicable).
      *
      * @return cached or new NotificationDao instance
      */
     public NotificationDao getNotificationDao() {
         if (notificationDao == null) {
             notificationDao = new NotificationDaoFactory().getNotificationDao(this.persistenceType);
-            DaoObserver syncObserver = getSyncObserver();
-            notificationDao.addObserver(syncObserver);
+            attachSyncObserverIfNeeded(notificationDao);
         }
         return notificationDao;
     }
 
     /**
+     * Attaches sync observer only for MYSQL and CSV persistence types.
+     * IN_MEMORY does not need synchronization.
+     *
+     * @param dao the observable DAO to attach observer to
+     */
+    private void attachSyncObserverIfNeeded(ObservableDao dao) {
+        if (this.persistenceType != PersistenceType.IN_MEMORY) {
+            DaoObserver syncObserver = getSyncObserver();
+            if (syncObserver != null) {
+                dao.addObserver(syncObserver);
+            }
+        }
+    }
+
+    /**
      * Gets appropriate sync observer based on persistence type.
+     *
+     * @return sync observer for MYSQL/CSV, null for IN_MEMORY
      */
     private DaoObserver getSyncObserver() {
-        if (this.persistenceType == PersistenceType.MYSQL) {
-            return observerFactory.getMySqlToCsvObserver();
-        } else {
-            return observerFactory.getCsvToMySqlObserver();
-        }
+        return switch (this.persistenceType) {
+            case MYSQL -> observerFactory.getMySqlToCsvObserver();
+            case CSV -> observerFactory.getCsvToMySqlObserver();
+            case IN_MEMORY -> null;
+        };
     }
 }

@@ -2,6 +2,7 @@ package it.uniroma2.hoophub.patterns.factory;
 
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.csv.UserDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.UserDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.UserDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -12,7 +13,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * enabling flexible persistence strategy switching.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class UserDaoFactory {
 
@@ -26,6 +27,7 @@ public class UserDaoFactory {
         return switch (persistenceType) {
             case CSV -> createUserDaoCsv();
             case MYSQL -> createUserDaoMySql();
+            case IN_MEMORY -> createUserDaoInMemory();
         };
     }
 
@@ -35,5 +37,9 @@ public class UserDaoFactory {
 
     private UserDao createUserDaoMySql() {
         return new UserDaoMySql();
+    }
+
+    private UserDao createUserDaoInMemory() {
+        return new UserDaoInMemory();
     }
 }

@@ -15,8 +15,11 @@ import java.util.List;
  * <p>Provides centralized, type-safe creation and caching of DAO observers.
  * Uses polymorphic switch/case for observer type selection.</p>
  *
+ * <p><b>Note:</b> IN_MEMORY persistence type does not use sync observers,
+ * only the NotificationBookingObserver for booking notifications.</p>
+ *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 @SuppressWarnings("java:S6548")
 public class ObserverFactory {
@@ -84,7 +87,7 @@ public class ObserverFactory {
      *
      * @param observerType    type of observer to create
      * @param persistenceType persistence type (for sync observers)
-     * @return appropriate DaoObserver instance
+     * @return appropriate DaoObserver instance, or null for IN_MEMORY sync
      */
     public DaoObserver getObserver(ObserverType observerType, PersistenceType persistenceType) {
         return switch (observerType) {
@@ -94,22 +97,39 @@ public class ObserverFactory {
     }
 
     /**
-     * Gets all observers for a DAO (sync + notification).
+     * Gets all observers for a DAO based on persistence type.
+     *
+     * <p>For IN_MEMORY: only NotificationBookingObserver (no sync).
+     * For MYSQL/CSV: sync observer + NotificationBookingObserver.</p>
      *
      * @param currentPersistenceType current persistence type
      * @return list of observers to register
      */
     public List<DaoObserver> getAllObservers(PersistenceType currentPersistenceType) {
         List<DaoObserver> observers = new ArrayList<>();
-        observers.add(getSyncObserver(currentPersistenceType));
+
+        // Sync observer only for MYSQL and CSV
+        if (currentPersistenceType != PersistenceType.IN_MEMORY) {
+            observers.add(getSyncObserver(currentPersistenceType));
+        }
+
+        // Notification observer for all persistence types
         observers.add(getNotificationBookingObserver());
+
         return observers;
     }
 
+    /**
+     * Gets sync observer for persistence type.
+     *
+     * @param persistenceType the persistence type
+     * @return sync observer, or null for IN_MEMORY
+     */
     private CrossPersistenceSyncObserver getSyncObserver(PersistenceType persistenceType) {
         return switch (persistenceType) {
             case MYSQL -> getMySqlToCsvObserver();
             case CSV -> getCsvToMySqlObserver();
+            case IN_MEMORY -> null; // No sync for IN_MEMORY
         };
     }
 

@@ -276,7 +276,7 @@ public class Booking {
             throw new IllegalArgumentException("Home team and away team cannot be the same");
         }
         // Skip past date validation during sync to allow historical data
-        if (!it.uniroma2.hoophub.sync.SyncContext.isSyncing() && gameDate.isBefore(LocalDate.now())) {
+        if (id == 0 && !it.uniroma2.hoophub.sync.SyncContext.isSyncing() && gameDate.isBefore(LocalDate.now())) {
             throw new IllegalArgumentException("Cannot book for past dates");
         }
     }

@@ -3,6 +3,7 @@ package it.uniroma2.hoophub.patterns.factory;
 import it.uniroma2.hoophub.dao.UserDao;
 import it.uniroma2.hoophub.dao.VenueManagerDao;
 import it.uniroma2.hoophub.dao.csv.VenueManagerDaoCsv;
+import it.uniroma2.hoophub.dao.inmemory.VenueManagerDaoInMemory;
 import it.uniroma2.hoophub.dao.mysql.VenueManagerDaoMySql;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
 
@@ -13,7 +14,7 @@ import it.uniroma2.hoophub.patterns.facade.PersistenceType;
  * for proper dependency management.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class VenueManagerDaoFactory {
 
@@ -29,6 +30,7 @@ public class VenueManagerDaoFactory {
         return switch (persistenceType) {
             case CSV -> createVenueManagerDaoCsv(userDao);
             case MYSQL -> createVenueManagerDaoMySql(userDao);
+            case IN_MEMORY -> createVenueManagerDaoInMemory(userDao);
         };
     }
 
@@ -38,5 +40,9 @@ public class VenueManagerDaoFactory {
 
     private VenueManagerDao createVenueManagerDaoMySql(UserDao userDao) {
         return new VenueManagerDaoMySql(userDao);
+    }
+
+    private VenueManagerDao createVenueManagerDaoInMemory(UserDao userDao) {
+        return new VenueManagerDaoInMemory(userDao);
     }
 }
