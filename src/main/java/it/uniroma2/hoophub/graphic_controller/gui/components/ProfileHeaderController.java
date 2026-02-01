@@ -3,6 +3,7 @@ package it.uniroma2.hoophub.graphic_controller.gui.components;
 import it.uniroma2.hoophub.beans.UserBean;
 import it.uniroma2.hoophub.session.SessionManager;
 import it.uniroma2.hoophub.utilities.NavigatorSingleton;
+import it.uniroma2.hoophub.utilities.UserAvatarResolver;
 import javafx.fxml.FXML;
 import javafx.scene.control.MenuButton;
 import javafx.scene.image.Image;
@@ -19,10 +20,13 @@ import java.util.logging.Logger;
  * Reusable JavaFX controller for the profile header component.
  *
  * <p>Displays user avatar and username with a dropdown menu for logout.
- * Designed to be included via {@code <fx:include>} in homepage FXML files.</p>
+ * Avatar is dynamically resolved based on user type and gender using
+ * {@link UserAvatarResolver}.</p>
+ *
+ * <p>Designed to be included via {@code <fx:include>} in homepage FXML files.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class ProfileHeaderController {
 
@@ -31,8 +35,7 @@ public class ProfileHeaderController {
     @FXML
     private Circle avatarCircle;
 
-    private static final Logger logger = Logger.getLogger(ProfileHeaderController.class.getName());
-    private static final String DEFAULT_AVATAR = "/it/uniroma2/hoophub/images/default_avatar.png";
+    private static final Logger LOGGER = Logger.getLogger(ProfileHeaderController.class.getName());
 
     /**
      * Initializes the header by loading user info and avatar.
@@ -49,27 +52,48 @@ public class ProfileHeaderController {
         UserBean currentUser = SessionManager.INSTANCE.getCurrentUser();
         if (currentUser != null) {
             String displayName = currentUser.getUsername();
-            profileMenuButton.setText(displayName != null ? displayName : "Fan");
+            profileMenuButton.setText(displayName != null ? displayName : "User");
         } else {
-            profileMenuButton.setText("Ospite");
+            profileMenuButton.setText("Guest");
         }
     }
 
     /**
      * Loads avatar image into the circle shape using ImagePattern.
+     * Avatar is resolved dynamically based on user type and gender.
      */
     private void loadAvatarImage() {
+        UserBean currentUser = SessionManager.INSTANCE.getCurrentUser();
+
+        if (currentUser == null) {
+            setFallbackAvatar();
+            return;
+        }
+
         try {
-            InputStream imageStream = getClass().getResourceAsStream(DEFAULT_AVATAR);
+            String avatarPath = UserAvatarResolver.getAvatarPath(
+                    currentUser.getType(),
+                    currentUser.getGender()
+            );
+
+            InputStream imageStream = getClass().getResourceAsStream(avatarPath);
             if (imageStream != null) {
                 avatarCircle.setFill(new ImagePattern(new Image(imageStream)));
+                LOGGER.log(Level.FINE, "Avatar loaded: {0}", avatarPath);
             } else {
-                logger.warning("Default avatar image not found at: " + DEFAULT_AVATAR);
-                avatarCircle.setStyle("-fx-fill: lightgray;");
+                LOGGER.log(Level.WARNING, "Avatar image not found at: {0}", avatarPath);                setFallbackAvatar();
             }
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to load avatar image", e);
+            LOGGER.log(Level.WARNING, "Failed to load avatar image", e);
+            setFallbackAvatar();
         }
+    }
+
+    /**
+     * Sets a fallback style when avatar image cannot be loaded.
+     */
+    private void setFallbackAvatar() {
+        avatarCircle.setStyle("-fx-fill: linear-gradient(to bottom, #667eea, #764ba2);");
     }
 
     /**
@@ -84,7 +108,7 @@ public class ProfileHeaderController {
             Stage currentStage = (Stage) profileMenuButton.getScene().getWindow();
             currentStage.close();
         } catch (IOException e) {
-            logger.log(Level.SEVERE, "Unable to load login page", e);
+            LOGGER.log(Level.SEVERE, "Unable to load login page", e);
         }
     }
 }
