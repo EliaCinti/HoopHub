@@ -1,7 +1,6 @@
 package it.uniroma2.hoophub.dao.csv;
 
 import it.uniroma2.hoophub.dao.BookingDao;
-import it.uniroma2.hoophub.dao.GlobalCache;
 import it.uniroma2.hoophub.dao.VenueDao;
 import it.uniroma2.hoophub.dao.helper_dao.BookingDaoHelper;
 import it.uniroma2.hoophub.enums.BookingStatus;
@@ -22,12 +21,11 @@ import java.util.logging.Level;
 /**
  * CSV implementation of {@link BookingDao}.
  *
- * <p>Persists bookings to {@code bookings.csv}. Uses {@link GlobalCache} for caching
- * and {@link DaoLoadingContext} to prevent circular dependency loops when loading
- * related entities (Fan, Venue).</p>
+ * <p>Supports UPSERT semantics for cross-persistence synchronization:
+ * if an ID already exists, updates the row instead of creating a duplicate.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
@@ -64,38 +62,80 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
         validateNotNull(booking, BOOKING);
 
         int id = booking.getId();
+
+        // UPSERT: Check if ID already exists
+        if (id > 0 && existsById(id)) {
+            upsertExistingBooking(booking);
+            return;
+        }
+
+        // Generate new ID if not provided
         if (id == 0) {
             id = (int) getNextId(COL_ID);
         }
 
         Booking savedBooking = new Booking.Builder(
-                id,
-                booking.getGameDate(),
-                booking.getGameTime(),
-                booking.getHomeTeam(),
-                booking.getAwayTeam(),
-                booking.getVenue(),
-                booking.getFan()
-        )
+                id, booking.getGameDate(), booking.getGameTime(),
+                booking.getHomeTeam(), booking.getAwayTeam(),
+                booking.getVenue(), booking.getFan())
                 .status(booking.getStatus())
                 .notified(booking.isNotified())
                 .build();
 
-        String[] newRow = {
-                String.valueOf(savedBooking.getId()),
-                savedBooking.getGameDate().toString(),
-                savedBooking.getGameTime().toString(),
-                savedBooking.getHomeTeam().name(),
-                savedBooking.getAwayTeam().name(),
-                String.valueOf(savedBooking.getVenue().getId()),
-                savedBooking.getFan().getUsername(),
-                savedBooking.getStatus().name(),
-                String.valueOf(savedBooking.isNotified())
-        };
-
-        CsvUtilities.writeFile(csvFile, newRow);
+        CsvUtilities.writeFile(csvFile, bookingToRow(savedBooking));
         putInCache(savedBooking, id);
         notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(id), savedBooking);
+    }
+
+    /**
+     * Updates an existing booking (UPSERT when ID already exists).
+     */
+    private void upsertExistingBooking(Booking booking) throws DAOException {
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (Integer.parseInt(row[COL_ID]) == booking.getId()) {
+                data.set(i, bookingToRow(booking));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            CsvUtilities.writeFile(csvFile, bookingToRow(booking));
+        } else {
+            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+        }
+
+        putInCache(booking, booking.getId());
+        notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(booking.getId()), booking);
+    }
+
+    /**
+     * Checks if a booking with the given ID already exists.
+     */
+    private boolean existsById(int id) throws DAOException {
+        String[] row = findRowByValue(COL_ID, String.valueOf(id));
+        return row != null && row.length > 0;
+    }
+
+    /**
+     * Converts a Booking to a CSV row array.
+     */
+    private String[] bookingToRow(Booking booking) {
+        return new String[]{
+                String.valueOf(booking.getId()),
+                booking.getGameDate().toString(),
+                booking.getGameTime().toString(),
+                booking.getHomeTeam().name(),
+                booking.getAwayTeam().name(),
+                String.valueOf(booking.getVenue().getId()),
+                booking.getFan().getUsername(),
+                booking.getStatus().name(),
+                String.valueOf(booking.isNotified())
+        };
     }
 
     @Override
@@ -110,16 +150,13 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         Booking booking = mapRowToBooking(row);
         putInCache(booking, bookingId);
-
         return booking;
     }
 
     @Override
     public synchronized List<Booking> retrieveAllBookings() throws DAOException {
         List<String[]> data = readAllDataRows();
-        List<Booking> bookings = processRowsToBookings(data);
-        logger.log(Level.FINE, "Retrieved {0} bookings", bookings.size());
-        return bookings;
+        return processRowsToBookings(data);
     }
 
     @Override
@@ -133,19 +170,14 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized List<Booking> retrieveBookingsByVenue(int venueId) throws DAOException {
         validatePositiveId(venueId);
         List<String[]> matchingRows = findAllRowsByValue(COL_VENUE_ID, String.valueOf(venueId));
-        List<Booking> bookings = processRowsToBookings(matchingRows);
-        logger.log(Level.FINE, "Retrieved {0} bookings for venue {1}",
-                new Object[]{bookings.size(), venueId});
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
     public synchronized List<Booking> retrieveBookingsByVenueManager(String venueManagerUsername) throws DAOException {
         validateNotNullOrEmpty(venueManagerUsername, "Venue manager username");
 
-        DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
-        VenueDao venueDao = daoFactory.getVenueDao();
-
+        VenueDao venueDao = DaoFactoryFacade.getInstance().getVenueDao();
         List<Venue> managedVenues = venueDao.retrieveVenuesByManager(venueManagerUsername);
         if (managedVenues.isEmpty()) return new ArrayList<>();
 
@@ -169,10 +201,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        List<Booking> bookings = processRowsToBookings(matchingRows);
-        logger.log(Level.FINE, "Retrieved {0} bookings for manager {1}",
-                new Object[]{bookings.size(), venueManagerUsername});
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
@@ -189,9 +218,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             }
         }
 
-        List<Booking> bookings = processRowsToBookings(matchingRows);
-        logger.log(Level.INFO, () -> "Retrieved " + bookings.size() + " bookings for date " + date);
-        return bookings;
+        return processRowsToBookings(matchingRows);
     }
 
     @Override
@@ -204,8 +231,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         for (String[] row : data) {
             if (row.length <= COL_STATUS) continue;
-            if (row[COL_FAN_USERNAME].equals(fanUsername) &&
-                    row[COL_STATUS].equals(status.name())) {
+            if (row[COL_FAN_USERNAME].equals(fanUsername) && row[COL_STATUS].equals(status.name())) {
                 matchingRows.add(row);
             }
         }
@@ -221,8 +247,7 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         for (String[] row : data) {
             if (row.length <= COL_NOTIFIED) continue;
-            if (row[COL_FAN_USERNAME].equals(fanUsername) &&
-                    !Boolean.parseBoolean(row[COL_NOTIFIED])) {
+            if (row[COL_FAN_USERNAME].equals(fanUsername) && !Boolean.parseBoolean(row[COL_NOTIFIED])) {
                 matchingRows.add(row);
             }
         }
@@ -239,25 +264,20 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
 
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
-
             if (row.length > COL_ID && Integer.parseInt(row[COL_ID]) == booking.getId()) {
                 if (row.length > COL_NOTIFIED) {
                     updateRowData(row, booking);
                     found = true;
-                } else {
-                    logger.log(Level.WARNING, "Skipping update: CSV row for ID {0} is incomplete.", booking.getId());
                 }
                 break;
             }
         }
 
         if (!found) {
-            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    BOOKING, "update", booking.getId()));
+            throw new DAOException("Booking not found for update: " + booking.getId());
         }
 
         CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
-        logger.log(Level.INFO, "Booking updated successfully: {0}", booking.getId());
         putInCache(booking, booking.getId());
         notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
     }
@@ -266,18 +286,11 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
     public synchronized void deleteBooking(Booking booking) throws DAOException {
         validateNotNull(booking, BOOKING);
         int bookingId = booking.getId();
-        if (bookingId <= 0) {
-            throw new IllegalArgumentException("Invalid booking ID: " + bookingId);
-        }
+        if (bookingId <= 0) throw new IllegalArgumentException("Invalid booking ID: " + bookingId);
 
         boolean found = deleteByColumn(COL_ID, String.valueOf(bookingId));
+        if (!found) throw new DAOException("Booking not found for deletion: " + bookingId);
 
-        if (!found) {
-            throw new DAOException(String.format(CsvDaoConstants.ERR_ENTITY_NOT_FOUND_FOR_OP,
-                    BOOKING, "deletion", bookingId));
-        }
-
-        logger.log(Level.INFO, "Booking deleted successfully: {0}", bookingId);
         removeFromCache(Booking.class, bookingId);
         notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(bookingId), null);
     }
@@ -325,7 +338,6 @@ public class BookingDaoCsv extends AbstractCsvDao implements BookingDao {
             putInCache(b, id);
             return b;
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid Booking ID in CSV row");
             return null;
         }
     }

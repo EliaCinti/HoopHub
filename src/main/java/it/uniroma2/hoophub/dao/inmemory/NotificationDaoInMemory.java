@@ -149,6 +149,13 @@ public class NotificationDaoInMemory extends AbstractObservableDao implements No
     }
 
     @Override
+    public List<Notification> retrieveAllNotifications() {
+        List<Notification> all = new ArrayList<>(dataStore.getAllNotifications().values());
+        all.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
+        return all;
+    }
+
+    @Override
     public void deleteNotification(Notification notification) throws DAOException {
         validateNotificationInput(notification);
         int notificationId = notification.getId();

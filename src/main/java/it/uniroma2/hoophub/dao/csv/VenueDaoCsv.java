@@ -19,11 +19,11 @@ import java.util.logging.Level;
 /**
  * CSV implementation of {@link VenueDao}.
  *
- * <p>Persists venues to {@code venues.csv} and team associations to {@code venue_teams.csv}.
- * Uses {@link DaoLoadingContext} to prevent circular dependencies when loading VenueManager.</p>
+ * <p>Supports UPSERT semantics for cross-persistence synchronization:
+ * if an ID already exists, updates the row instead of creating a duplicate.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
@@ -58,12 +58,9 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         try {
             if (!venueTeamsFile.exists()) {
                 File parentDir = venueTeamsFile.getParentFile();
-                if (parentDir != null && !parentDir.exists()) {
-                    boolean created = parentDir.mkdirs();
-                    if (!created) {
-                        logger.log(Level.SEVERE, "Cannot create directory for venue teams: {0}", parentDir.getAbsolutePath());
-                        return;
-                    }
+                if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+                    logger.log(Level.SEVERE, "Cannot create directory: {0}", parentDir.getAbsolutePath());
+                    return;
                 }
                 CsvUtilities.updateFile(venueTeamsFile, VENUE_TEAMS_HEADER, new ArrayList<>());
             }
@@ -82,6 +79,13 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         validateNotNull(venue, VENUE);
 
         int id = venue.getId();
+
+        // UPSERT: Check if ID already exists
+        if (id > 0 && existsById(id)) {
+            return upsertExistingVenue(venue);
+        }
+
+        // Generate new ID if not provided
         if (id == 0) {
             id = (int) getNextId(COL_ID);
         }
@@ -97,16 +101,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                 .teams(venue.getAssociatedTeams())
                 .build();
 
-        String[] row = {
-                String.valueOf(id),
-                savedVenue.getName(),
-                savedVenue.getType().name(),
-                savedVenue.getAddress(),
-                savedVenue.getCity(),
-                String.valueOf(savedVenue.getMaxCapacity()),
-                savedVenue.getVenueManagerUsername()
-        };
-        CsvUtilities.writeFile(csvFile, row);
+        CsvUtilities.writeFile(csvFile, venueToRow(savedVenue));
 
         for (TeamNBA team : savedVenue.getAssociatedTeams()) {
             saveVenueTeamInternal(id, team);
@@ -117,17 +112,72 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         return savedVenue;
     }
 
+    /**
+     * Updates an existing venue (UPSERT when ID already exists).
+     */
+    private Venue upsertExistingVenue(Venue venue) throws DAOException {
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (Integer.parseInt(row[COL_ID]) == venue.getId()) {
+                data.set(i, venueToRow(venue));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            CsvUtilities.writeFile(csvFile, venueToRow(venue));
+        } else {
+            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+        }
+
+        // Update teams
+        deleteAllVenueTeamsInternal(venue.getId());
+        for (TeamNBA team : venue.getAssociatedTeams()) {
+            saveVenueTeamInternal(venue.getId(), team);
+        }
+
+        putInCache(venue, venue.getId());
+        notifyObservers(DaoOperation.INSERT, VENUE, String.valueOf(venue.getId()), venue);
+        return venue;
+    }
+
+    /**
+     * Checks if a venue with the given ID already exists.
+     */
+    private boolean existsById(int id) throws DAOException {
+        String[] row = findRowByValue(COL_ID, String.valueOf(id));
+        return row != null && row.length > 0;
+    }
+
+    /**
+     * Converts a Venue to a CSV row array.
+     */
+    private String[] venueToRow(Venue venue) {
+        return new String[]{
+                String.valueOf(venue.getId()),
+                venue.getName(),
+                venue.getType().name(),
+                venue.getAddress(),
+                venue.getCity(),
+                String.valueOf(venue.getMaxCapacity()),
+                venue.getVenueManagerUsername()
+        };
+    }
+
     @Override
     public synchronized Venue retrieveVenue(int venueId) throws DAOException {
-        Venue cachedVenue = getFromCache(Venue.class, venueId);
-        if (cachedVenue != null) return cachedVenue;
+        Venue cached = getFromCache(Venue.class, venueId);
+        if (cached != null) return cached;
 
         String[] row = findRowByValue(COL_ID, String.valueOf(venueId));
         if (!isValidRow(row)) return null;
 
         Venue venue = mapRowToVenue(row);
         putInCache(venue, venueId);
-
         return venue;
     }
 
@@ -166,7 +216,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
         for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
             String[] row = data.get(i);
-
             if (row.length > COL_ID && Integer.parseInt(row[COL_ID]) == venue.getId()) {
                 if (row.length > COL_VENUE_MANAGER_USERNAME) {
                     row[COL_NAME] = venue.getName();
@@ -175,8 +224,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
                     row[COL_CITY] = venue.getCity();
                     row[COL_MAX_CAPACITY] = String.valueOf(venue.getMaxCapacity());
                     found = true;
-                } else {
-                    logger.log(Level.WARNING, "Skipping update on corrupted Venue row ID {0}", venue.getId());
                 }
                 break;
             }
@@ -191,7 +238,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
         }
 
         putInCache(venue, venue.getId());
-        logger.log(Level.INFO, "Venue updated: {0}", venue.getId());
         notifyObservers(DaoOperation.UPDATE, VENUE, String.valueOf(venue.getId()), venue);
     }
 
@@ -205,7 +251,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
 
         deleteAllVenueTeamsInternal(id);
         removeFromCache(Venue.class, id);
-        logger.log(Level.INFO, "Venue deleted: {0}", id);
         notifyObservers(DaoOperation.DELETE, VENUE, String.valueOf(id), null);
     }
 
@@ -230,12 +275,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             String[] row = data.get(i);
             if (row.length > COL_VT_TEAM_NAME && Integer.parseInt(row[COL_VT_VENUE_ID]) == venueId) {
                 TeamNBA team = TeamNBA.robustValueOf(row[COL_VT_TEAM_NAME]);
-                if (team != null) {
-                    teams.add(team);
-                } else {
-                    logger.log(Level.WARNING, "Unknown team in CSV for venue {0}: {1}",
-                            new Object[]{venueId, row[COL_VT_TEAM_NAME]});
-                }
+                if (team != null) teams.add(team);
             }
         }
         return teams;
@@ -313,7 +353,6 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
             putInCache(v, id);
             return v;
         } catch (NumberFormatException e) {
-            logger.log(Level.WARNING, "Invalid venue ID in CSV row");
             return null;
         }
     }
@@ -352,8 +391,7 @@ public class VenueDaoCsv extends AbstractCsvDao implements VenueDao {
     }
 
     private Venue createMinimalVenue(int id, String[] row, String managerUsername) throws DAOException {
-        DaoFactoryFacade dao = DaoFactoryFacade.getInstance();
-        VenueManager manager = dao.getVenueManagerDao().retrieveVenueManager(managerUsername);
+        VenueManager manager = DaoFactoryFacade.getInstance().getVenueManagerDao().retrieveVenueManager(managerUsername);
         Set<TeamNBA> teams = retrieveVenueTeams(id);
 
         return new Venue.Builder()

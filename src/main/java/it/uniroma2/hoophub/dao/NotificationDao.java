@@ -75,6 +75,13 @@ public interface NotificationDao extends ObservableDao {
     void markAllAsReadForUser(String username, UserType userType) throws DAOException;
 
     /**
+     * Retrieve all notifications.
+     *
+     * @throws DAOException if update fails
+     */
+    List<Notification> retrieveAllNotifications() throws DAOException;
+
+    /**
      * Deletes a notification.
      *
      * @param notification the notification to delete

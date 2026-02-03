@@ -20,8 +20,11 @@ import java.util.List;
  * <p>Persists notifications to {@code notifications.csv}. Returns notifications
  * sorted by creation date (newest first).</p>
  *
+ * <p>Supports UPSERT semantics for cross-persistence synchronization:
+ * if an ID already exists, updates the row instead of creating a duplicate.</p>
+ *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDao {
 
@@ -57,6 +60,14 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
         validateNotNull(notification, NOTIFICATION);
 
         int id = notification.getId();
+
+        // UPSERT: Check if ID already exists
+        if (id > 0 && existsById(id)) {
+            // ID exists - perform UPDATE instead of INSERT
+            return upsertExistingNotification(notification);
+        }
+
+        // Generate new ID if not provided
         if (id == 0) {
             id = (int) getNextId(COL_ID);
         }
@@ -66,24 +77,69 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
                 .id(id)
                 .build();
 
-        String bookingIdStr = savedNotification.getBookingId() == null ? "" : String.valueOf(savedNotification.getBookingId());
-
-        String[] newRow = {
-                String.valueOf(id),
-                savedNotification.getUsername(),
-                savedNotification.getUserType().name(),
-                savedNotification.getType().name(),
-                savedNotification.getMessage(),
-                bookingIdStr,
-                String.valueOf(savedNotification.isRead()),
-                savedNotification.getCreatedAt().format(DATE_TIME_FORMATTER)
-        };
+        String[] newRow = notificationToRow(savedNotification);
 
         CsvUtilities.writeFile(csvFile, newRow);
         putInCache(savedNotification, id);
         notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(id), savedNotification);
 
         return savedNotification;
+    }
+
+    /**
+     * Updates an existing notification (UPSERT when ID already exists).
+     */
+    private Notification upsertExistingNotification(Notification notification) throws DAOException {
+        List<String[]> data = CsvUtilities.readAll(csvFile);
+        boolean found = false;
+
+        for (int i = CsvDaoConstants.FIRST_DATA_ROW; i < data.size(); i++) {
+            String[] row = data.get(i);
+            if (Integer.parseInt(row[COL_ID]) == notification.getId()) {
+                data.set(i, notificationToRow(notification));
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            // ID was supposed to exist but wasn't found - append as new
+            String[] newRow = notificationToRow(notification);
+            CsvUtilities.writeFile(csvFile, newRow);
+        } else {
+            CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+        }
+
+        putInCache(notification, notification.getId());
+        notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(notification.getId()), notification);
+
+        return notification;
+    }
+
+    /**
+     * Checks if a notification with the given ID already exists.
+     */
+    private boolean existsById(int id) throws DAOException {
+        String[] row = findRowByValue(COL_ID, String.valueOf(id));
+        return row != null && row.length > 0;
+    }
+
+    /**
+     * Converts a Notification to a CSV row array.
+     */
+    private String[] notificationToRow(Notification notification) {
+        String bookingIdStr = notification.getBookingId() == null ? "" : String.valueOf(notification.getBookingId());
+
+        return new String[]{
+                String.valueOf(notification.getId()),
+                notification.getUsername(),
+                notification.getUserType().name(),
+                notification.getType().name(),
+                notification.getMessage(),
+                bookingIdStr,
+                String.valueOf(notification.isRead()),
+                notification.getCreatedAt().format(DATE_TIME_FORMATTER)
+        };
     }
 
     @Override
@@ -179,6 +235,21 @@ public class NotificationDaoCsv extends AbstractCsvDao implements NotificationDa
             }
         }
         if (changed) CsvUtilities.updateFile(csvFile, CSV_HEADER, data);
+    }
+
+    @Override
+    public List<Notification> retrieveAllNotifications() throws DAOException {
+        List<String[]> data = readAllDataRows();
+        List<Notification> notifications = new ArrayList<>();
+
+        for (String[] row : data) {
+            Notification n = mapRowToNotification(row);
+            if (n != null) {
+                notifications.add(n);
+            }
+        }
+        notifications.sort(Comparator.comparing(Notification::getCreatedAt).reversed());
+        return notifications;
     }
 
     @Override

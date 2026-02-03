@@ -1,8 +1,10 @@
 package it.uniroma2.hoophub;
 
+import it.uniroma2.hoophub.dao.AbstractObservableDao;
 import it.uniroma2.hoophub.dao.ConnectionFactory;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.patterns.facade.PersistenceType;
+import it.uniroma2.hoophub.sync.CrossPersistenceSyncObserver;
 import it.uniroma2.hoophub.sync.InitialSyncManager;
 import it.uniroma2.hoophub.launcher.CliApplication;
 import it.uniroma2.hoophub.launcher.GuiApplication;
@@ -21,11 +23,21 @@ import java.util.logging.Logger;
  *         and interface types</li>
  *     <li><b>Persistence setup:</b> Configures the data access layer with automatic fallback
  *         mechanism (MySQL → CSV) in case of connection failures</li>
- *     <li><b>Data synchronization:</b> Performs initial sync between persistence layers to
- *         ensure data consistency (skipped for IN_MEMORY)</li>
- *     <li><b>Interface launch:</b> Starts either the JavaFX GUI or CLI interface based on
- *         user preference</li>
+ *     <li><b>Data synchronization:</b> Performs initial sync (MySQL → CSV) to ensure
+ *         data consistency.
+ *         MySQL is always the Master.</li>
+ *     <li><b>Real-time sync:</b> Registers observers for bidirectional sync during runtime</li>
+ *     <li><b>Interface launch:</b> Starts either the JavaFX GUI or CLI interface</li>
  * </ol>
+ *
+ * <h3>Synchronization Strategy</h3>
+ * <p>HoopHub uses a <b>Master-Slave</b> approach:</p>
+ * <ul>
+ *     <li><b>MySQL</b> is always the Master (source of truth)</li>
+ *     <li><b>CSV</b> is the Slave (local cache/backup)</li>
+ *     <li>At startup: MySQL → CSV (wipe and repopulate)</li>
+ *     <li>During runtime: Bidirectional sync with UPSERT to handle conflicts</li>
+ * </ul>
  *
  * <p><b>Usage:</b></p>
  * <pre>{@code
@@ -40,55 +52,28 @@ import java.util.logging.Logger;
  *   java Main inmemory cli     # IN_MEMORY + CLI (demo mode)
  * }</pre>
  *
- * <p><b>Design considerations:</b></p>
- * <ul>
- *     <li>Implements a <i>fail-safe</i> approach: if MySQL connection fails, the application
- *         gracefully degrades to CSV persistence</li>
- *     <li>IN_MEMORY mode requires no external dependencies (no DB, no files)</li>
- *     <li>Designed as a utility class with private constructor to prevent instantiation</li>
- *     <li>Uses {@link java.util.logging.Logger} for consistent application logging</li>
- * </ul>
- *
  * @author Elia Cinti
- * @version 1.1
+ * @version 1.2
  * @see DaoFactoryFacade
  * @see InitialSyncManager
- * @see GuiApplication
- * @see CliApplication
+ * @see CrossPersistenceSyncObserver
  */
 public class Main {
 
-    /** Logger instance for this class. */
     private static final Logger LOGGER = Logger.getLogger(Main.class.getName());
 
-    /** Default persistence type used when no argument is provided. */
     private static final String DEFAULT_PERSISTENCE = "mysql";
-
-    /** Default interface type used when no argument is provided. */
     private static final String DEFAULT_INTERFACE = "gui";
 
-    /** Configuration constant for MySQL persistence type. */
     private static final String PERSISTENCE_MYSQL = "mysql";
-
-    /** Configuration constant for CSV persistence type. */
     private static final String PERSISTENCE_CSV = "csv";
-
-    /** Configuration constant for IN_MEMORY persistence type. */
     private static final String PERSISTENCE_INMEMORY = "inmemory";
 
-    /** Configuration constant for GUI interface type. */
     private static final String INTERFACE_GUI = "gui";
-
-    /** Configuration constant for CLI interface type. */
     private static final String INTERFACE_CLI = "cli";
 
     /**
      * Private constructor to prevent instantiation.
-     *
-     * <p>This class follows the utility class pattern and should not be instantiated.
-     * All functionality is provided through the static {@link #main(String[])} method.</p>
-     *
-     * @throws UnsupportedOperationException always, as this class cannot be instantiated
      */
     private Main() {
         throw new UnsupportedOperationException("Utility class");
@@ -96,18 +81,6 @@ public class Main {
 
     /**
      * Main method and entry point for the HoopHub application.
-     *
-     * <p>Parses command-line arguments, configures the persistence layer with automatic
-     * fallback support, performs initial data synchronization (if applicable), and launches the
-     * appropriate user interface.</p>
-     *
-     * <p><b>Execution flow:</b></p>
-     * <ol>
-     *     <li>Parse and validate command-line arguments (with defaults)</li>
-     *     <li>Configure persistence type via {@link #configurePersistence(String)}</li>
-     *     <li>Synchronize data via {@link #performInitialSync(PersistenceType)} (skipped for IN_MEMORY)</li>
-     *     <li>Launch interface via {@link #launchInterface(String, String[])}</li>
-     * </ol>
      *
      * @param args command-line arguments where:
      *             <ul>
@@ -126,39 +99,29 @@ public class Main {
                 "Starting HoopHub with persistence: {0}, interface: {1}",
                 new Object[]{persistenceType, interfaceType});
 
-        // Configure persistence
+        // Step 1: Configure persistence (with fallback)
         PersistenceType primaryPersistenceType = configurePersistence(persistenceType);
 
-        // Perform initial synchronization (only for MYSQL and CSV)
+        // Step 2: Perform initial synchronization (MySQL → CSV)
         performInitialSync(primaryPersistenceType);
 
-        // Launch appropriate interface
+        // Step 3: Start real-time synchronization observers
+        startRealTimeSync(primaryPersistenceType);
+
+        // Step 4: Launch appropriate interface
         launchInterface(interfaceType, args);
     }
 
     /**
      * Configures and validates the persistence layer based on the requested type.
      *
-     * <p>This method implements a <b>fail-safe mechanism</b>: when MySQL persistence is
-     * requested, it first tests the database connection. If the connection test fails
-     * (either returning {@code false} or throwing an exception), the method automatically
-     * falls back to CSV persistence to ensure application availability.</p>
-     *
-     * <p><b>Behavior by persistence type:</b></p>
-     * <ul>
-     *     <li><b>mysql:</b> Tests connection via {@link ConnectionFactory#testConnection()}.
-     *         Falls back to CSV on failure.</li>
-     *     <li><b>csv:</b> Directly returns CSV persistence type without additional checks.</li>
-     *     <li><b>inmemory:</b> Returns IN_MEMORY persistence type (no external dependencies).</li>
-     *     <li><b>unknown:</b> Logs a warning and defaults to MySQL (with connection test).</li>
-     * </ul>
+     * <p>Implements a <b>fail-safe mechanism</b>: when MySQL persistence is
+     * requested, it first tests the database connection.
+     * If the connection fails, it
+     * automatically falls back to CSV persistence.</p>
      *
      * @param persistenceType the requested persistence type as a lowercase string
-     *                        ({@code "mysql"}, {@code "csv"}, or {@code "inmemory"})
-     * @return the actual {@link PersistenceType} to be used, which may differ from the
-     *         requested type if MySQL connection fails
-     * @see ConnectionFactory#testConnection()
-     * @see DaoFactoryFacade#setPersistenceType(PersistenceType)
+     * @return the actual {@link PersistenceType} to be used
      */
     private static PersistenceType configurePersistence(String persistenceType) {
         DaoFactoryFacade daoFactoryFacade = DaoFactoryFacade.getInstance();
@@ -198,64 +161,97 @@ public class Main {
             default:
                 LOGGER.log(Level.WARNING,
                         () -> "Unknown persistence type: " + persistenceType + ". Defaulting to MySQL.");
-                // Ricorsione per gestire il default come se fosse MySQL
                 return configurePersistence(PERSISTENCE_MYSQL);
         }
     }
 
     /**
-     * Performs initial data synchronization between persistence layers.
+     * Performs initial data synchronization using Master-Slave strategy.
      *
-     * <p>This method ensures data consistency by synchronizing records from the secondary
-     * persistence layer to the primary one. After synchronization, it updates the
-     * {@link DaoFactoryFacade} to use the specified primary persistence type for all
-     * subsequent data access operations.</p>
+     * <p><b>Strategy:</b> MySQL is always the Master.
+     * At startup, CSV files are
+     * wiped and repopulated from MySQL to ensure data consistency and ID alignment.</p>
      *
-     * <p><b>Note:</b> Synchronization is skipped for IN_MEMORY persistence type,
-     * as it operates in standalone mode without external data sources.</p>
+     * <p>Skipped for IN_MEMORY persistence (standalone demo mode).</p>
      *
-     * @param primaryPersistenceType the primary {@link PersistenceType} that will be
-     *                               used as the target for synchronization and for
-     *                               all subsequent DAO operations
-     * @see InitialSyncManager#performInitialSync(PersistenceType)
+     * @param primaryPersistenceType the primary persistence type selected by user
      */
     private static void performInitialSync(PersistenceType primaryPersistenceType) {
-        // Skip sync for IN_MEMORY - it starts fresh with no data
-        if (primaryPersistenceType == PersistenceType.IN_MEMORY) {
-            LOGGER.info("Skipping initial sync for IN_MEMORY persistence (standalone mode)");
-            DaoFactoryFacade.getInstance().setPersistenceType(primaryPersistenceType);
-            return;
-        }
-
         InitialSyncManager initialSyncManager = new InitialSyncManager();
         initialSyncManager.performInitialSync(primaryPersistenceType);
 
+        // Ensure we're using the selected persistence type after sync
         DaoFactoryFacade.getInstance().setPersistenceType(primaryPersistenceType);
+    }
+
+    /**
+     * Registers real-time synchronization observers on all DAOs.
+     *
+     * <p>The {@link CrossPersistenceSyncObserver} implements the <b>Observer pattern</b>
+     * to automatically propagate data changes from one persistence layer to another
+     * during application runtime.</p>
+     *
+     * <p><b>Sync Direction:</b></p>
+     * <ul>
+     *     <li>If primary is MYSQL: Changes sync MySQL → CSV</li>
+     *     <li>If primary is CSV: Changes sync CSV → MySQL</li>
+     * </ul>
+     *
+     * <p><b>Note:</b> DAOs use UPSERT semantics to handle potential ID conflicts
+     * gracefully (insert if new, update if exists).</p>
+     *
+     * @param currentType the current primary persistence type
+     */
+    private static void startRealTimeSync(PersistenceType currentType) {
+        // No sync needed for IN_MEMORY (standalone mode)
+        if (currentType == PersistenceType.IN_MEMORY) {
+            LOGGER.info("IN_MEMORY mode: Real-time sync disabled (standalone demo mode)");
+            return;
+        }
+
+        DaoFactoryFacade dao = DaoFactoryFacade.getInstance();
+
+        // Create observer that syncs FROM current type TO the opposite type
+        CrossPersistenceSyncObserver syncObserver = new CrossPersistenceSyncObserver(currentType);
+
+        try {
+            // Register observer on all DAOs
+            registerObserver(dao.getUserDao(), syncObserver, "UserDao");
+            registerObserver(dao.getFanDao(), syncObserver, "FanDao");
+            registerObserver(dao.getVenueManagerDao(), syncObserver, "VenueManagerDao");
+            registerObserver(dao.getVenueDao(), syncObserver, "VenueDao");
+            registerObserver(dao.getBookingDao(), syncObserver, "BookingDao");
+            registerObserver(dao.getNotificationDao(), syncObserver, "NotificationDao");
+
+            String direction = currentType == PersistenceType.MYSQL ? "MySQL → CSV" : "CSV → MySQL";
+            LOGGER.log(Level.INFO, ">>> Real-Time Sync ACTIVATED ({0})", direction);
+
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Could not attach Sync Observer: {0}", e.getMessage());
+        }
+    }
+
+    /**
+     * Helper method to safely register an observer on a DAO.
+     *
+     * @param daoObject the DAO instance (might not be AbstractObservableDao)
+     * @param observer  the observer to register
+     * @param daoName   name for logging purposes
+     */
+    private static void registerObserver(Object daoObject, CrossPersistenceSyncObserver observer, String daoName) {
+        if (daoObject instanceof AbstractObservableDao abstractObservableDao) {
+            abstractObservableDao.addObserver(observer);
+            LOGGER.log(Level.FINE, "Registered sync observer on {0}", daoName);
+        } else {
+            LOGGER.log(Level.WARNING, "{0} is not observable, sync not available", daoName);
+        }
     }
 
     /**
      * Launches the appropriate user interface based on the specified type.
      *
-     * <p>Supports two interface modes:</p>
-     * <ul>
-     *     <li><b>GUI ({@code "gui"}):</b> Launches the JavaFX-based graphical interface
-     *         via {@link Application#launch(Class, String...)} with {@link GuiApplication}</li>
-     *     <li><b>CLI ({@code "cli"}):</b> Starts the command-line interface via
-     *         {@link CliApplication#start()}</li>
-     * </ul>
-     *
-     * <p>If an unrecognized interface type is provided, the method logs a warning and
-     * defaults to the GUI interface.</p>
-     *
-     * <p><b>Note:</b> When launching the GUI, the original command-line arguments are
-     * passed to JavaFX as required by the {@link Application#launch(Class, String...)}
-     * method signature.</p>
-     *
      * @param interfaceType the interface type to launch ({@code "gui"} or {@code "cli"})
-     * @param args          the original command-line arguments, passed to JavaFX when
-     *                      launching the GUI
-     * @see GuiApplication
-     * @see CliApplication
+     * @param args          the original command-line arguments, passed to JavaFX
      */
     private static void launchInterface(String interfaceType, String[] args) {
         if (INTERFACE_GUI.equals(interfaceType)) {

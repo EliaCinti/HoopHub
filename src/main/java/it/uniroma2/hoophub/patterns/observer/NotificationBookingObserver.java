@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * Uses Model-First approach with domain objects.</p>
  *
  * @author Elia Cinti
- * @version 1.0
+ * @version 1.1
  */
 public class NotificationBookingObserver implements DaoObserver {
 
@@ -96,7 +96,16 @@ public class NotificationBookingObserver implements DaoObserver {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        notificationDao.saveNotification(notification);
+        // Save notification with sync suppressed to prevent cascading
+        // CrossPersistenceSyncObserver → FK constraint failure → rollback
+        // that would undo the parent booking operation on the shared connection.
+        // Notifications are reconciled at next InitialSync startup.
+        SyncContext.startSync();
+        try {
+            notificationDao.saveNotification(notification);
+        } finally {
+            SyncContext.endSync();
+        }
         logger.log(Level.INFO, "Notification created for VenueManager: {0}", venueManagerUsername);
     }
 
@@ -133,7 +142,13 @@ public class NotificationBookingObserver implements DaoObserver {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        notificationDao.saveNotification(notification);
+        // Save notification with sync suppressed (same reason as above)
+        SyncContext.startSync();
+        try {
+            notificationDao.saveNotification(notification);
+        } finally {
+            SyncContext.endSync();
+        }
         logger.log(Level.INFO, "Notification created for Fan: {0}", fanUsername);
     }
 
