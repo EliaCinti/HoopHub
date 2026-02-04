@@ -311,7 +311,8 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
     @Override
     public void markFanNotificationsAsRead() throws DAOException, UserSessionException {
         UserBean currentUser = getCurrentFan();
-        notificationDao.markAllAsReadForUser(currentUser.getUsername(), UserType.FAN);
+        DaoFactoryFacade.getInstance().markAllNotificationsAsRead(
+                currentUser.getUsername(), UserType.FAN);
 
         LOGGER.log(Level.INFO, "Marked all notifications as read for Fan: {0}",
                 currentUser.getUsername());
@@ -404,7 +405,8 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
     @Override
     public void markVmNotificationsAsRead() throws DAOException, UserSessionException {
         UserBean currentUser = getCurrentVenueManager();
-        notificationDao.markAllAsReadForUser(currentUser.getUsername(), UserType.VENUE_MANAGER);
+        DaoFactoryFacade.getInstance().markAllNotificationsAsRead(
+                currentUser.getUsername(), UserType.VENUE_MANAGER);
 
         LOGGER.log(Level.INFO, "Marked all notifications as read for VenueManager: {0}",
                 currentUser.getUsername());
