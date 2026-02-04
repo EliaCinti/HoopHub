@@ -1,121 +1,99 @@
-# 🏀 HoopHub - NBA Ticketing System
+# 🏀 HoopHub - NBA Venue & Ticketing System
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=EliaCinti_HoopHub&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=EliaCinti_HoopHub)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=EliaCinti_HoopHub&metric=bugs)](https://sonarcloud.io/summary/new_code?id=EliaCinti_HoopHub)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=EliaCinti_HoopHub&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=EliaCinti_HoopHub)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=EliaCinti_HoopHub&metric=coverage)](https://sonarcloud.io/summary/new_code?id=EliaCinti_HoopHub)
+[![Java](https://img.shields.io/badge/Java-21%2B-orange)](https://www.oracle.com/java/)
+[![JavaFX](https://img.shields.io/badge/GUI-JavaFX-blue)](https://openjfx.io/)
 
-**HoopHub** è un'applicazione gestionale progettata per la prenotazione di biglietti per partite NBA. Il sistema permette la gestione completa di eventi sportivi, venue e prenotazioni, offrendo un'esperienza differenziata per Tifosi e Gestori di Venue.
+**HoopHub** è un ecosistema digitale che connette i tifosi NBA con le migliori location dove guardare le partite. A differenza dei classici sistemi di prenotazione, HoopHub è specializzato nell'esperienza "Watch Party": permette ai Fan di prenotare posti specifici in Venue (pub, bar, arene sportive) che trasmettono le loro squadre del cuore, e ai Venue Manager di gestire eventi e capienza in tempo reale.
 
-Il progetto è sviluppato in **Java** seguendo rigorosi principi di Ingegneria del Software, con particolare attenzione ai **Design Pattern GoF** e all'architettura software.
+Il progetto è sviluppato in **Java** seguendo rigorosi principi di Ingegneria del Software, implementando un'architettura **MVC** supportata da **8 Design Pattern GoF**.
 
 ---
 
 ## 🚀 Caratteristiche Principali
 
-* **Doppia Interfaccia Utente:**
-    * 🖥️ **GUI (JavaFX):** Interfaccia grafica moderna e intuitiva.
-    * 💻 **CLI (Command Line Interface):** Interfaccia testuale completa per ambienti terminale.
-* **Persistenza Ibrida & Sincronizzazione Real-Time:**
-    * Supporto per **MySQL** (Database Relazionale).
-    * Supporto per **CSV** (File System locale).
-    * **Master-Slave Sync:** Sincronizzazione automatica all'avvio.
-    * **Observer Sync:** Sincronizzazione bidirezionale in tempo reale tra le due persistenze (modificando il CSV si aggiorna il DB e viceversa).
-* **Gestione Ruoli:**
-    * **Fan:** Ricerca partite, prenota posti, visualizza storico.
-    * **Venue Manager:** Crea e gestisce Venue, accetta/rifiuta prenotazioni, gestisce capienza.
+* **Doppia Interfaccia (GUI & CLI):** Esperienza utente completa sia tramite interfaccia grafica JavaFX moderna, sia tramite riga di comando per ambienti server/legacy.
+* **Persistenza Polimorfica:** Il sistema supporta tre modalità di salvataggio dati, intercambiabili a runtime:
+    * 🐘 **MySQL:** Per ambienti di produzione robusti.
+    * 📂 **CSV:** Per portabilità e file-system locale.
+    * 🧠 **In-Memory:** Per testing veloce e sessioni volatili.
+* **Sincronizzazione Bidirezionale (Real-Time):** Grazie al pattern Observer, le modifiche effettuate su CSV si riflettono istantaneamente su MySQL e viceversa, garantendo consistenza dei dati anche in ambienti distribuiti.
+* **Sistema di Notifiche:** Gestione automatica delle notifiche per conferme prenotazioni o variazioni di palinsesto.
+
+---
+
+## 🆚 Analisi Competitor
+
+HoopHub si posiziona in una nicchia specifica, colmando il vuoto tra la semplice ricerca di un locale e la garanzia del posto a sedere per l'evento sportivo.
+
+| Competitor              | Descrizione                                       | Pro vs HoopHub                                       | Contro vs HoopHub                                                                                                                                                    |
+|:------------------------|:--------------------------------------------------|:-----------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **MatchPint (Fanzo)**   | App leader per trovare bar che trasmettono sport. | Vasto database globale di locali sportivi.           | **Manca la prenotazione integrata:** spesso rimanda al telefono del locale o a form esterni. Non gestisce la capienza in tempo reale.                                |
+| **TheFork / OpenTable** | Piattaforme leader per prenotazione tavoli.       | Eccellente gestione di posti e orari nei ristoranti. | **Manca la logica sportiva:** non sanno "chi gioca stasera". L'utente deve cercare manualmente se il locale ha la TV e se trasmette la partita desiderata.           |
+| **Google Maps**         | Mappe e ricerca locali generica.                  | Standard assoluto per trovare luoghi e recensioni.   | **Nessuna info sul palinsesto TV:** impossibile sapere con certezza se una specifica partita NBA verrà trasmessa. Nessuna gestione prenotazioni dedicata allo sport. |
+
+✅ **Il Vantaggio di HoopHub:** Unisce la conoscenza del calendario NBA (tramite Adapter API) con la logica di prenotazione posti (Ticketing), offrendo la certezza di sedersi davanti allo schermo giusto.
 
 ---
 
 ## 🏗️ Architettura e Design Pattern
 
-Il progetto adotta l'architettura **MVC (Model-View-Controller)** separando nettamente la logica di business, l'interfaccia utente e la gestione dei dati.
+Il sistema è basato su architettura **MVC (Model-View-Controller)**. Una caratteristica distintiva è l'uso massiccio dei **Design Pattern della Gang of Four (GoF)** per garantire estensibilità e manutenibilità.
 
-### Design Pattern GoF Implementati
+### Pattern Creazionali
+1.  **Singleton:** Utilizzato per `DaoFactoryFacade` (punto di accesso unico ai dati), `NavigatorSingleton` (gestore scene JavaFX), `SessionManager` e `ObserverFactory`.
+2.  **Abstract Factory:** L'interfaccia `DaoAbstractFactory` permette di creare famiglie di DAO (MySQL, CSV, In-Memory) astraendo la logica di creazione dal client.
+3.  **Factory Method:** Implementato nelle factory concrete (`MySqlDaoFactory`, `CsvDaoFactory`) per incapsulare l'istanziazione dei singoli DAO specifici.
+4.  **Builder:** Utilizzato nelle classi di modello (`User`, `Fan`, `Booking`) e nei Bean (`FanBean`, etc.) per la costruzione fluente di oggetti complessi e immutabili.
 
-Durante lo sviluppo sono stati integrati numerosi pattern per garantire manutenibilità ed estensibilità:
+### Pattern Strutturali
+1. **Facade:** La classe `DaoFactoryFacade` nasconde la complessità del sottosistema di persistenza e sincronizzazione. I controller richiedono semplicemente i dati (es. `getBookingDao()`), ignorando se provengano da Database, File o RAM.
+2. **Adapter:** La classe `NbaApiAdapter` funge da ponte tra il servizio esterno `MockNbaScheduleApi` e l'interfaccia interna `NbaScheduleService`, adattando i dati esterni al dominio applicativo.
 
-1.  **Singleton:** Utilizzato per classi che necessitano di un'istanza unica globale, come `DaoFactoryFacade` (gestione persistenza), `SessionManager` (sessione utente) e `NavigatorSingleton` (navigazione GUI).
-2.  **Abstract Factory:** Implementato per la creazione delle famiglie di DAO (`DaoAbstractFactory`), permettendo di istanziare DAO per MySQL, CSV o In-Memory senza modificare il codice client.
-3.  **Factory Method:** Usato internamente alle factory concrete per la generazione dei singoli DAO specifici (es. `FanDao`, `BookingDao`).
-4.  **Facade:** La classe `DaoFactoryFacade` agisce da interfaccia unificata, nascondendo la complessità del meccanismo di persistenza e dello switch dinamico ai controller.
-5.  **Observer:**
-    * Utilizzato massicciamente per la **sincronizzazione dei dati**. La classe `CrossPersistenceSyncObserver` osserva le modifiche su un supporto (es. CSV) e le replica sull'altro (es. MySQL).
-    * Gestione delle **Notifiche** agli utenti.
-6.  **Builder:** Implementato nelle classi del Model (`Booking`, `User`, `Venue`) per semplificare la creazione di oggetti complessi e garantire l'immutabilità dove necessario.
-7.  **Adapter:** La classe `NbaApiAdapter` adatta i dati provenienti dal servizio esterno (simulato) `MockNbaScheduleApi` al formato atteso dal dominio dell'applicazione.
-8.  **Template Method:** Utilizzato nella gerarchia dei Controller CLI (`AbstractCliHomepageController`) e nella classe base dei DAO (`AbstractObservableDao`) per definire lo scheletro degli algoritmi, delegando i passaggi specifici alle sottoclassi.
-
----
-
-## 🛠️ Tech Stack
-
-* **Linguaggio:** Java 21+
-* **Build Tool:** Maven
-* **GUI Framework:** JavaFX
-* **Database:** MySQL
-* **Quality Assurance:** SonarCloud (Analisi statica del codice)
-* **Librerie:** OpenCSV (gestione CSV), MySQL Connector.
+### Pattern Comportamentali
+1. **Observer:** Cuore della **Sincronizzazione Dati**. `CrossPersistenceSyncObserver` osserva le modifiche su un supporto (es. CSV) e le replica sull'altro (es. MySQL). Usato anche per le notifiche utente in tempo reale (`NotificationBookingObserver`).
+2. **Template Method:** Definito in `AbstractController` e `AbstractCliHomepageController` per stabilire lo scheletro dell'algoritmo di gestione flussi, delegando i passaggi specifici alle sottoclassi concrete.
 
 ---
 
-## 📂 Struttura del Progetto
+## 📂 Struttura del Codice
 
-* `src/main/java/it/uniroma2/hoophub`
-    * `app_controller`: Controller applicativi (Logica di business).
-    * `graphic_controller`: Controller grafici (Gestione input GUI/CLI).
-    * `dao`: Layer di persistenza (Interfacce e Implementazioni MySQL/CSV).
-    * `model`: Classi entità del dominio.
-    * `beans`: Oggetti per il trasferimento dati tra layer (DTO).
-    * `patterns`: Implementazione dei pattern (Observer, Factory, Facade, Adapter).
-    * `sync`: Gestori della sincronizzazione dati.
+La codebase è organizzata in package logici per favorire la separazione delle responsabilità:
+
+* `it.uniroma2.hoophub.model`: Entità del dominio (Business Logic Core).
+* `it.uniroma2.hoophub.dao`: Interfacce e implementazioni per l'accesso ai dati (MySQL, CSV, In-Memory).
+* `it.uniroma2.hoophub.beans`: **JavaBeans (DTO)** per il trasferimento dati tra View e Controller.
+* `it.uniroma2.hoophub.app_controller`: Controller applicativi (Logica di business e gestione sessione).
+* `it.uniroma2.hoophub.graphic_controller`: Controller grafici per gestire l'interazione utente (JavaFX e CLI).
+* `it.uniroma2.hoophub.patterns`: Implementazioni pure dei pattern (Factory, Observer, Facade, Adapter).
+* `it.uniroma2.hoophub.sync`: Gestori della logica di sincronizzazione tra persistenze diverse.
 
 ---
 
-## 🔧 Installazione e Configurazione
+## 🔧 Installazione e Avvio
 
-1.  **Prerequisiti:** JDK 21 o superiore, Maven, MySQL Server.
-2.  **Database:** Eseguire lo script `hoophub_script.sql` (presente nella cartella `db/mysql`) per creare il database.
-3.  **Configurazione:** Verificare il file `config.properties` per le credenziali del database.
-4.  **Build:**
+1.  **Requisiti:** JDK 21+, Maven, MySQL Server.
+2.  **Database:** Eseguire lo script `db/mysql/hoophub_script.sql` per inizializzare lo schema.
+3.  **Configurazione:** Verificare le credenziali in `src/main/resources/config.properties`.
+4.  **Compilazione:**
     ```bash
     mvn clean install
     ```
 5.  **Esecuzione:**
-    * GUI: `mvn javafx:run`
-    * CLI: Eseguire il Jar generato specificando l'argomento `cli`.
+    * **GUI:** `mvn javafx:run`
+    * **CLI:** Eseguire il JAR generato con il flag `--cli`.
 
 ---
 
-## 🤝 Contributing
+## 👨‍💻 Autore
 
-This is a university project for the ISPW course (Software Engineering and Web Programming). While it's primarily an individual project, suggestions and feedback are welcome!
-
-### Development Guidelines
-- Follow Java naming conventions
-- Write meaningful commit messages
-- Document all public methods
-- Maintain test coverage above 70%
-- Update UML diagrams when adding new classes
-
-## 🙏 Acknowledgments
-
-- **ISPW Course** - Tor Vergata University of Rome
-- **NBA API** - For providing game schedules (via MockAPI)
-- **JavaFX Community** - For excellent documentation and support
-- **Design Patterns: Elements of Reusable Object-Oriented Software** - Gang of Four
-
-## 📬 Contact
-
-**Project Creator**: Elia Cinti
-**University**: Tor Vergata - Roma  
-**Course**: ISPW (Ingegneria del Software e Progettazione Web)  
-**Academic Year**: 2025/2026
-
----
+**Elia Cinti**
+* Università di Roma Tor Vergata
+* Corso: Ingegneria del Software e Progettazione Web (ISPW)
+* Anno Accademico: 2025/2026
 
 <p >
+  <i>"Basketball is a game of details."</i><br>
   Made with ❤️ and ☕ for ISPW Course
-  <br>
-  <i>Because watching NBA games is better together!</i>
 </p>
