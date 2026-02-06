@@ -9,7 +9,7 @@ import java.util.Objects;
  *
  * <p>Implements <b>BCE (Boundary-Control-Entity)</b> principles:
  * <ul>
- *   <li>State is private with no public setters</li>
+ *   <li>The State is private with no public setters</li>
  *   <li>State modification only through explicit business operations</li>
  *   <li>Immutable primary key (username)</li>
  * </ul>
@@ -54,28 +54,6 @@ public abstract class User {
      * @return FAN or VENUE_MANAGER
      */
     public abstract UserType getUserType();
-
-    // ========================================================================
-    // PUBLIC BUSINESS OPERATIONS
-    // ========================================================================
-
-    /**
-     * Updates user profile information.
-     *
-     * <p>This is the ONLY way to modify user state after construction,
-     * enforcing BCE principles.</p>
-     *
-     * @param newFullName new full name
-     * @param newGender   new gender
-     * @throws IllegalArgumentException if validation fails
-     */
-    public void updateProfileDetails(String newFullName, String newGender) {
-        validateFullName(newFullName);
-        validateGender(newGender);
-
-        this.setFullName(newFullName);
-        this.setGender(newGender);
-    }
 
     // ========================================================================
     // PUBLIC GETTERS

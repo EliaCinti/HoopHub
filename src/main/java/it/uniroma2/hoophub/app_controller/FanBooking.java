@@ -114,15 +114,6 @@ public interface FanBooking {
     // ==================== BOOKING MANAGEMENT ====================
 
     /**
-     * Retrieves all bookings for the current Fan.
-     *
-     * @return List of BookingBeans sorted by status then date
-     * @throws DAOException         if database error occurs
-     * @throws UserSessionException if no user logged in
-     */
-    List<BookingBean> getMyBookings() throws DAOException, UserSessionException;
-
-    /**
      * Retrieves bookings for the current Fan with optional status filter.
      *
      * @param statusFilter Optional status to filter by (null for all)
@@ -131,15 +122,6 @@ public interface FanBooking {
      * @throws UserSessionException if no user logged in
      */
     List<BookingBean> getMyBookings(BookingStatus statusFilter) throws DAOException, UserSessionException;
-
-    /**
-     * Retrieves only cancellable bookings.
-     *
-     * @return List of cancellable BookingBeans
-     * @throws DAOException         if database error occurs
-     * @throws UserSessionException if no user logged in
-     */
-    List<BookingBean> getCancellableBookings() throws DAOException, UserSessionException;
 
     /**
      * Cancels a booking.

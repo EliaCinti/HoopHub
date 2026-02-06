@@ -157,10 +157,6 @@ public class Notification {
         }
 
         /** Legacy alias for backwards compatibility. */
-        public Builder relatedBookingId(int bookingId) {
-            this.bookingId = bookingId;
-            return this;
-        }
 
         public Builder isRead(boolean isRead) {
             this.isRead = isRead;

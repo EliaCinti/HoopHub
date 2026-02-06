@@ -1,8 +1,6 @@
 package it.uniroma2.hoophub.model;
 
-import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.enums.UserType;
-import it.uniroma2.hoophub.enums.VenueType;
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 import it.uniroma2.hoophub.exception.VenueCapacityExceededException;
 
@@ -32,8 +30,8 @@ import java.util.List;
  */
 public class VenueManager extends User {
 
-    private String companyName;
-    private String phoneNumber;
+    private final String companyName;
+    private final String phoneNumber;
     /** Venue list initialized at construction, never reassigned. */
     private final List<Venue> managedVenues;
 
@@ -50,25 +48,6 @@ public class VenueManager extends User {
     // ========================================================================
 
     /**
-     * Updates manager profile including manager-specific fields.
-     *
-     * @param newFullName    new full name
-     * @param newGender      new gender
-     * @param newCompanyName new company name
-     * @param newPhoneNumber new phone number
-     * @throws IllegalArgumentException if validation fails
-     */
-    public void updateManagerProfile(String newFullName, String newGender, String newCompanyName, String newPhoneNumber) {
-        super.updateProfileDetails(newFullName, newGender);
-
-        validateCompanyName(newCompanyName);
-        validatePhoneNumber(newPhoneNumber);
-
-        this.setCompanyName(newCompanyName);
-        this.setPhoneNumber(newPhoneNumber);
-    }
-
-    /**
      * Confirms a booking, coordinating state changes across entities.
      *
      * <p>Performs validation, capacity check, then updates:
@@ -83,7 +62,7 @@ public class VenueManager extends User {
      * @param fan     the fan requesting the booking
      * @param venue   the venue for the booking
      * @throws BookingNotAllowedException     if venue not managed or date is past
-     * @throws VenueCapacityExceededException if venue is at capacity
+     * @throws VenueCapacityExceededException if the venue is at capacity
      */
     public void confirmBooking(Booking booking, Fan fan, Venue venue)
             throws BookingNotAllowedException {
@@ -102,18 +81,6 @@ public class VenueManager extends User {
         fan.addBooking(booking);
         venue.addBooking(booking);
         booking.confirm();
-    }
-
-    /**
-     * Rejects a booking request.
-     *
-     * @param booking the booking to reject
-     * @param venue   the venue associated with the booking
-     * @throws BookingNotAllowedException if venue not managed by this manager
-     */
-    public void rejectBooking(Booking booking, Venue venue) throws BookingNotAllowedException {
-        validateVenueOwnership(venue);
-        booking.reject();
     }
 
     /**
@@ -140,27 +107,6 @@ public class VenueManager extends User {
         return UserType.VENUE_MANAGER;
     }
 
-    /**
-     * Gets all pending bookings across all managed venues.
-     *
-     * @return list of pending booking requests
-     */
-    public List<Booking> getAllPendingBookings() {
-        return collectBookingsByStatus(BookingStatus.PENDING);
-    }
-
-    /**
-     * Gets venues filtered by type.
-     *
-     * @param type the venue type to filter by
-     * @return list of matching venues
-     */
-    public List<Venue> getVenuesByType(VenueType type) {
-        return managedVenues.stream()
-                .filter(v -> v.getType() == type)
-                .toList();
-    }
-
     // ========================================================================
     // PUBLIC GETTERS
     // ========================================================================
@@ -180,18 +126,6 @@ public class VenueManager extends User {
      */
     public List<Venue> getManagedVenues() {
         return Collections.unmodifiableList(managedVenues);
-    }
-
-    // ========================================================================
-    // PRIVATE SETTERS
-    // ========================================================================
-
-    private void setCompanyName(String companyName) {
-        this.companyName = companyName;
-    }
-
-    private void setPhoneNumber(String phoneNumber) {
-        this.phoneNumber = phoneNumber;
     }
 
     // ========================================================================
@@ -237,26 +171,26 @@ public class VenueManager extends User {
             validateCompanyName(companyName);
             validatePhoneNumber(phoneNumber);
         }
+
+        private static void validateCompanyName(String companyName) {
+            if (companyName == null || companyName.trim().isEmpty()) {
+                throw new IllegalArgumentException("Company name cannot be null or empty");
+            }
+        }
+
+        private static void validatePhoneNumber(String phoneNumber) {
+            if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
+                throw new IllegalArgumentException("Phone number cannot be null or empty");
+            }
+            if (!phoneNumber.matches("^\\+?[0-9\\s-]{10,20}$")) {
+                throw new IllegalArgumentException("Invalid phone number format");
+            }
+        }
     }
 
     // ========================================================================
     // VALIDATION HELPERS
     // ========================================================================
-
-    private static void validateCompanyName(String companyName) {
-        if (companyName == null || companyName.trim().isEmpty()) {
-            throw new IllegalArgumentException("Company name cannot be null or empty");
-        }
-    }
-
-    private static void validatePhoneNumber(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
-            throw new IllegalArgumentException("Phone number cannot be null or empty");
-        }
-        if (!phoneNumber.matches("^\\+?[0-9\\s-]{10,20}$")) {
-            throw new IllegalArgumentException("Invalid phone number format");
-        }
-    }
 
     private void validateVenueOwnership(Venue venue) throws BookingNotAllowedException {
         if (!managedVenues.contains(venue)) {
@@ -274,34 +208,9 @@ public class VenueManager extends User {
         return venue.getVenueManager().equals(this);
     }
 
-    private List<Booking> collectBookingsByStatus(BookingStatus status) {
-        return managedVenues.stream()
-                .flatMap(venue -> venue.getAllBookings().stream())
-                .filter(booking -> booking.getStatus() == status)
-                .toList();
-    }
-
     // ========================================================================
     // UTILITY METHODS
     // ========================================================================
-
-    /**
-     * Checks data equivalence (all fields except password and venues).
-     * Used by sync to detect conflicts.
-     *
-     * @param o object to compare
-     * @return true if all data fields match
-     */
-    public boolean isDataEquivalent(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        VenueManager that = (VenueManager) o;
-        return getUsername().equals(that.getUsername()) &&
-                getFullName().equals(that.getFullName()) &&
-                getGender().equals(that.getGender()) &&
-                getCompanyName().equals(that.getCompanyName()) &&
-                getPhoneNumber().equals(that.getPhoneNumber());
-    }
 
     @Override
     public boolean equals(Object obj) {

@@ -27,15 +27,6 @@ public interface VenueManagerBooking {
     // ==================== BOOKING RETRIEVAL ====================
 
     /**
-     * Gets all bookings for venues owned by the current VenueManager.
-     *
-     * @return List of bookings for all owned venues
-     * @throws DAOException         if database access fails
-     * @throws UserSessionException if no VenueManager is logged in
-     */
-    List<BookingBean> getBookingsForMyVenues() throws DAOException, UserSessionException;
-
-    /**
      * Gets bookings for venues owned by the current VenueManager, optionally filtered by status.
      *
      * @param statusFilter Optional status filter (null for all statuses)
@@ -45,15 +36,6 @@ public interface VenueManagerBooking {
      */
     List<BookingBean> getBookingsForMyVenues(BookingStatus statusFilter)
             throws DAOException, UserSessionException;
-
-    /**
-     * Gets only pending bookings for quick access.
-     *
-     * @return List of pending bookings
-     * @throws DAOException         if database access fails
-     * @throws UserSessionException if no VenueManager is logged in
-     */
-    List<BookingBean> getPendingBookings() throws DAOException, UserSessionException;
 
     // ==================== BOOKING ACTIONS ====================
 

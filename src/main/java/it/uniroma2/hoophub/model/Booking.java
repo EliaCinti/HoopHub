@@ -112,13 +112,6 @@ public class Booking {
         this.status = BookingStatus.CANCELLED;
     }
 
-    /**
-     * Marks booking as notified (sets flag to true).
-     */
-    public void markAsNotified() {
-        this.notified = true;
-    }
-
     // ========================================================================
     // PUBLIC QUERIES
     // ========================================================================
@@ -130,19 +123,6 @@ public class Booking {
      */
     public String getMatchup() {
         return homeTeam.getDisplayName() + " vs " + awayTeam.getDisplayName();
-    }
-
-    /**
-     * Checks if a specific team is playing in this game.
-     *
-     * @param team the team to check
-     * @return true if team is home or away
-     */
-    public boolean isFavoriteTeamPlaying(TeamNBA team) {
-        if (team == null) {
-            return false;
-        }
-        return homeTeam == team || awayTeam == team;
     }
 
     // ========================================================================
@@ -284,30 +264,6 @@ public class Booking {
     // ========================================================================
     // UTILITY METHODS
     // ========================================================================
-
-    /**
-     * Checks data equivalence (all fields).
-     * Used by sync to detect conflicts.
-     *
-     * @param o object to compare
-     * @return true if all data fields match
-     */
-    public boolean isDataEquivalent(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Booking booking = (Booking) o;
-        return getId() == booking.getId() &&
-                getVenueId() == booking.getVenueId() &&
-                isNotified() == booking.isNotified() &&
-                getGameDate().equals(booking.getGameDate()) &&
-                getGameTime().equals(booking.getGameTime()) &&
-                getHomeTeam().equals(booking.getHomeTeam()) &&
-                getAwayTeam().equals(booking.getAwayTeam()) &&
-                getFanUsername().equals(booking.getFanUsername()) &&
-                getStatus() == booking.getStatus() &&
-                ((getCreatedAt() == null && booking.getCreatedAt() == null) ||
-                        (getCreatedAt() != null && getCreatedAt().equals(booking.getCreatedAt())));
-    }
 
     @Override
     public boolean equals(Object object) {

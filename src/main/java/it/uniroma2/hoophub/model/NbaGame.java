@@ -49,35 +49,9 @@ public class NbaGame {
         return homeTeam.getDisplayName() + " vs " + awayTeam.getDisplayName();
     }
 
-    /**
-     * Checks if a specific team is playing.
-     *
-     * @param team the team to check
-     * @return true if team is home or away
-     */
-    public boolean isTeamPlaying(TeamNBA team) {
-        if (team == null) {
-            return false;
-        }
-        return homeTeam == team || awayTeam == team;
-    }
-
-    /**
-     * Checks if game date is in the past.
-     *
-     * @return true if game date is before today
-     */
-    public boolean isPastGame() {
-        return date.isBefore(LocalDate.now());
-    }
-
     // ========================================================================
     // PUBLIC GETTERS
     // ========================================================================
-
-    public String getGameId() {
-        return gameId;
-    }
 
     public TeamNBA getHomeTeam() {
         return homeTeam;

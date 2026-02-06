@@ -88,16 +88,6 @@ public class Venue {
     }
 
     /**
-     * Assigns a new manager to this venue.
-     *
-     * @param newManager the new VenueManager
-     * @throws IllegalArgumentException if manager is null
-     */
-    public void assignNewManager(VenueManager newManager) {
-        this.setVenueManager(newManager);
-    }
-
-    /**
      * Adds a booking to this venue's tracking.
      *
      * @param booking the booking to add
@@ -114,60 +104,12 @@ public class Venue {
         bookingsByDate.computeIfAbsent(gameDate, k -> new ArrayList<>()).add(booking);
     }
 
-    /**
-     * Adds a team to this venue's associated teams.
-     *
-     * @param team the NBA team to associate
-     * @throws IllegalArgumentException if team is null
-     * @throws IllegalStateException    if FAN_CLUB already has a team
-     */
-    public void addTeam(TeamNBA team) {
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
-        if (this.type == VenueType.FAN_CLUB && !associatedTeams.isEmpty()) {
-            throw new IllegalStateException("FAN_CLUB venues can only have one associated team");
-        }
-        associatedTeams.add(team);
-    }
-
-    /**
-     * Removes a team from this venue's associated teams.
-     *
-     * @param team the team to remove
-     * @return true if removed, false if not associated
-     * @throws IllegalArgumentException if team is null
-     * @throws IllegalStateException    if trying to remove the last team
-     */
-    public boolean removeTeam(TeamNBA team) {
-        if (team == null) {
-            throw new IllegalArgumentException("Team cannot be null");
-        }
-        if (associatedTeams.size() <= 1 && associatedTeams.contains(team)) {
-            throw new IllegalStateException("Cannot remove the last team. A venue must have at least one team.");
-        }
-        return associatedTeams.remove(team);
-    }
-
-    /**
-     * Checks if a team is associated with this venue.
-     *
-     * @param team the team to check
-     * @return true if team is associated
-     */
-    public boolean isTeamAssociated(TeamNBA team) {
-        if (team == null) {
-            return false;
-        }
-        return associatedTeams.contains(team);
-    }
-
     // ========================================================================
     // PUBLIC QUERIES
     // ========================================================================
 
     /**
-     * Checks if there's available capacity on specified date.
+     * Checks if there's available capacity on the specified date.
      *
      * @param gameDate the date to check
      * @return true if at least one spot available
@@ -207,24 +149,6 @@ public class Venue {
         return bookingsByDate.values().stream()
                 .flatMap(List::stream)
                 .toList();
-    }
-
-    /**
-     * Gets total booking count.
-     *
-     * @return number of bookings across all dates
-     */
-    public int getTotalBookingsCount() {
-        return countAllBookings();
-    }
-
-    /**
-     * Gets formatted full address.
-     *
-     * @return "address, city"
-     */
-    public String getFullAddress() {
-        return formatAddress(address, city);
     }
 
     // ========================================================================
@@ -426,16 +350,6 @@ public class Venue {
         return (int) getBookingsByDate(gameDate).stream()
                 .filter(b -> b.getStatus() == BookingStatus.CONFIRMED)
                 .count();
-    }
-
-    private int countAllBookings() {
-        return bookingsByDate.values().stream()
-                .mapToInt(List::size)
-                .sum();
-    }
-
-    private String formatAddress(String streetAddress, String cityName) {
-        return streetAddress + ", " + cityName;
     }
 
     // ========================================================================

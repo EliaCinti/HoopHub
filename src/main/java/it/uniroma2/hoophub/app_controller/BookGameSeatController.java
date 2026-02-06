@@ -236,11 +236,6 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
     // ==================== FAN BOOKING MANAGEMENT ====================
 
     @Override
-    public List<BookingBean> getMyBookings() throws DAOException, UserSessionException {
-        return getMyBookings(null);
-    }
-
-    @Override
     public List<BookingBean> getMyBookings(BookingStatus statusFilter)
             throws DAOException, UserSessionException {
 
@@ -265,14 +260,6 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
                 .thenComparing(BookingBean::getGameDate, Comparator.reverseOrder()));
 
         return bookingBeans;
-    }
-
-    @Override
-    public List<BookingBean> getCancellableBookings() throws DAOException, UserSessionException {
-        List<BookingBean> allBookings = getMyBookings();
-        return allBookings.stream()
-                .filter(this::canBeCancelled)
-                .toList();
     }
 
     @Override
@@ -324,10 +311,6 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
 
     // ==================== VM BOOKING RETRIEVAL ====================
 
-    @Override
-    public List<BookingBean> getBookingsForMyVenues() throws DAOException, UserSessionException {
-        return getBookingsForMyVenues(null);
-    }
 
     @Override
     public List<BookingBean> getBookingsForMyVenues(BookingStatus statusFilter)
@@ -357,11 +340,6 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
         });
 
         return result;
-    }
-
-    @Override
-    public List<BookingBean> getPendingBookings() throws DAOException, UserSessionException {
-        return getBookingsForMyVenues(BookingStatus.PENDING);
     }
 
     // ==================== VM BOOKING ACTIONS ====================
@@ -513,17 +491,6 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
      */
     private boolean isTerminalStatus(BookingStatus status) {
         return status == BookingStatus.REJECTED || status == BookingStatus.CANCELLED;
-    }
-
-    /**
-     * Checks if a booking can be canceled (status + deadline).
-     */
-    private boolean canBeCancelled(BookingBean booking) {
-        if (isTerminalStatus(booking.getStatus())) {
-            return false;
-        }
-        LocalDate deadline = booking.getGameDate().minusDays(CANCELLATION_DEADLINE_DAYS);
-        return !LocalDate.now().isAfter(deadline);
     }
 
     // ==================== VENUE HELPERS ====================

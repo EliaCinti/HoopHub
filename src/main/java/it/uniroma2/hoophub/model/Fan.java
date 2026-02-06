@@ -1,13 +1,11 @@
 package it.uniroma2.hoophub.model;
 
-import it.uniroma2.hoophub.enums.BookingStatus;
 import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.BookingNotAllowedException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -30,8 +28,8 @@ import java.util.List;
  */
 public class Fan extends User {
 
-    private TeamNBA favTeam;
-    private LocalDate birthday;
+    private final TeamNBA favTeam;
+    private final LocalDate birthday;
     /** Booking list initialized at construction, never reassigned. */
     private final List<Booking> bookingList;
 
@@ -46,25 +44,6 @@ public class Fan extends User {
     // ========================================================================
     // PUBLIC BUSINESS OPERATIONS
     // ========================================================================
-
-    /**
-     * Updates fan profile including fan-specific fields.
-     *
-     * @param newFullName new full name
-     * @param newGender   new gender
-     * @param newFavTeam  new favorite NBA team
-     * @param newBirthday new birthday
-     * @throws IllegalArgumentException if validation fails
-     */
-    public void updateFanProfile(String newFullName, String newGender, TeamNBA newFavTeam, LocalDate newBirthday) {
-        super.updateProfileDetails(newFullName, newGender);
-
-        validateFavTeam(newFavTeam);
-        validateBirthday(newBirthday);
-
-        this.setFavTeam(newFavTeam);
-        this.setBirthday(newBirthday);
-    }
 
     /**
      * Adds a booking with business rule validation.
@@ -89,29 +68,6 @@ public class Fan extends User {
         bookingList.add(booking);
     }
 
-    /**
-     * Cancels a booking by ID.
-     *
-     * @param bookingId the booking ID to cancel
-     * @return true if cancellation successful, false otherwise
-     */
-    public boolean cancelBooking(int bookingId) {
-        Booking booking = findBookingById(bookingId);
-        if (booking == null || isPastBooking(booking)) {
-            return false;
-        }
-        booking.cancel();
-        return true;
-    }
-
-    /**
-     * Marks all unread confirmed bookings as notified.
-     */
-    public void markAllBookingsAsNotified() {
-        bookingList.stream()
-                .filter(b -> b.getStatus() == BookingStatus.CONFIRMED && !b.isNotified())
-                .forEach(Booking::markAsNotified);
-    }
 
     // ========================================================================
     // PUBLIC QUERIES
@@ -120,45 +76,6 @@ public class Fan extends User {
     @Override
     public UserType getUserType() {
         return UserType.FAN;
-    }
-
-    /**
-     * Gets all upcoming bookings (future dates only).
-     *
-     * @return unmodifiable list of future bookings
-     */
-    public List<Booking> getUpcomingBookings() {
-        return filterBookingsByDateCondition(b -> b.getGameDate().isAfter(LocalDate.now()));
-    }
-
-    /**
-     * Gets all past bookings (for history view).
-     *
-     * @return unmodifiable list of past bookings
-     */
-    public List<Booking> getPastBookings() {
-        return filterBookingsByDateCondition(b -> b.getGameDate().isBefore(LocalDate.now()));
-    }
-
-    /**
-     * Gets bookings where fan's favorite team is playing.
-     *
-     * @return list of bookings featuring favorite team
-     */
-    public List<Booking> getFavoriteTeamBookings() {
-        return bookingList.stream()
-                .filter(b -> b.isFavoriteTeamPlaying(favTeam))
-                .toList();
-    }
-
-    /**
-     * Checks if fan has unnotified confirmed bookings.
-     *
-     * @return true if unnotified bookings exist
-     */
-    public boolean hasUnnotifiedBookings() {
-        return bookingList.stream()
-                .anyMatch(b -> !b.isNotified() && b.getStatus() == BookingStatus.CONFIRMED);
     }
 
     // ========================================================================
@@ -171,27 +88,6 @@ public class Fan extends User {
 
     public LocalDate getBirthday() {
         return birthday;
-    }
-
-    /**
-     * Returns unmodifiable view of bookings.
-     *
-     * @return unmodifiable booking list
-     */
-    public List<Booking> getBookingList() {
-        return Collections.unmodifiableList(bookingList);
-    }
-
-    // ========================================================================
-    // PRIVATE SETTERS
-    // ========================================================================
-
-    private void setFavTeam(TeamNBA favTeam) {
-        this.favTeam = favTeam;
-    }
-
-    private void setBirthday(LocalDate birthday) {
-        this.birthday = birthday;
     }
 
     // ========================================================================
@@ -237,29 +133,29 @@ public class Fan extends User {
             validateFavTeam(favTeam);
             validateBirthday(birthday);
         }
+
+        private static void validateFavTeam(TeamNBA favTeam) {
+            if (favTeam == null) {
+                throw new IllegalArgumentException("Favorite team cannot be null");
+            }
+        }
+
+        private static void validateBirthday(LocalDate birthday) {
+            if (birthday == null) {
+                throw new IllegalArgumentException("Birthday cannot be null");
+            }
+            if (birthday.isAfter(LocalDate.now())) {
+                throw new IllegalArgumentException("Birthday cannot be in the future");
+            }
+            if (birthday.isAfter(LocalDate.now().minusYears(16))) {
+                throw new IllegalArgumentException("Fan must be at least 16 years old");
+            }
+        }
     }
 
     // ========================================================================
     // VALIDATION HELPERS
     // ========================================================================
-
-    private static void validateFavTeam(TeamNBA favTeam) {
-        if (favTeam == null) {
-            throw new IllegalArgumentException("Favorite team cannot be null");
-        }
-    }
-
-    private static void validateBirthday(LocalDate birthday) {
-        if (birthday == null) {
-            throw new IllegalArgumentException("Birthday cannot be null");
-        }
-        if (birthday.isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("Birthday cannot be in the future");
-        }
-        if (birthday.isAfter(LocalDate.now().minusYears(16))) {
-            throw new IllegalArgumentException("Fan must be at least 16 years old");
-        }
-    }
 
     private boolean hasBookingForGame(LocalDate date, TeamNBA homeTeam, TeamNBA awayTeam) {
         return bookingList.stream()
@@ -274,44 +170,9 @@ public class Fan extends User {
                 .count();
     }
 
-    private Booking findBookingById(int bookingId) {
-        return bookingList.stream()
-                .filter(b -> b.getId() == bookingId)
-                .findFirst()
-                .orElse(null);
-    }
-
-    private boolean isPastBooking(Booking booking) {
-        return booking.getGameDate().isBefore(LocalDate.now());
-    }
-
-    private List<Booking> filterBookingsByDateCondition(java.util.function.Predicate<Booking> condition) {
-        return bookingList.stream()
-                .filter(condition)
-                .toList();
-    }
-
     // ========================================================================
     // UTILITY METHODS
     // ========================================================================
-
-    /**
-     * Checks data equivalence (all fields except password).
-     * Used by sync to detect conflicts.
-     *
-     * @param o object to compare
-     * @return true if all data fields match
-     */
-    public boolean isDataEquivalent(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Fan fan = (Fan) o;
-        return getUsername().equals(fan.getUsername()) &&
-                getFullName().equals(fan.getFullName()) &&
-                getGender().equals(fan.getGender()) &&
-                getFavTeam().equals(fan.getFavTeam()) &&
-                getBirthday().equals(fan.getBirthday());
-    }
 
     @Override
     public boolean equals(Object obj) {
