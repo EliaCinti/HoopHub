@@ -1,7 +1,5 @@
 package it.uniroma2.hoophub.app_controller;
 
-import it.uniroma2.hoophub.api.MockNbaScheduleApi;
-import it.uniroma2.hoophub.api.dto.NbaApiDto;
 import it.uniroma2.hoophub.beans.BookingBean;
 import it.uniroma2.hoophub.beans.NbaGameBean;
 import it.uniroma2.hoophub.beans.UserBean;
@@ -16,19 +14,16 @@ import it.uniroma2.hoophub.enums.TeamNBA;
 import it.uniroma2.hoophub.enums.UserType;
 import it.uniroma2.hoophub.exception.DAOException;
 import it.uniroma2.hoophub.exception.UserSessionException;
-import it.uniroma2.hoophub.model.Booking;
-import it.uniroma2.hoophub.model.Fan;
-import it.uniroma2.hoophub.model.Notification;
-import it.uniroma2.hoophub.model.Venue;
+import it.uniroma2.hoophub.model.*;
+import it.uniroma2.hoophub.patterns.adapter.NbaApiAdapter;
+import it.uniroma2.hoophub.patterns.adapter.NbaScheduleService;
 import it.uniroma2.hoophub.patterns.facade.DaoFactoryFacade;
 import it.uniroma2.hoophub.session.SessionManager;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -68,7 +63,7 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
     private static final int CANCELLATION_DEADLINE_DAYS = 2;
 
     // DAOs
-    private final MockNbaScheduleApi nbaApi;
+    private final NbaScheduleService nbaScheduleService;
     private final VenueDao venueDao;
     private final BookingDao bookingDao;
     private final FanDao fanDao;
@@ -78,7 +73,7 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
      * Default constructor using DaoFactoryFacade.
      */
     public BookGameSeatController() {
-        this.nbaApi = new MockNbaScheduleApi();
+        this.nbaScheduleService = new NbaApiAdapter();
         DaoFactoryFacade daoFactory = DaoFactoryFacade.getInstance();
         this.venueDao = daoFactory.getVenueDao();
         this.bookingDao = daoFactory.getBookingDao();
@@ -97,11 +92,10 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
         LocalDate today = LocalDate.now();
         LocalDate endDate = today.plusDays(SCHEDULE_DAYS_AHEAD);
 
-        List<NbaApiDto> rawGames = nbaApi.fetchRawGames();
+        List<NbaGame> games = nbaScheduleService.getScheduledGames();  // Model!
 
-        return rawGames.stream()
-                .map(this::convertToGameBean)
-                .filter(Objects::nonNull)
+        return games.stream()
+                .map(this::convertGameModelToBean)  // Model → Bean
                 .filter(game -> !game.getDate().isBefore(today) && !game.getDate().isAfter(endDate))
                 .sorted(Comparator.comparing(NbaGameBean::getDate)
                         .thenComparing(NbaGameBean::getTime))
@@ -191,8 +185,7 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
                 .anyMatch(b -> b.getGameDate().equals(game.getDate())
                         && b.getHomeTeam() == game.getHomeTeam()
                         && b.getAwayTeam() == game.getAwayTeam()
-                        && (b.getStatus() == BookingStatus.PENDING
-                        || b.getStatus() == BookingStatus.CONFIRMED));
+                        && b.getStatus() != BookingStatus.CANCELLED);
     }
 
     // ==================== BOOKING CREATION ====================
@@ -217,9 +210,8 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
             throw new DAOException("Fan not found: " + currentUser.getUsername());
         }
 
-        int bookingId = bookingDao.getNextBookingId();
         Booking booking = new Booking.Builder(
-                bookingId,
+                0,
                 game.getDate(),
                 game.getTime(),
                 game.getHomeTeam(),
@@ -532,31 +524,14 @@ public class BookGameSeatController implements FanBooking, VenueManagerBooking {
 
     // ==================== CONVERSION HELPERS ====================
 
-    /**
-     * Converts NbaApiDto to NbaGameBean.
-     */
-    private NbaGameBean convertToGameBean(NbaApiDto dto) {
-        try {
-            TeamNBA homeTeam = TeamNBA.fromAbbreviation(dto.homeTeamCode());
-            TeamNBA awayTeam = TeamNBA.fromAbbreviation(dto.awayTeamCode());
-
-            if (homeTeam == null || awayTeam == null) {
-                LOGGER.log(Level.WARNING, "Unknown team code: {0} or {1}",
-                        new Object[]{dto.homeTeamCode(), dto.awayTeamCode()});
-                return null;
-            }
-
-            return new NbaGameBean.Builder()
-                    .gameId(dto.id())
-                    .homeTeam(homeTeam)
-                    .awayTeam(awayTeam)
-                    .date(LocalDate.parse(dto.date()))
-                    .time(LocalTime.parse(dto.time()))
-                    .build();
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error converting game DTO", e);
-            return null;
-        }
+    private NbaGameBean convertGameModelToBean(NbaGame game) {
+        return new NbaGameBean.Builder()
+                .gameId(game.getGameId())
+                .homeTeam(game.getHomeTeam())      // già TeamNBA
+                .awayTeam(game.getAwayTeam())      // già TeamNBA
+                .date(game.getDate())               // già LocalDate
+                .time(game.getTime())               // già LocalTime
+                .build();
     }
 
     /**

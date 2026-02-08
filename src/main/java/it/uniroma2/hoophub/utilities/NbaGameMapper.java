@@ -29,8 +29,8 @@ public class NbaGameMapper {
         try {
             return new NbaGame.Builder()
                     .gameId(dto.id())
-                    .homeTeam(TeamNBA.robustValueOf(dto.homeTeamCode()))
-                    .awayTeam(TeamNBA.robustValueOf(dto.awayTeamCode()))
+                    .homeTeam(TeamNBA.fromAbbreviation(dto.homeTeamCode()))
+                    .awayTeam(TeamNBA.fromAbbreviation(dto.awayTeamCode()))
                     .date(LocalDate.parse(dto.date()))
                     .time(LocalTime.parse(dto.time()))
                     .build();

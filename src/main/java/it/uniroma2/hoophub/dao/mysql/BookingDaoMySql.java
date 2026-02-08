@@ -79,21 +79,22 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     public void saveBooking(Booking booking) throws DAOException {
         if (booking == null) throw new IllegalArgumentException("Booking cannot be null");
 
+        Booking savedBooking;
+        int newId;
         Connection conn = null;
         try {
             conn = ConnectionFactory.getConnection();
             conn.setAutoCommit(false);
 
-            int newId = booking.getId() > 0 ? saveWithUpsert(conn, booking) : saveWithAutoId(conn, booking);
+            newId = booking.getId() > 0 ? saveWithUpsert(conn, booking) : saveWithAutoId(conn, booking);
 
-            Booking savedBooking = new Booking.Builder(newId, booking.getGameDate(), booking.getGameTime(),
+            savedBooking = new Booking.Builder(newId, booking.getGameDate(), booking.getGameTime(),
                     booking.getHomeTeam(), booking.getAwayTeam(), booking.getVenue(), booking.getFan())
                     .status(booking.getStatus()).notified(booking.isNotified()).build();
 
             conn.commit();
             putInCache(savedBooking, newId);
             logger.log(Level.INFO, "Booking saved with ID: {0}", newId);
-            notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
@@ -101,6 +102,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.INSERT, BOOKING, String.valueOf(newId), savedBooking);
     }
 
     private int saveWithUpsert(Connection conn, Booking booking) throws SQLException, DAOException {
@@ -284,7 +287,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     conn.commit();
                     putInCache(booking, booking.getId());
                     logger.log(Level.INFO, "Booking updated: {0}", booking.getId());
-                    notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
                 } else {
                     conn.rollback();
                     throw new DAOException("Booking not found: " + booking.getId());
@@ -296,6 +298,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.UPDATE, BOOKING, String.valueOf(booking.getId()), booking);
     }
 
     @Override
@@ -314,7 +318,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
                     conn.commit();
                     removeFromCache(Booking.class, booking.getId());
                     logger.log(Level.INFO, "Booking deleted: {0}", booking.getId());
-                    notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(booking.getId()), null);
                 } else {
                     conn.rollback();
                     throw new DAOException("Booking not found: " + booking.getId());
@@ -326,6 +329,8 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.DELETE, BOOKING, String.valueOf(booking.getId()), null);
     }
 
     @Override
@@ -346,9 +351,6 @@ public class BookingDaoMySql extends AbstractMySqlDao implements BookingDao {
     }
 
     private Booking mapResultSetToBooking(ResultSet rs) throws SQLException, DAOException {
-        // Materialize ALL columns from the ResultSet BEFORE any nested query.
-        // BookingDaoHelper.loadDependencies() calls retrieveFan() and retrieveVenue(),
-        // which open new statements on the shared connection and invalidate this ResultSet.
         int bookingId = rs.getInt("id");
         String fanUsername = rs.getString("fan_username");
         int venueId = rs.getInt("venue_id");

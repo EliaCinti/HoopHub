@@ -2,6 +2,8 @@ package it.uniroma2.hoophub.dao;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Proxy;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -98,8 +100,9 @@ public class ConnectionFactory {
 
     /**
      * Returns the database connection, reconnecting if needed.
+     * Returns a proxy that ignores close() to protect the singleton.
      *
-     * @return the active database connection
+     * @return the active database connection (non-closeable proxy)
      * @throws SQLException if connection fails
      */
     public static Connection getConnection() throws SQLException {
@@ -107,7 +110,28 @@ public class ConnectionFactory {
             logger.info("Connection is closed or null, reconnecting...");
             initializeConnection();
         }
-        return connection;
+        return createNonClosingProxy(connection);
+    }
+
+    /**
+     * Creates a proxy that delegates all methods to the real connection
+     * but ignores close() calls, protecting the singleton lifecycle.
+     */
+    private static Connection createNonClosingProxy(Connection realConnection) {
+        return (Connection) Proxy.newProxyInstance(
+                ConnectionFactory.class.getClassLoader(),
+                new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("close".equals(method.getName())) {
+                        return null;
+                    }
+                    try {
+                        return method.invoke(realConnection, args);
+                    } catch (InvocationTargetException e) {
+                        throw e.getCause();
+                    }
+                }
+        );
     }
 
     /**

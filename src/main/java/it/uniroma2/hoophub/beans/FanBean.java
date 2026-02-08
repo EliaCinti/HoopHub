@@ -16,7 +16,7 @@ import java.time.format.DateTimeParseException;
  */
 public class FanBean extends UserBean {
 
-    private TeamNBA favTeam;
+    private final TeamNBA favTeam;
     private final LocalDate birthday;
     private static final int MIN_AGE = 16;
 

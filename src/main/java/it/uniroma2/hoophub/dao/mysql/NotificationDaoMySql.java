@@ -77,6 +77,7 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
     public Notification saveNotification(Notification notification) throws DAOException {
         if (notification == null) throw new IllegalArgumentException("Notification cannot be null");
 
+        Notification savedNotification;
         Connection conn = null;
         try {
             conn = ConnectionFactory.getConnection();
@@ -85,14 +86,12 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
             int newId;
 
             if (notification.getId() > 0) {
-                // ID provided (from sync) - use UPSERT
                 newId = saveWithUpsert(conn, notification);
             } else {
-                // No ID - let MySQL generate one
                 newId = saveWithAutoId(conn, notification);
             }
 
-            Notification savedNotification = new Notification.Builder()
+            savedNotification = new Notification.Builder()
                     .from(notification)
                     .id(newId)
                     .build();
@@ -101,9 +100,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
 
             putInCache(savedNotification, newId);
             logger.log(Level.INFO, "Notification saved with ID: {0}", newId);
-            notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(newId), savedNotification);
-
-            return savedNotification;
 
         } catch (SQLException e) {
             rollbackTransaction(conn);
@@ -111,6 +107,9 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.INSERT, NOTIFICATION, String.valueOf(savedNotification.getId()), savedNotification);
+        return savedNotification;
     }
 
     private int saveWithUpsert(Connection conn, Notification notification) throws SQLException, DAOException {
@@ -226,7 +225,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     conn.commit();
                     putInCache(notification, notification.getId());
                     logger.log(Level.INFO, "Notification updated: {0}", notification.getId());
-                    notifyObservers(DaoOperation.UPDATE, NOTIFICATION, String.valueOf(notification.getId()), notification);
                 } else {
                     conn.rollback();
                     throw new DAOException("Notification not found: " + notification.getId());
@@ -238,6 +236,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.UPDATE, NOTIFICATION, String.valueOf(notification.getId()), notification);
     }
 
     @Override
@@ -287,7 +287,6 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
                     conn.commit();
                     removeFromCache(Notification.class, id);
                     logger.log(Level.INFO, "Notification deleted: {0}", id);
-                    notifyObservers(DaoOperation.DELETE, NOTIFICATION, String.valueOf(id), null);
                 } else {
                     conn.rollback();
                     throw new DAOException("Notification not found: " + id);
@@ -299,6 +298,8 @@ public class NotificationDaoMySql extends AbstractMySqlDao implements Notificati
         } finally {
             resetAutoCommit(conn);
         }
+
+        notifyObservers(DaoOperation.DELETE, NOTIFICATION, String.valueOf(id), null);
     }
 
     @Override

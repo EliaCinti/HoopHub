@@ -169,7 +169,9 @@ public class BookingSummaryGraphicController {
 
             showSuccessAndRedirect();
 
-        } catch (UserSessionException | DAOException | IllegalStateException e) {
+        } catch (IllegalStateException e) {
+            UIHelper.showErrorThenTitle(msgLabel, e.getMessage(), PAGE_TITLE);
+        } catch (UserSessionException | DAOException e) {
             LOGGER.log(Level.SEVERE, "Error creating booking", e);
             UIHelper.showErrorThenTitle(msgLabel, BOOKING_ERROR_MSG + ": " + e.getMessage(), PAGE_TITLE);
         }
